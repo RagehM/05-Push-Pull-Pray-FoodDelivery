@@ -1,0 +1,6 @@
+FROM dpage/pgadmin4:9.13.0 
+
+ENV PGADMIN_DEFAULT_EMAIL=admin@gmail.com
+ENV PGADMIN_DEFAULT_PASSWORD=admin
+
+EXPOSE 80
