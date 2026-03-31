@@ -27,4 +27,6 @@ COPY ./user-service/src/main/java/com/team05/fooddelivery/user/enums /enums/user
 #Check so that it can run on windows
 RUN sed -i 's/\r$//' /automation/pg_docker_run.sh
 
+RUN chmod +x /automation/pg_docker_run.sh
+
 CMD /automation/pg_docker_run.sh
