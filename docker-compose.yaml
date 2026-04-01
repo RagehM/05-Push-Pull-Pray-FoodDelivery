@@ -30,6 +30,20 @@ services:
       - postgres
     restart: on-failure
 
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: order.Dockerfile
+    container_name: fooddelivery-order-service
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
   checkout-service:
     build:
       context: ./checkout-service
