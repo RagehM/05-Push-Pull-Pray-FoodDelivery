@@ -24,7 +24,7 @@ public class Order {
     @Column(nullable = false)
     private String deliveryAddress;
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "orderstatusenum")
+    @Column(nullable = false)
     private OrderStatusEnum status;
     @Column(nullable = true)
     private Double totalAmount;
@@ -99,5 +99,4 @@ public class Order {
         this.orderItems = orderItems;
     }
 
-    
 }
