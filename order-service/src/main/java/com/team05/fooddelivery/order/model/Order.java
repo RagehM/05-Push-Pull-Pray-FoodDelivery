@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -35,7 +37,8 @@ public class Order {
     @Column(nullable = true)
     private LocalDateTime deliveredAt;
     @JsonIgnore
-    @OneToMany(mappedBy = "id", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private List<OrderItem> orderItems = new ArrayList<OrderItem>();
     
     public Long getId() {
