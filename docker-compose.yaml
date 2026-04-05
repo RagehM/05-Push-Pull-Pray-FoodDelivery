@@ -57,5 +57,18 @@ services:
       postgres:
         condition: service_healthy
 
+  delivery-service:
+    build:
+      context: ./delivery-service
+      dockerfile: delivery.Dockerfile
+    container_name: fooddelivery-delivery-service
+    ports:
+      - "8084:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
     pgdata:
