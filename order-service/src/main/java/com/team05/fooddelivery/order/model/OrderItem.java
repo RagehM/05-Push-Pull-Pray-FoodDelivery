@@ -25,7 +25,7 @@ public class OrderItem {
     @Column(nullable = false)
     private Double unitPrice;
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "orderitemstatusenum")
+    @Column(nullable = false)
     private OrderItemStatusEnum status;
     @Column(nullable = false, columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
