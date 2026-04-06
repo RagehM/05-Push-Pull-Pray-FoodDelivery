@@ -46,12 +46,6 @@ public class Payment {
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL)
     private List<PaymentOffer> paymentOffers = new ArrayList<>();
 
-    // this was not specified in the requirements but i think it makes sense (should be checked)
-    @PrePersist
-    public void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
-
     public Long getOrderId() {
         return orderId;
     }
