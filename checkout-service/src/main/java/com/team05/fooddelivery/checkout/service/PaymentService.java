@@ -50,6 +50,6 @@ public class PaymentService {
             LocalDateTime startDate,
             LocalDateTime endDate) {
 
-        return paymentRepository.findByStatusAndDateRange(status, startDate, endDate);
+        return paymentRepository.findByStatusAndDateRange(status==null?null: status.name(), startDate, endDate);
     }
 }
