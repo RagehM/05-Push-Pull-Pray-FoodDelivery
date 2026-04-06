@@ -42,4 +42,11 @@ public class PaymentController {
         UserPaymentSummaryDTO summary = paymentService.getUserPaymentSummary(userId);
         return ResponseEntity.ok(summary);
     }
+
+    // S5-F7: PUT /api/payments/{id}/retry
+    @PutMapping("/{id}/retry")
+    public ResponseEntity<Payment> retryFailedPayment(@PathVariable Long id) {
+        Payment updated = paymentService.retryFailedPayment(id);
+        return ResponseEntity.ok(updated);
+    }
 }
