@@ -13,5 +13,16 @@ import java.util.List;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-
+    // S5-F1: Get Payments by Status and Date Range (all params optional)
+    @Query(value = "SELECT * FROM payments p WHERE " +
+            "(CAST(:status AS paymentstatus) IS NULL OR p.status = CAST(:status AS paymentstatus)) AND " +
+            "(CAST(:startDate AS timestamp) IS NULL OR p.created_at >= CAST(:startDate AS timestamp)) AND " +
+            "(CAST(:endDate AS timestamp) IS NULL OR p.created_at <= CAST(:endDate AS timestamp)) " +
+            "ORDER BY p.created_at DESC",
+            nativeQuery = true)
+    List<Payment> findByStatusAndDateRange(
+            @Param("status") String status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

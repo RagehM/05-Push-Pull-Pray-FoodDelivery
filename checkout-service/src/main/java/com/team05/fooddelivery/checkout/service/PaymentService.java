@@ -1,13 +1,12 @@
 package com.team05.fooddelivery.checkout.service;
+import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
-import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +14,7 @@ import java.util.Map;
 
 @Service
 public class PaymentService {
+
     private final PaymentRepository paymentRepository;
 
     public PaymentService(PaymentRepository paymentRepository) {
@@ -48,6 +48,13 @@ public class PaymentService {
     public void deletePaymentById(Long id) {
         paymentRepository.deleteById(id);
     }
+    // S5-F1: Get Payments by Status and Date Range
+    public List<Payment> getPaymentsByStatusAndDateRange(
+            PaymentStatus status,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
+
+        return paymentRepository.findByStatusAndDateRange(status==null?null: status.name(), startDate, endDate);
       
     // S5-F7: Retry Failed Payment (Transactional)
     @Transactional
