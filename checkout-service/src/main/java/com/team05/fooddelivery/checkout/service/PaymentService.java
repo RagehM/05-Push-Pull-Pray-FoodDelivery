@@ -54,7 +54,8 @@ public class PaymentService {
             LocalDateTime startDate,
             LocalDateTime endDate) {
 
-        return paymentRepository.findByStatusAndDateRange(status==null?null: status.name(), startDate, endDate);
+        return paymentRepository.findByStatusAndDateRange(status == null ? null : status.name(), startDate, endDate);
+    }
       
     // S5-F7: Retry Failed Payment (Transactional)
     @Transactional
