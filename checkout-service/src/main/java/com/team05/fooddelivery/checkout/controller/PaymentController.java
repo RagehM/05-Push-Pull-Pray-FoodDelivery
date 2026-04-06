@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
@@ -33,5 +34,12 @@ public class PaymentController {
 
         List<Payment> results = paymentService.getPaymentsByStatusAndDateRange(status, start, end);
         return ResponseEntity.ok(results);
+    }
+
+    // S5-F3: GET /api/payments/user/{userId}/summary
+    @GetMapping("/user/{userId}/summary")
+    public ResponseEntity<UserPaymentSummaryDTO> getUserPaymentSummary(@PathVariable Long userId) {
+        UserPaymentSummaryDTO summary = paymentService.getUserPaymentSummary(userId);
+        return ResponseEntity.ok(summary);
     }
 }
