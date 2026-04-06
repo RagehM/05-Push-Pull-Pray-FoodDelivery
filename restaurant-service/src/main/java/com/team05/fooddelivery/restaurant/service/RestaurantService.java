@@ -20,6 +20,9 @@ public class RestaurantService {
 
     // The create method takes a Restaurant object as input and saves it to the database using the restaurantRepository's save method.
     public Restaurant create(Restaurant restaurant) {
+        if (restaurant.getId() != null) {
+            throw new IllegalArgumentException("New restaurant must not have an id");
+        }
         return restaurantRepository.save(restaurant);
     }
 
