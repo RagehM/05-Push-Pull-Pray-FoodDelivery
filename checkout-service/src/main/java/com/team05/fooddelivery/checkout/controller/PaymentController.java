@@ -3,10 +3,10 @@ package com.team05.fooddelivery.checkout.controller;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
+import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,4 +59,12 @@ public class PaymentController {
         List<Payment> results = paymentService.getPaymentsByStatusAndDateRange(status, start, end);
         return ResponseEntity.ok(results);
     }
+
+    // S5-F7: PUT /api/payments/{id}/retry
+    @PutMapping("/{id}/retry")
+    public ResponseEntity<Payment> retryFailedPayment(@PathVariable Long id) {
+        Payment updated = paymentService.retryFailedPayment(id);
+        return ResponseEntity.ok(updated);
+    }
+
 }
