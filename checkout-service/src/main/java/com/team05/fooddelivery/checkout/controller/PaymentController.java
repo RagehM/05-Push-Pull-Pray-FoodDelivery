@@ -50,6 +50,7 @@ public class PaymentController {
     @DeleteMapping("/{id}")
     public void deletePayment(@PathVariable Long id) {
         paymentService.deletePaymentById(id);
+    }
 
 
     // S5-F7: PUT /api/payments/{id}/retry
@@ -58,4 +59,5 @@ public class PaymentController {
         Payment updated = paymentService.retryFailedPayment(id);
         return ResponseEntity.ok(updated);
     }
+
 }
