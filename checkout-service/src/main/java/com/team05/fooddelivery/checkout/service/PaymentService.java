@@ -14,9 +14,36 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
 
     public PaymentService(PaymentRepository paymentRepository) {
-        this.paymentRepository = paymentRepository;
+        this.paymentRepository =  paymentRepository;
     }
 
+    // Payment CRUD
+    public Payment createPayment(Payment payment) {
+        return paymentRepository.save(payment);
+    }
+
+    public List<Payment> getPayments() {
+        return paymentRepository.findAll();
+    }
+
+    public Payment getPaymentById(Long id) {
+        return paymentRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
+    }
+
+    public Payment updatePayment(Long id, Payment updatedPayment) {
+        return paymentRepository.findById(id).map(payment -> {
+            payment.setAmount(updatedPayment.getAmount());
+            payment.setMethod(updatedPayment.getMethod());
+            payment.setStatus(updatedPayment.getStatus());
+            payment.setTransactionDetails(updatedPayment.getTransactionDetails());
+            payment.setPaymentOffers(updatedPayment.getPaymentOffers());
+            return paymentRepository.save(payment);
+        }).orElseThrow(() -> new RuntimeException("Payment not found"));
+    }
+
+    public void deletePaymentById(Long id) {
+        paymentRepository.deleteById(id);
+    }
     // S5-F1: Get Payments by Status and Date Range
     public List<Payment> getPaymentsByStatusAndDateRange(
             PaymentStatus status,
