@@ -22,26 +22,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    // S5-F1: GET /api/payments/search?status={s}&startDate={d}&endDate={d}
-    @GetMapping("/search")
-    public ResponseEntity<List<Payment>> searchPayments(
-            @RequestParam(required = false) PaymentStatus status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
-        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
-
-        List<Payment> results = paymentService.getPaymentsByStatusAndDateRange(status, start, end);
-        return ResponseEntity.ok(results);
-    }
-
-    // S5-F3: GET /api/payments/user/{userId}/summary
-    @GetMapping("/user/{userId}/summary")
-    public ResponseEntity<UserPaymentSummaryDTO> getUserPaymentSummary(@PathVariable Long userId) {
-        UserPaymentSummaryDTO summary = paymentService.getUserPaymentSummary(userId);
-        return ResponseEntity.ok(summary);
-    }
 
     // S5-F7: PUT /api/payments/{id}/retry
     @PutMapping("/{id}/retry")
