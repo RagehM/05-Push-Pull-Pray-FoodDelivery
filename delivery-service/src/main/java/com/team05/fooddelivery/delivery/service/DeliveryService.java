@@ -39,8 +39,11 @@ public class DeliveryService {
     }
 
     @Transactional(readOnly = true)
-    public List<Delivery> getAllDeliveries() {
-        return deliveryRepository.findAll();
+    public List<Delivery> getAllDeliveries(String status) {
+        if (status == null || status.isBlank()) {
+            return deliveryRepository.findAll();
+        }
+        return deliveryRepository.findByStatus(status);
     }
 
     public Delivery updateDelivery(Long id, Delivery delivery) {
