@@ -56,6 +56,22 @@ public class PaymentService {
 
         return paymentRepository.findByStatusAndDateRange(status == null ? null : status.name(), startDate, endDate);
     }
+
+    @Transactional
+    public Payment refundPayment(Long id, String reason) {
+        Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+        PaymentStatus status = payment.getStatus();
+
+        if (!status.equals(PaymentStatus.COMPLETED)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status not COMPLETED");
+        }
+        Map<String, Object> transactionDetails = payment.getTransactionDetails();
+        transactionDetails.put("refundReason", reason);
+        transactionDetails.put("refundAt", LocalDateTime.now().toString());
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        return paymentRepository.save(payment);
+    }
       
     // S5-F7: Retry Failed Payment (Transactional)
     @Transactional

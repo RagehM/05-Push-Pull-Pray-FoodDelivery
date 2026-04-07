@@ -60,6 +60,11 @@ public class PaymentController {
         return ResponseEntity.ok(results);
     }
 
+    @PutMapping("/{id}/refund")
+    public Payment refundPayment(@PathVariable Long id, @RequestBody String reason) {
+        return paymentService.refundPayment(id, reason);
+    }
+
     // S5-F7: PUT /api/payments/{id}/retry
     @PutMapping("/{id}/retry")
     public ResponseEntity<Payment> retryFailedPayment(@PathVariable Long id) {
