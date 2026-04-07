@@ -29,6 +29,8 @@ services:
     depends_on:
       - postgres
     restart: on-failure
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
 
   order-service:
     build:
@@ -72,3 +74,4 @@ services:
 
 volumes:
     pgdata:
+    pgadmin-data:
