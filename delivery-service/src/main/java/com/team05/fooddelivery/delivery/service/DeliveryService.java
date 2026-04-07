@@ -1,0 +1,66 @@
+package com.team05.fooddelivery.delivery.service;
+
+import java.util.HashMap;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
+import com.team05.fooddelivery.delivery.model.Delivery;
+import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
+
+@Service
+@Transactional
+public class DeliveryService {
+
+    private final DeliveryRepository deliveryRepository;
+
+    public DeliveryService(DeliveryRepository deliveryRepository) {
+        this.deliveryRepository = deliveryRepository;
+    }
+
+    public Delivery createDelivery(Delivery delivery) {
+        if (delivery.getMetadata() == null) {
+            delivery.setMetadata(new HashMap<>());
+        }
+        if (delivery.getStatus() == null) {
+            delivery.setStatus(DeliveryStatus.ASSIGNED);
+        }
+        return deliveryRepository.save(delivery);
+    }
+
+    @Transactional(readOnly = true)
+    public Delivery getDeliveryById(Long id) {
+        return deliveryRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Delivery> getAllDeliveries() {
+        return deliveryRepository.findAll();
+    }
+
+    public Delivery updateDelivery(Long id, Delivery delivery) {
+        Delivery existingDelivery = getDeliveryById(id);
+
+        existingDelivery.setOrderId(delivery.getOrderId());
+        existingDelivery.setDriverName(delivery.getDriverName());
+        existingDelivery.setLatitude(delivery.getLatitude());
+        existingDelivery.setLongitude(delivery.getLongitude());
+        existingDelivery.setStatus(delivery.getStatus() != null ? delivery.getStatus() : existingDelivery.getStatus());
+        existingDelivery.setMetadata(delivery.getMetadata() != null ? delivery.getMetadata() : new HashMap<>());
+
+        return deliveryRepository.save(existingDelivery);
+    }
+
+    public void deleteDelivery(Long id) {
+        if (!deliveryRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
+        }
+        deliveryRepository.deleteById(id);
+    }
+}
+
