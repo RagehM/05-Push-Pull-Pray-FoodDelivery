@@ -46,12 +46,24 @@ public class DeliveryService {
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
 
-        existingDelivery.setOrderId(delivery.getOrderId());
-        existingDelivery.setDriverName(delivery.getDriverName());
-        existingDelivery.setLatitude(delivery.getLatitude());
-        existingDelivery.setLongitude(delivery.getLongitude());
-        existingDelivery.setStatus(delivery.getStatus() != null ? delivery.getStatus() : existingDelivery.getStatus());
-        existingDelivery.setMetadata(delivery.getMetadata() != null ? delivery.getMetadata() : new HashMap<>());
+        if (delivery.getOrderId() != null) {
+            existingDelivery.setOrderId(delivery.getOrderId());
+        }
+        if (delivery.getDriverName() != null) {
+            existingDelivery.setDriverName(delivery.getDriverName());
+        }
+        if (delivery.getLatitude() != null) {
+            existingDelivery.setLatitude(delivery.getLatitude());
+        }
+        if (delivery.getLongitude() != null) {
+            existingDelivery.setLongitude(delivery.getLongitude());
+        }
+        if (delivery.getStatus() != null) {
+            existingDelivery.setStatus(delivery.getStatus());
+        }
+        if (delivery.getMetadata() != null) {
+            existingDelivery.setMetadata(delivery.getMetadata());
+        }
 
         return deliveryRepository.save(existingDelivery);
     }
