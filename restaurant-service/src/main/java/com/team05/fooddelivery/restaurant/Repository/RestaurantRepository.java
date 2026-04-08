@@ -14,14 +14,13 @@ import java.util.List;
 @Repository
 public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
-    @Query(value = "SELECT * FROM restaurants WHERE status = CAST(:status AS restaurantstatusenum)", nativeQuery = true)
-    List<Restaurant> findByStatus(@Param("status") String status);
+    List<Restaurant> findByStatus(RestaurantStatusEnum status);
 
     List<Restaurant> findByCuisineType(CuisineTypeEnum cuisineType);
 
     // S2-F1
     @Query(value = "SELECT * FROM restaurants WHERE " +
-            "(CAST(:cuisineType AS cuisinetypeenum) IS NULL OR cuisine_type = CAST(:cuisineType AS cuisinetypeenum)) " +
+            "(:cuisineType IS NULL OR cuisine_type = :cuisineType) " +
             "AND rating BETWEEN :minRating AND :maxRating " +
             "ORDER BY rating DESC", nativeQuery = true)
     List<Restaurant> searchByCuisineAndRating(
