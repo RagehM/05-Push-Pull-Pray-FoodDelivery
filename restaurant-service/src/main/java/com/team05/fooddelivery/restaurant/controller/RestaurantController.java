@@ -5,6 +5,7 @@ import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -52,13 +53,20 @@ public class RestaurantController {
         return ResponseEntity.noContent().build();
     }
 
-    //S2-F1: Implement search functionality in RestaurantController to allow filtering by cuisine type and rating range.
+    // S2-F1: Implement search functionality in RestaurantController to allow
+    // filtering by cuisine type and rating range.
     @GetMapping("/search")
     public ResponseEntity<List<Restaurant>> search(
             @RequestParam(required = false) String cuisineType,
             @RequestParam Double minRating,
             @RequestParam Double maxRating) {
         return ResponseEntity.ok(restaurantService.searchByCuisineAndRating(cuisineType, minRating, maxRating));
+    }
+
+    // S2-F2: Implement an endpoint in RestaurantController to update only specific details of a restaurant,
+    @PutMapping("/{id}/details")
+    public ResponseEntity<Restaurant> updateDetails(@PathVariable Long id, @RequestBody Map<String, Object> details) {
+        return ResponseEntity.ok(restaurantService.updateDetails(id, details));
     }
 
 }
