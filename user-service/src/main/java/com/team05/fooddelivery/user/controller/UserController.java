@@ -6,6 +6,7 @@ import com.team05.fooddelivery.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -56,5 +57,10 @@ public class UserController {
     public ResponseEntity<User> updateUserPreferences(@PathVariable long id, @RequestBody Map<String, Object> preferences)
     {
        return ResponseEntity.ok(userService.updateUserPreferences(preferences, id));
+    }
+
+    @PutMapping("/{id}/deactivate")
+    public ResponseStatusException deactivateUserAccount(@PathVariable long id){
+       return userService.deactivateUserAccount(id);
     }
 }
