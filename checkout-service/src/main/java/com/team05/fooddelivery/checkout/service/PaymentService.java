@@ -73,6 +73,26 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId);
         }
 
+        // Query COMPLETED payments grouped by method
+        List<Object[]> rows = paymentRepository.findCompletedPaymentSummaryByUserId(userId);
+
+        Map<String, Double> methodBreakdown = new HashMap<>();
+        long totalPayments = 0L;
+        double totalAmount = 0.0;
+
+        for (Object[] row : rows) {
+            String method = (String) row[0];
+            long count = ((Number) row[1]).longValue();
+            double sum = ((Number) row[2]).doubleValue();
+
+            methodBreakdown.put(method, sum);
+            totalPayments += count;
+            totalAmount += sum;
+        }
+
+        return new UserPaymentSummaryDTO(userId, totalPayments, totalAmount, methodBreakdown);
+    }
+
     // S5-F7: Retry Failed Payment (Transactional)
     @Transactional
     public Payment retryFailedPayment(Long id) {
