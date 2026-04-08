@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.restaurant.model;
 
-import com.team05.fooddelivery.restaurant.enums.MenuCategory;
+import com.team05.fooddelivery.restaurant.enums.MenuCategoryEnum;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -27,7 +27,7 @@ public class MenuItem {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "menucategory")
-    private MenuCategory category;
+    private MenuCategoryEnum category;
 
     @Column(nullable = false)
     private Boolean available = true;
@@ -57,8 +57,8 @@ public class MenuItem {
     public void setDescription(String description) { this.description = description; }
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
-    public MenuCategory getCategory() { return category; }
-    public void setCategory(MenuCategory category) { this.category = category; }
+    public MenuCategoryEnum getCategory() { return category; }
+    public void setCategory(MenuCategoryEnum category) { this.category = category; }
     public Boolean getAvailable() { return available; }
     public void setAvailable(Boolean available) { this.available = available; }
     public Map<String, Object> getMetadata() { return metadata; }
