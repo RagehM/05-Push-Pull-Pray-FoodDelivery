@@ -30,11 +30,15 @@ public class UserService {
 
     public User findUserById(long id)
     {
-        return userRepository.findById(id).orElse(null);
+        return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     public User createUser(User user)
     {
+        Long id=user.getId();
+        if(id!=null && userRepository.existsById(id)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
+        }
         if(user.getCreatedAt() == null || user.getCreatedAt().equals("") || user.getCreatedAt().equals("null"))
         {
             user.setCreatedAt(LocalDateTime.now());
@@ -44,7 +48,7 @@ public class UserService {
 
     public User updateUser(User user, Long id)
     {
-        User updatedUser = userRepository.findById(id).get();
+        User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
         updatedUser.setEmail(user.getEmail() == null ? updatedUser.getEmail() : user.getEmail());
         updatedUser.setPassword(user.getPassword() == null ? updatedUser.getPassword() : user.getPassword());
@@ -57,7 +61,7 @@ public class UserService {
 
     public User deleteUser(Long id)
     {
-        User deletedUser = userRepository.findById(id).get();
+        User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
         return deletedUser;
     }
