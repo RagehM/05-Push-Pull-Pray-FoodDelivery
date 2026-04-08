@@ -25,8 +25,8 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OfferRepository offerRepository;
     private final PaymentOfferRepository paymentOfferRepository;
-
-    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository) {
+  
+    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository) {
         this.paymentRepository =  paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
@@ -42,7 +42,7 @@ public class PaymentService {
     }
 
     public Payment getPaymentById(Long id) {
-        return paymentRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
+        return paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
     }
 
     public Payment updatePayment(Long id, Payment updatedPayment) {
@@ -57,8 +57,12 @@ public class PaymentService {
     }
 
     public void deletePaymentById(Long id) {
+        if (!paymentRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
+        }
         paymentRepository.deleteById(id);
     }
+
     // S5-F1: Get Payments by Status and Date Range
     public List<Payment> getPaymentsByStatusAndDateRange(
             PaymentStatus status,
@@ -78,7 +82,7 @@ public class PaymentService {
         }
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
         transactionDetails.put("refundReason", reason);
-        transactionDetails.put("refundAt", LocalDateTime.now().toString());
+        transactionDetails.put("refundedAt", LocalDateTime.now().toString());
         payment.setStatus(PaymentStatus.REFUNDED);
 
         return paymentRepository.save(payment);
@@ -168,7 +172,7 @@ public class PaymentService {
 
         return revenueReport;
     }
-      
+
     // S5-F7: Retry Failed Payment (Transactional)
     @Transactional
     public Payment retryFailedPayment(Long id) {

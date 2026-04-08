@@ -1,8 +1,11 @@
+
 package com.team05.fooddelivery.checkout.service;
 
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -13,7 +16,7 @@ public class OfferService {
     public OfferService(OfferRepository offerRepository) {
         this.offerRepository = offerRepository;
     }
-    
+
     // Offer CRUD
     public Offer createOffer(Offer offer) {
         return offerRepository.save(offer);
@@ -24,7 +27,7 @@ public class OfferService {
     }
 
     public Offer getOfferById(long id) {
-        return offerRepository.findById(id).orElseThrow(() -> new RuntimeException("Offer not found"));
+        return offerRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Offer not found"));
     }
 
     public Offer updateOffer(Long id, Offer updatedOffer) {
@@ -39,11 +42,16 @@ public class OfferService {
             offer.setMetadata(updatedOffer.getMetadata());
             offer.setPaymentOffers(updatedOffer.getPaymentOffers());
             return offerRepository.save(offer);
-        }).orElseThrow(() -> new RuntimeException("Offer not found"));
+        }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Offer not found"));
     }
 
     public void deleteOfferById(long id) {
+        if (!offerRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Offer not found");
+        }
         offerRepository.deleteById(id);
     }
 
 }
+
+
