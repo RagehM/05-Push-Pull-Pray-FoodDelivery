@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.team05.fooddelivery.order.model.Order;
+import com.team05.fooddelivery.order.service.OrderService;
+
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/orders")
@@ -35,4 +40,31 @@ public class OrderController {
     ) {
         return ResponseEntity.ok(orderService.searchOrders(status, startDate, endDate));
     }
+    // [CRUD]
+    //// Get order by ID
+    @GetMapping("/{id}")
+    public Order getOrderById(@PathVariable Long id) {
+        return orderService.getOrderById(id);
+    }
+    //// Get all orders
+    @GetMapping
+    public java.util.List<Order> getAllOrders() {
+        return orderService.getAllOrders();
+    }
+    //// Create order
+    @PostMapping
+    public Order createOrder(@RequestBody Order order) {
+        return orderService.createOrder(order);
+    }
+    //// Update order
+    @PutMapping("/update/{id}")
+    public Order updateOrder(@PathVariable Long id, @RequestBody Order order) {
+        return orderService.updateOrder(id, order);
+    }
+    //// Delete order
+    @DeleteMapping("/delete/{id}")
+    public void deleteOrder(@PathVariable Long id) {
+        orderService.deleteOrder(id);
+    }
+
 }
