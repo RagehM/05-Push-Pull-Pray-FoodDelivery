@@ -37,10 +37,10 @@ public class RestaurantController {
     }
 
     // The update method handles PUT requests to update an existing restaurant.
-    @PutMapping("/{id}")
-    public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
-        return ResponseEntity.ok(restaurantService.update(id, restaurant));
-    }
+    // @PutMapping("/{id}")
+    // public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
+    //     return ResponseEntity.ok(restaurantService.update(id, restaurant));
+    // }
 
     // The delete method handles DELETE requests to remove a restaurant by its ID.
     @DeleteMapping("/{id}")

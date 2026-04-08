@@ -47,6 +47,7 @@ public class MenuItemService {
     // It first retrieves the existing menu item by its ID. If the menu item is not found, it throws a ResponseStatusException.
     // Then, it updates the existing menu item's fields with the values from the updated menu item object,
     // if they are not null, and saves the updated menu item back to the database.
+    // partial update: only non-null fields from the updated object will be applied to the existing menu item
     public MenuItem update(Long id, MenuItem updated) {
         MenuItem existing = getById(id);
         if (updated.getName() != null) existing.setName(updated.getName());
