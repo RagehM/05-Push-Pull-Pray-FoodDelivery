@@ -1,12 +1,18 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -70,4 +76,25 @@ public class UserService {
         return userRepository.searchUsers(name, email, role);
     }
 
+
+    //Service responsible for feature 1.2
+    public User updateUserPreferences(Map<String,Object> preferences, Long id){
+        User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Map<String,Object> currentUserPreferences = updatedUser.getPreferences();
+        currentUserPreferences.putAll(preferences);
+        updatedUser.setPreferences(currentUserPreferences);
+        return userRepository.save(updatedUser);
+    }
+  
+    @Transactional
+    public ResponseStatusException deactivateUserAccount(Long id){
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        List<Object> activeOrders=userRepository.findOrdersByUserId(id);
+        if(activeOrders.size()>0){
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
+        }
+        user.setStatus(UserStatus.DEACTIVATED);
+        userRepository.save(user);
+        return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
+    }
 }

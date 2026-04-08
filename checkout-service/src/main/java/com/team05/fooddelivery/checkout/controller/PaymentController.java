@@ -2,15 +2,20 @@ package com.team05.fooddelivery.checkout.controller;
 
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
+import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
+import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -23,8 +28,9 @@ public class PaymentController {
     }
     // Payment CRUD
     @PostMapping
-    public Payment createPayment(@RequestBody Payment payment) {
-        return paymentService.createPayment(payment);
+    public ResponseEntity<Payment> createPayment(@RequestBody Payment payment) {
+        Payment newPayment = paymentService.createPayment(payment);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newPayment);
     }
 
     @GetMapping
@@ -62,19 +68,33 @@ public class PaymentController {
     }
 
     @PutMapping("/{id}/refund")
-    public Payment refundPayment(@PathVariable Long id, @RequestBody String reason) {
-        return paymentService.refundPayment(id, reason);
+    public ResponseEntity<Payment> refundPayment(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        Payment refundedPayment = paymentService.refundPayment(id, body.get("reason"));
+        return ResponseEntity.ok(refundedPayment);
+    }
+
+    @PostMapping("/{paymentId}/offers/{offerId}")
+    public ResponseEntity<Payment> applyOfferToPayment(@PathVariable Long paymentId, @PathVariable Long offerId) {
+        Payment updatedPayment = paymentService.applyOfferToPayment(paymentId, offerId);
+        return ResponseEntity.ok(updatedPayment);
+    }
+    // S5-F3: GET /api/payments/user/{userId}/summary
+    @GetMapping("/user/{userId}/summary")
+    public ResponseEntity<UserPaymentSummaryDTO> getUserPaymentSummary(@PathVariable Long userId) {
+        UserPaymentSummaryDTO summary = paymentService.getUserPaymentSummary(userId);
+        return ResponseEntity.ok(summary);
     }
 
     @GetMapping("/reports/revenue")
-    public RevenueReportDTO generateRevenueReport(
+    public ResponseEntity<RevenueReportDTO> generateRevenueReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
         LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
         LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
 
-        return paymentService.generateRevenueReport(start, end);
+        RevenueReportDTO report = paymentService.generateRevenueReport(start, end);
+        return ResponseEntity.ok(report);
     }
 
     // S5-F7: PUT /api/payments/{id}/retry
