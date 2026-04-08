@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.delivery.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 
@@ -99,6 +102,22 @@ public class DeliveryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
         deliveryRepository.deleteById(id);
+    }
+
+    private void validateOrder(Long orderId) {
+        if (!deliveryRepository.existsByOrderId(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+    }
+
+    public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
+        validateOrder(orderId);
+
+        LocalDateTime start = startDate.atStartOfDay(); // 00:0000 of the start day
+        LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
+
+        return deliveryRepository
+                .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
     }
 }
 
