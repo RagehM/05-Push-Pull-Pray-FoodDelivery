@@ -5,6 +5,7 @@ import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -49,4 +50,9 @@ public class UserController {
         userService.deleteUser(id);
     }
 
+
+    @PutMapping("/{id}/deactivate")
+    public ResponseStatusException deactivateUserAccount(@PathVariable long id){
+       return userService.deactivateUserAccount(id);
+    }
 }
