@@ -48,4 +48,14 @@ public class RestaurantController {
         restaurantService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+
+    //S2-F1
+    @GetMapping("/search")
+    public ResponseEntity<List<Restaurant>> search(
+        @RequestParam(required = false) String cuisineType,
+        @RequestParam Double minRating,
+        @RequestParam Double maxRating) {
+    return ResponseEntity.ok(restaurantService.searchByCuisineAndRating(cuisineType, minRating, maxRating));
+}
 }

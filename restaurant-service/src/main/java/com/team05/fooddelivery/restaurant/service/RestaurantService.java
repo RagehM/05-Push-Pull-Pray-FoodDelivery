@@ -63,4 +63,12 @@ public class RestaurantService {
         }
         restaurantRepository.deleteById(id);
     }
+
+    //S2-F1
+    public List<Restaurant> searchByCuisineAndRating(String cuisineType, Double minRating, Double maxRating) {
+    if (minRating > maxRating) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minRating cannot be greater than maxRating");
+    }
+    return restaurantRepository.searchByCuisineAndRating(cuisineType, minRating, maxRating);
+}
 }
