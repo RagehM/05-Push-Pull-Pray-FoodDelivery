@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.restaurant.Repository;
+package com.team05.fooddelivery.restaurant.repository;
 
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -2,8 +2,9 @@ package com.team05.fooddelivery.restaurant.service;
 
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.Repository.MenuItemRepository;
-import com.team05.fooddelivery.restaurant.Repository.RestaurantRepository;
+import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
+import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
+
 import org.springframework.stereotype.Service;
 import java.util.List;
 

@@ -1,7 +1,8 @@
 package com.team05.fooddelivery.restaurant.service;
 
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.Repository.RestaurantRepository;
+import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
+
 import org.springframework.stereotype.Service;
 import java.util.List;
 
@@ -20,6 +21,10 @@ public class RestaurantService {
 
     // The create method takes a Restaurant object as input and saves it to the database using the restaurantRepository's save method.
     public Restaurant create(Restaurant restaurant) {
+         if (restaurant.getId() != null) {
+            throw new IllegalArgumentException("New restaurant cannot have an ID");
+        }
+
         return restaurantRepository.save(restaurant);
     }
 
