@@ -25,4 +25,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    @Query(value = "SELECT * FROM payments p WHERE " +
+            "(CAST(:startDate AS timestamp) IS NULL OR p.created_at >= CAST(:startDate AS timestamp)) AND " +
+            "(CAST(:endDate AS timestamp) IS NULL OR p.created_at <= CAST(:endDate AS timestamp)) " +
+            "ORDER BY p.created_at DESC",
+            nativeQuery = true)
+    List<Payment> findByDateRange(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }
