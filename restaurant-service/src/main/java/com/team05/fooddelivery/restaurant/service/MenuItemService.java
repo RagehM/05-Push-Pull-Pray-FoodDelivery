@@ -4,8 +4,9 @@ import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @Service
@@ -14,53 +15,54 @@ public class MenuItemService {
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
 
-    // Constructor injection is used to inject the MenuItemRepository and RestaurantRepository dependencies into the MenuItemService class.
-    // This allows the service to interact with the database through the repository layer.
-
+// Constructor injection of the MenuItemRepository and RestaurantRepository dependencies allows the service to interact with the database through the repository layer.
+// The MenuItemService class is annotated with @Service, indicating that it's a service component in the Spring framework. 
+// It contains business logic related to menu item operations and interacts with the MenuItemRepository and RestaurantRepository to perform database operations.
     public MenuItemService(MenuItemRepository menuItemRepository, RestaurantRepository restaurantRepository) {
         this.menuItemRepository = menuItemRepository;
         this.restaurantRepository = restaurantRepository;
     }
 
-    // The create method takes a restaurantId and a MenuItem object as input. 
-    // It first retrieves the Restaurant associated with the given restaurantId.
-    // If the restaurant is not found, it throws a RuntimeException.
-    // Then, it sets the restaurant for the MenuItem and saves it to the database.
+// The create method takes a restaurantId and a MenuItem object as input. 
+// It first retrieves the Restaurant by its ID. If the restaurant is not found, it throws a ResponseStatusException.
     public MenuItem create(Long restaurantId, MenuItem menuItem) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         menuItem.setRestaurant(restaurant);
         return menuItemRepository.save(menuItem);
     }
 
-    // The getById method retrieves a MenuItem by its ID. 
-    // If the MenuItem is not found, it throws a RuntimeException.
+// The getById method retrieves a MenuItem by its ID. If the menu item is not found, it throws a ResponseStatusException.
     public MenuItem getById(Long id) {
         return menuItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("MenuItem not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MenuItem not found"));
     }
-    
-    // The getAll method retrieves all MenuItems from the database.
+
+    // The getAll method retrieves all menu items from the database.
     public List<MenuItem> getAll() {
         return menuItemRepository.findAll();
     }
 
-    // The update method updates an existing MenuItem's details.
+    // The update method updates an existing menu item's details.
+    // It first retrieves the existing menu item by its ID. If the menu item is not found, it throws a ResponseStatusException.
+    // Then, it updates the existing menu item's fields with the values from the updated menu item object,
+    // if they are not null, and saves the updated menu item back to the database.
     public MenuItem update(Long id, MenuItem updated) {
         MenuItem existing = getById(id);
-        existing.setName(updated.getName());
-        existing.setDescription(updated.getDescription());
-        existing.setPrice(updated.getPrice());
-        existing.setCategory(updated.getCategory());
-        existing.setAvailable(updated.getAvailable());
-        existing.setMetadata(updated.getMetadata());
+        if (updated.getName() != null) existing.setName(updated.getName());
+        if (updated.getDescription() != null) existing.setDescription(updated.getDescription());
+        if (updated.getPrice() != null) existing.setPrice(updated.getPrice());
+        if (updated.getCategory() != null) existing.setCategory(updated.getCategory());
+        if (updated.getAvailable() != null) existing.setAvailable(updated.getAvailable());
+        if (updated.getMetadata() != null) existing.setMetadata(updated.getMetadata());
         return menuItemRepository.save(existing);
     }
 
-    // The delete method removes a MenuItem from the database by its ID.
+    // The delete method removes a menu item from the database by its ID.
     public void delete(Long id) {
-        if (menuItemRepository.existsById(id)) {
-            menuItemRepository.deleteById(id);
+        if (!menuItemRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "MenuItem not found");
         }
+        menuItemRepository.deleteById(id);
     }
 }
