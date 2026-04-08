@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.*;
+
+
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -28,4 +31,31 @@ public class OrderController {
         List<Order> orders = orderService.searchOrdersByMetadata(key, value);
         return ResponseEntity.ok(orders);
     }
+    // [CRUD]
+    //// Get order by ID
+    @GetMapping("/{id}")
+    public Order getOrderById(@PathVariable Long id) {
+        return orderService.getOrderById(id);
+    }
+    //// Get all orders
+    @GetMapping
+    public java.util.List<Order> getAllOrders() {
+        return orderService.getAllOrders();
+    }
+    //// Create order
+    @PostMapping
+    public Order createOrder(@RequestBody Order order) {
+        return orderService.createOrder(order);
+    }
+    //// Update order
+    @PutMapping("/update/{id}")
+    public Order updateOrder(@PathVariable Long id, @RequestBody Order order) {
+        return orderService.updateOrder(id, order);
+    }
+    //// Delete order
+    @DeleteMapping("/delete/{id}")
+    public void deleteOrder(@PathVariable Long id) {
+        orderService.deleteOrder(id);
+    }
+
 }

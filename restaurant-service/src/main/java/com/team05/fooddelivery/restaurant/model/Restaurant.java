@@ -1,7 +1,7 @@
 package com.team05.fooddelivery.restaurant.model;
 
-import com.team05.fooddelivery.restaurant.enums.CuisineType;
-import com.team05.fooddelivery.restaurant.enums.RestaurantStatus;
+import com.team05.fooddelivery.restaurant.enums.CuisineTypeEnum;
+import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -28,12 +28,12 @@ public class Restaurant {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "cuisinetype")
-    private CuisineType cuisineType;
+    @Column(nullable = false)
+    private CuisineTypeEnum cuisineType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "restaurantstatus")
-    private RestaurantStatus status;
+    @Column(nullable = false)
+    private RestaurantStatusEnum status;
 
     @Column(nullable = false)
     private Double rating = 0.0;
@@ -64,10 +64,10 @@ public class Restaurant {
     public void setEmail(String email) { this.email = email; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
-    public CuisineType getCuisineType() { return cuisineType; }
-    public void setCuisineType(CuisineType cuisineType) { this.cuisineType = cuisineType; }
-    public RestaurantStatus getStatus() { return status; }
-    public void setStatus(RestaurantStatus status) { this.status = status; }
+    public CuisineTypeEnum getCuisineType() { return cuisineType; }
+    public void setCuisineType(CuisineTypeEnum cuisineType) { this.cuisineType = cuisineType; }
+    public RestaurantStatusEnum getStatus() { return status; }
+    public void setStatus(RestaurantStatusEnum status) { this.status = status; }
     public Double getRating() { return rating; }
     public void setRating(Double rating) { this.rating = rating; }
     public Integer getTotalRatings() { return totalRatings; }
