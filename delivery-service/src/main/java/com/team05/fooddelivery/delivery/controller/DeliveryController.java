@@ -42,6 +42,11 @@ public class DeliveryController {
         return deliveryService.getAllDeliveries(status);
     }
 
+    @GetMapping("/order/{orderId}/latest")
+    public Delivery getLatestDeliveryByOrderId(@PathVariable Long orderId) {
+        return deliveryService.getLatestDeliveryByOrderId(orderId);
+    }
+
     @PutMapping("/{id}")
     public Delivery updateDelivery(@PathVariable Long id, @RequestBody Delivery delivery) {
         return deliveryService.updateDelivery(id, delivery);

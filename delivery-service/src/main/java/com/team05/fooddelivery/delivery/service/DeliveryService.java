@@ -46,6 +46,16 @@ public class DeliveryService {
         return deliveryRepository.findByStatus(status);
     }
 
+    @Transactional(readOnly = true)
+    public Delivery getLatestDeliveryByOrderId(Long orderId) {
+        if (!deliveryRepository.existsOrderById(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+
+        return deliveryRepository.findLatestByOrderId(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
 
