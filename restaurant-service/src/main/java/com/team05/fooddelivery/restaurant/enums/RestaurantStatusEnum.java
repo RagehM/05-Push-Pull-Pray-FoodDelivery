@@ -1,5 +1,5 @@
 package com.team05.fooddelivery.restaurant.enums;
 
-public enum RestaurantStatus {
+public enum RestaurantStatusEnum {
     OPEN, CLOSED, SUSPENDED
 }
