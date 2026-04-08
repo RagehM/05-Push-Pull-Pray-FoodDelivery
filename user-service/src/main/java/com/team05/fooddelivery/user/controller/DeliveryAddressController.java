@@ -20,7 +20,7 @@ public class DeliveryAddressController {
     }
 
     @PostMapping
-    public DeliveryAddress createDeliveryAddress(DeliveryAddress deliveryAddress)
+    public DeliveryAddress createDeliveryAddress(@RequestBody DeliveryAddress deliveryAddress)
     {
         return deliveryAddressService.createDeliveryAddress(deliveryAddress);
     }
