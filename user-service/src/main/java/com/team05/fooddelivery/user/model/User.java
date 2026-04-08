@@ -31,11 +31,11 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "userrole")
+    @Column(nullable = false)
     private UserRole userRole;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "userstatus")
+    @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
 
     @JdbcTypeCode(SqlTypes.JSON)

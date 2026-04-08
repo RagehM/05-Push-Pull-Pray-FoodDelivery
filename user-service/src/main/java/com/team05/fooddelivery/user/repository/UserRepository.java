@@ -11,6 +11,21 @@ import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    @Query(value = """
+    SELECT *
+    FROM users u
+    WHERE (:name IS NULL OR u.name ILIKE '%' || :name || '%')
+      AND (:email IS NULL OR u.email ILIKE '%' || :email || '%')
+      AND (:role IS NULL OR u.user_role = :role)
+    """, nativeQuery = true)
+    List<User> searchUsers(
+            @Param("name") String name,
+            @Param("email") String email,
+            @Param("role") String role
+    );
+
+
     @Query(value = """
     SELECT * FROM orders o 
     WHERE o.user_id = :userId 

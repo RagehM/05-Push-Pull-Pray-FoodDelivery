@@ -62,6 +62,20 @@ public class UserService {
         return deletedUser;
     }
 
+    public List<User> searchUsers(String name, String email, String role)
+    {
+        if(name!=null && name.isEmpty())name = null;
+        if(email!=null && email.isEmpty())email = null;
+        if(role!=null && role.isEmpty())role = null;
+
+        if((name==null || name.isEmpty()) && (email==null || email.isEmpty()) && (role==null || role.isEmpty()))
+             throw new RuntimeException("At least one search parameter must be provided");
+
+
+
+        return userRepository.searchUsers(name, email, role);
+    }
+
 
     //Service responsible for feature 1.2
     public User updateUserPreferences(Map<String,Object> preferences, Long id){
