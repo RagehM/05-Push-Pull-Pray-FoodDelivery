@@ -1,13 +1,17 @@
 package com.team05.fooddelivery.restaurant.service;
 
+import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+
+@Transactional
 
 @Service
 public class RestaurantService {
@@ -62,5 +66,23 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         restaurantRepository.deleteById(id);
+    }
+    public void updateRestaurantStatus(Long id, String newStatus) {
+
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        // suspend
+        if (newStatus.equals("SUSPENDED")) {
+
+            int activeOrders = restaurantRepository.countActiveOrders(id);
+
+            if (activeOrders > 0) {
+                throw new RuntimeException("Cannot suspend restaurant with active orders");
+            }
+        }
+
+        restaurant.setStatus(RestaurantStatusEnum.valueOf(newStatus));
+        restaurantRepository.save(restaurant);
     }
 }

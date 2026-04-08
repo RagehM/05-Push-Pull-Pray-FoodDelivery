@@ -5,6 +5,7 @@ import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -47,5 +48,16 @@ public class RestaurantController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         restaurantService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+
+        String status = body.get("status");
+
+        restaurantService.updateRestaurantStatus(id, status);
+
+        return ResponseEntity.ok().build();
     }
 }

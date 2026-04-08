@@ -16,4 +16,7 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     List<Restaurant> findByStatus(@Param("status") String status);
 
     List<Restaurant> findByCuisineType(CuisineTypeEnum cuisineType);
+
+    @Query(value = "SELECT COUNT(*) FROM orders WHERE restaurant_id = :id AND status IN ('CONFIRMED', 'PREPARING')", nativeQuery = true)
+    int countActiveOrders(@Param("id") Long restaurantId);
 }
