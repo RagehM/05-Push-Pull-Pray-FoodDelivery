@@ -2,6 +2,7 @@ package com.team05.fooddelivery.delivery.service;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,21 @@ public class DeliveryService {
             return deliveryRepository.findAll();
         }
         return deliveryRepository.findByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
+        if (operator == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        }
+
+        String normalizedOperator = operator.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedOperator) {
+            case "eq" -> deliveryRepository.findByMetadataEquals(key, value);
+            case "gt" -> deliveryRepository.findByMetadataGreaterThan(key, value);
+            case "lt" -> deliveryRepository.findByMetadataLessThan(key, value);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        };
     }
 
     public Delivery updateDelivery(Long id, Delivery delivery) {

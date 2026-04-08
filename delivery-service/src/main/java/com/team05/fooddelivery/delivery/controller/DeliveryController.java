@@ -42,6 +42,13 @@ public class DeliveryController {
         return deliveryService.getAllDeliveries(status);
     }
 
+    @GetMapping("/metadata/search")
+    public List<Delivery> searchDeliveriesByMetadata(@RequestParam String key,
+                                                     @RequestParam String operator,
+                                                     @RequestParam String value) {
+        return deliveryService.searchDeliveriesByMetadata(key, operator, value);
+    }
+
     @PutMapping("/{id}")
     public Delivery updateDelivery(@PathVariable Long id, @RequestBody Delivery delivery) {
         return deliveryService.updateDelivery(id, delivery);
