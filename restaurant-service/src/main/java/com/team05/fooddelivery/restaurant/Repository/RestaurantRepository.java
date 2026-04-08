@@ -16,4 +16,5 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     List<Restaurant> findByStatus(@Param("status") String status);
 
     List<Restaurant> findByCuisineType(CuisineTypeEnum cuisineType);
+
 }
