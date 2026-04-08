@@ -2,6 +2,8 @@ package com.team05.fooddelivery.delivery.service;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.time.LocalDateTime;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -76,6 +78,25 @@ public class DeliveryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
         deliveryRepository.deleteById(id);
+    }
+
+    public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
+        if (olderThanDays == null || olderThanDays <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
+        }
+
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(olderThanDays);
+        String deliveredStatus = DeliveryStatus.DELIVERED.name();
+
+        long count = deliveryRepository.countOldByStatus(deliveredStatus, cutoff);
+        int deletedCount = 0;
+        if (count > 0) {
+            deletedCount = deliveryRepository.deleteOldByStatus(deliveredStatus, cutoff);
+        }
+
+        Map<String, Integer> response = new HashMap<>();
+        response.put("deletedCount", deletedCount);
+        return response;
     }
 }
 
