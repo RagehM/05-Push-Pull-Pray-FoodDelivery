@@ -72,16 +72,37 @@ def connect_to_db(retries: int = 100, delay: int = 5):
             time.sleep(delay)
     raise Exception("Failed to connect to database")
 
+def create_implicit_cast(conn, enum_name: str):
+    cursor = conn.cursor()
+    cast_query = sql.SQL(
+        """
+        DO $$ BEGIN
+            CREATE CAST (varchar AS {enum}) WITH INOUT AS IMPLICIT;
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+        """
+    ).format(enum=sql.SQL(enum_name.lower()))
+    cursor.execute(cast_query)
+    conn.commit()
+    print(f"CAST 'varchar AS {enum_name}' ensured")
+    cursor.close()
+
+
 def verify_enums(enum_dict: dict):
     conn = connect_to_db()
     existing_enums = fetch_existing_enums_from_db(conn)
 
     for key, value in enum_dict.items():
+
         if key.lower() in existing_enums:
             print(f"ENUM '{key}' already exists, skipping...")
             continue
 
         create_enum(conn, key, value)
+
+    for key in enum_dict.keys():
+
+        create_implicit_cast(conn, key)
 
     conn.close()
 
