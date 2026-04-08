@@ -22,6 +22,29 @@ public class DeliveryService {
         this.deliveryRepository = deliveryRepository;
     }
 
+    public Delivery createForOrder(Long orderId, Delivery delivery) {
+        if (!deliveryRepository.orderExists(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        if (delivery.getDriverName() == null || delivery.getDriverName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName is required");
+        }
+        if (delivery.getLatitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude is required");
+        }
+        if (delivery.getLongitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude is required");
+        }
+        delivery.setOrderId(orderId);
+        if (delivery.getMetadata() == null) {
+            delivery.setMetadata(new HashMap<>());
+        }
+        if (delivery.getStatus() == null) {
+            delivery.setStatus(DeliveryStatus.ASSIGNED);
+        }
+        return deliveryRepository.save(delivery);
+    }
+
     public Delivery createDelivery(Delivery delivery) {
         if (delivery.getMetadata() == null) {
             delivery.setMetadata(new HashMap<>());
