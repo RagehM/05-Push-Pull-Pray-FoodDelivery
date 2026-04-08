@@ -1,8 +1,10 @@
+
 package com.team05.fooddelivery.checkout.controller;
 
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.OfferService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,8 +20,9 @@ public class OfferController {
     }
 
     @PostMapping
-    public Offer createOffer(@RequestBody Offer offer){
-        return offerService.createOffer(offer);
+    public ResponseEntity<Offer> createOffer(@RequestBody Offer offer){
+        Offer newOffer = offerService.createOffer(offer);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newOffer);
     }
 
     @GetMapping
