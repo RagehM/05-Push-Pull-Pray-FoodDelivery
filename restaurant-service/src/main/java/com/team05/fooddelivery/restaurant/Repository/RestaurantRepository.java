@@ -17,13 +17,4 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
     List<Restaurant> findByCuisineType(CuisineTypeEnum cuisineType);
 
-//S2-F1
-    @Query(value = "SELECT * FROM restaurants WHERE " +
-       "(:cuisineType IS NULL OR cuisine_type = :cuisineType) " +
-       "AND rating BETWEEN :minRating AND :maxRating " +
-       "ORDER BY rating DESC", nativeQuery = true)
-   List<Restaurant> searchByCuisineAndRating(
-    @Param("cuisineType") String cuisineType,
-    @Param("minRating") Double minRating,
-    @Param("maxRating") Double maxRating);
 }
