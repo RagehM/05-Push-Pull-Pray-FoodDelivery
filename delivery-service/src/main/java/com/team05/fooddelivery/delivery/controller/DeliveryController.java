@@ -3,6 +3,7 @@ package com.team05.fooddelivery.delivery.controller;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,6 +56,15 @@ public class DeliveryController {
     @GetMapping
     public List<Delivery> getAllDeliveries(@RequestParam(required = false) String status) {
         return deliveryService.getAllDeliveries(status);
+    }
+
+    @GetMapping("/nearby")
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(
+            @RequestParam Double lat,
+            @RequestParam Double lon,
+            @RequestParam Double radiusKm) {
+
+        return deliveryService.getNearbyDeliveries(lat, lon, radiusKm);
     }
 
     @PutMapping("/{id}")

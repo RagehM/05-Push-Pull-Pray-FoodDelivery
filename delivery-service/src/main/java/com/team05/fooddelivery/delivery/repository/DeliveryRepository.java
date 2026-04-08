@@ -1,6 +1,5 @@
 package com.team05.fooddelivery.delivery.repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.team05.fooddelivery.delivery.model.Delivery;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 
@@ -26,6 +24,35 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			"ORDER BY d.updated_at DESC LIMIT 1",
 		nativeQuery = true)
 	Optional<Delivery> findByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") String status);
+
+	@Query(value = """
+    SELECT
+		 d.id,
+		 d.driver_name,
+		 d.order_id,
+		 (d.metadata->>'latitude')::numeric AS latitude,
+		 (d.metadata->>'longitude')::numeric AS longitude,
+		 (
+			 SQRT(
+				 POWER((d.metadata->>'latitude')::numeric - :lat, 2) +
+				 POWER((d.metadata->>'longitude')::numeric - :lon, 2)
+			 ) * 111
+		 ) AS distanceKm
+	FROM deliveries d
+    WHERE d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
+    AND (
+        SQRT(
+            POWER((d.metadata->>'latitude')::numeric - :lat, 2) +
+            POWER((d.metadata->>'longitude')::numeric - :lon, 2)
+        ) * 111
+    ) <= :radiusKm
+    ORDER BY distanceKm ASC
+	""", nativeQuery = true)
+	List<Object[]> findNearbyDeliveries(
+			Double lat,
+			Double lon,
+			Double radiusKm
+	);
 
 	List<Delivery> findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(
 			Long orderId,
