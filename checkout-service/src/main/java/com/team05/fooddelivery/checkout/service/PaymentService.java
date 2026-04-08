@@ -22,15 +22,6 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
     }
 
-    // S5-F1: Get Payments by Status and Date Range
-    public List<Payment> getPaymentsByStatusAndDateRange(
-            PaymentStatus status,
-            LocalDateTime startDate,
-            LocalDateTime endDate) {
-
-        return paymentRepository.findByStatusAndDateRange(status, startDate, endDate);
-    }
-
     // S5-F3: User Payment Summary (DTO)
     public UserPaymentSummaryDTO getUserPaymentSummary(Long userId) {
         // Verify user exists via cross-service native SQL query
