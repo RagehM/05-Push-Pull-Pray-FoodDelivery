@@ -66,6 +66,12 @@ public class PaymentController {
         return paymentService.refundPayment(id, reason);
     }
 
+    @PostMapping("/{paymentId}/offers/{offerId}")
+    public ResponseEntity<Payment> applyOfferToPayment(@PathVariable Long paymentId, @PathVariable Long offerId) {
+        Payment updatedPayment = paymentService.applyOfferToPayment(paymentId, offerId);
+        return ResponseEntity.ok(updatedPayment);
+    }
+
     @GetMapping("/reports/revenue")
     public RevenueReportDTO generateRevenueReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
