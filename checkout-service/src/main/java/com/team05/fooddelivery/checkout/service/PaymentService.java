@@ -77,7 +77,7 @@ public class PaymentService {
 
     public RevenueReportDTO generateRevenueReport(LocalDateTime startDate, LocalDateTime endDate) {
         if(endDate.isBefore(startDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date is before end date");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
         }
         List<Payment> paymentsList = paymentRepository.findByDateRange(startDate, endDate);
 
