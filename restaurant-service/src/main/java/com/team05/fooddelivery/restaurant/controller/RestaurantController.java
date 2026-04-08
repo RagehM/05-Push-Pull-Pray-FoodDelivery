@@ -10,8 +10,10 @@ import java.util.List;
 @RequestMapping("/api/restaurants")
 public class RestaurantController {
 
-    // The RestaurantController class is a REST controller that handles HTTP requests related to restaurant operations.
-    // It uses the RestaurantService to perform business logic and interact with the database.
+    // The RestaurantController class is a REST controller that handles HTTP
+    // requests related to restaurant operations.
+    // It uses the RestaurantService to perform business logic and interact with the
+    // database.
     private final RestaurantService restaurantService;
 
     public RestaurantController(RestaurantService restaurantService) {
@@ -38,8 +40,9 @@ public class RestaurantController {
 
     // The update method handles PUT requests to update an existing restaurant.
     // @PutMapping("/{id}")
-    // public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
-    //     return ResponseEntity.ok(restaurantService.update(id, restaurant));
+    // public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody
+    // Restaurant restaurant) {
+    // return ResponseEntity.ok(restaurantService.update(id, restaurant));
     // }
 
     // The delete method handles DELETE requests to remove a restaurant by its ID.
@@ -47,6 +50,15 @@ public class RestaurantController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         restaurantService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    //S2-F1: Implement search functionality in RestaurantController to allow filtering by cuisine type and rating range.
+    @GetMapping("/search")
+    public ResponseEntity<List<Restaurant>> search(
+            @RequestParam(required = false) String cuisineType,
+            @RequestParam Double minRating,
+            @RequestParam Double maxRating) {
+        return ResponseEntity.ok(restaurantService.searchByCuisineAndRating(cuisineType, minRating, maxRating));
     }
 
 }
