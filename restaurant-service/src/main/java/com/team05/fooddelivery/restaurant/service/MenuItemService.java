@@ -59,6 +59,8 @@ public class MenuItemService {
 
     // The delete method removes a MenuItem from the database by its ID.
     public void delete(Long id) {
-        menuItemRepository.deleteById(id);
+        if (menuItemRepository.existsById(id)) {
+            menuItemRepository.deleteById(id);
+        }
     }
 }
