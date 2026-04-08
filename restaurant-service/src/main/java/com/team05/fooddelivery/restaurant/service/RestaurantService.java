@@ -6,7 +6,7 @@ import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
+import java.util.Map;
 import java.util.List;
 
 @Service
@@ -85,5 +85,19 @@ public class RestaurantService {
         }
         return restaurantRepository.searchByCuisineAndRating(cuisineType, minRating, maxRating);
     }
+
+    // S2-F2: Implement a method in RestaurantService to update only specific details of a restaurant, 
+    // such as its contact information or operating hours, without affecting other fields.
+    public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
+    Restaurant existing = getById(id);
+    Map<String, Object> currentDetails = existing.getDetails();
+    if (currentDetails == null) {
+        existing.setDetails(newDetails);
+    } else {
+        currentDetails.putAll(newDetails);
+        existing.setDetails(currentDetails);
+    }
+    return restaurantRepository.save(existing);
+}
 
 }
