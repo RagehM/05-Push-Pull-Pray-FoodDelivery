@@ -1,4 +1,5 @@
 package com.team05.fooddelivery.checkout.service;
+import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 @Service
 public class PaymentService {
@@ -71,6 +73,37 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
 
         return paymentRepository.save(payment);
+    }
+
+    public RevenueReportDTO generateRevenueReport(LocalDateTime startDate, LocalDateTime endDate) {
+        if(endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
+        }
+        List<Payment> paymentsList = paymentRepository.findByDateRange(startDate, endDate);
+
+        List<Payment> completedPayments = paymentsList.stream().filter(p -> p.getStatus() == PaymentStatus.COMPLETED).toList();
+
+        Double totalRevenue = completedPayments.stream().mapToDouble(Payment::getAmount).sum();
+
+        Integer totalTransactions = completedPayments.size();
+
+        Double averagePayment = totalTransactions > 0 ? totalRevenue / totalTransactions : 0.0;
+
+        List<Payment> refundedPayments = paymentsList.stream().filter(p -> p.getStatus() == PaymentStatus.REFUNDED).toList();
+
+        Double refundedAmount = refundedPayments.stream().mapToDouble(Payment::getAmount).sum();
+
+        Integer refundCount = refundedPayments.size();
+
+        RevenueReportDTO revenueReport = new RevenueReportDTO(
+                totalRevenue,
+                totalTransactions,
+                averagePayment,
+                refundedAmount,
+                refundCount
+        );
+
+        return revenueReport;
     }
       
     // S5-F7: Retry Failed Payment (Transactional)

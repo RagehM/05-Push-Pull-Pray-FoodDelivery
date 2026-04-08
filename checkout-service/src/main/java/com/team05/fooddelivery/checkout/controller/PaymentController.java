@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
@@ -63,6 +64,17 @@ public class PaymentController {
     @PutMapping("/{id}/refund")
     public Payment refundPayment(@PathVariable Long id, @RequestBody String reason) {
         return paymentService.refundPayment(id, reason);
+    }
+
+    @GetMapping("/reports/revenue")
+    public RevenueReportDTO generateRevenueReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
+        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
+
+        return paymentService.generateRevenueReport(start, end);
     }
 
     // S5-F7: PUT /api/payments/{id}/retry
