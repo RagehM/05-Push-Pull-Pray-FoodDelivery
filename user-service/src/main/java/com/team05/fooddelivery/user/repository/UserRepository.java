@@ -60,4 +60,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
             nativeQuery = true)
     List<Object[]> findCancelledOrders(@Param("userId") Long userId);
 
+    boolean existsByEmail(String email);
+    boolean existsByPhone(String phone);
 }
