@@ -55,6 +55,22 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			Double radiusKm
 	);
 
+	// No Date filter
+	List<Delivery> findByOrderIdOrderByUpdatedAtAsc(Long orderId);
+
+	// Only start date filter
+	List<Delivery> findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
+			Long orderId,
+			LocalDateTime start
+	);
+
+	// Only end date filter
+	List<Delivery> findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(
+			Long orderId,
+			LocalDateTime end
+	);
+
+	// Both start and end date filter
 	List<Delivery> findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(
 			Long orderId,
 			LocalDateTime start,
@@ -64,4 +80,34 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	//// Check for the existence of order
 	@Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
 	boolean orderExists(@Param("orderId") Long orderId);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId ORDER BY d.updated_at DESC LIMIT 1", nativeQuery = true)
+	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE d.metadata ->> :key = :value", nativeQuery = true)
+	List<Delivery> findByMetadataEquals(@Param("key") String key, @Param("value") String value);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE CAST(d.metadata ->> :key AS numeric) > CAST(:value AS numeric)", nativeQuery = true)
+	List<Delivery> findByMetadataGreaterThan(@Param("key") String key, @Param("value") String value);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE CAST(d.metadata ->> :key AS numeric) < CAST(:value AS numeric)", nativeQuery = true)
+	List<Delivery> findByMetadataLessThan(@Param("key") String key, @Param("value") String value);
+	@Query(value = """
+    SELECT 
+        d.id,
+        d.driver_name,
+        d.order_id,
+        d.latitude::numeric,
+        d.longitude::numeric,
+        (d.metadata->>'estimatedArrival')::numeric,
+        d.updated_at
+    FROM deliveries d
+    WHERE d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
+      AND (d.metadata->>'estimatedArrival')::numeric > :maxEstimatedArrival
+      AND d.updated_at >= NOW() - (:sinceMinutes * INTERVAL '1 minute')
+""", nativeQuery = true)
+	List<Object[]> findDelayedDeliveries(
+			@Param("maxEstimatedArrival") Double maxEstimatedArrival,
+			@Param("sinceMinutes") int sinceMinutes
+	);
 }

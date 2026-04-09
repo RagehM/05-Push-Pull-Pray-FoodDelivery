@@ -6,7 +6,9 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
+import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -74,6 +76,29 @@ public class DeliveryService {
             return deliveryRepository.findAll();
         }
         return deliveryRepository.findByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public Delivery getLatestDeliveryByOrderId(Long orderId) {
+validateOrder(orderId);
+
+        return deliveryRepository.findLatestByOrderId(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
+        if (operator == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        }
+
+        String normalizedOperator = operator.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedOperator) {
+            case "eq" -> deliveryRepository.findByMetadataEquals(key, value);
+            case "gt" -> deliveryRepository.findByMetadataGreaterThan(key, value);
+            case "lt" -> deliveryRepository.findByMetadataLessThan(key, value);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        };
     }
 
     public Delivery updateDelivery(Long id, Delivery delivery) {
@@ -149,7 +174,26 @@ public class DeliveryService {
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
-        LocalDateTime start = startDate.atStartOfDay(); // 00:0000 of the start day
+        // No Date filter
+        if (startDate == null && endDate == null) {
+            return deliveryRepository.findByOrderIdOrderByUpdatedAtAsc(orderId);
+        }
+
+        // Only start date filter
+        if (startDate != null && endDate == null) {
+            LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
+            return deliveryRepository
+                    .findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(orderId, start);
+        }
+
+        // Only end date filter
+        if (startDate == null) {
+            LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
+            return deliveryRepository
+                    .findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(orderId, end);
+        }
+
+        LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
         LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
 
         return deliveryRepository
@@ -166,6 +210,21 @@ public class DeliveryService {
                         ((Number) row[3]).doubleValue(),
                         ((Number) row[4]).doubleValue(),
                         ((Number) row[5]).doubleValue()
+                ))
+                .toList();
+    }
+
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(Double maxEstimatedArrival, int sinceMinutes) {
+        return deliveryRepository.findDelayedDeliveries(maxEstimatedArrival, sinceMinutes)
+                .stream()
+                .map(row -> new DelayedDeliveryDTO(
+                        ((Number) row[0]).longValue(),
+                        (String) row[1],
+                        ((Number) row[2]).longValue(),
+                        ((Number) row[3]).doubleValue(),
+                        ((Number) row[4]).doubleValue(),
+                        ((Number) row[5]).doubleValue(),
+                        (LocalDateTime) row[6]
                 ))
                 .toList();
     }
