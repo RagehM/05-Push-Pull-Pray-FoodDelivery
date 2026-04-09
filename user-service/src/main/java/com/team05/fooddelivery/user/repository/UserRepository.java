@@ -94,11 +94,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 
     @Query(value = """
-    SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.preferences,u.deliveryAddresses  FROM orders o  JOIN users u ON o.user_id = u.id
-    WHERE  u.preferences ->> 'dietaryRestrictions' = ?1
-    group by u
+    SELECT u.id FROM orders o  JOIN users u ON o.user_id = u.id
+    WHERE  u.preferences ->> 'dietaryRestrictions' = ?1 AND o.status ILIKE 'DELIVERED'
+    group by u.id
     HAVING count(o) >= :minimumOrders
 
 """, nativeQuery = true)
-    List<Object[]> findUsersByDietaryPreferenceAndMinimumOrders(String dietaryRestrictions, @Param("minimumOrders") int minimumOrders);
+    List<Long> findUsersByDietaryPreferenceAndMinimumOrders(String dietaryRestrictions, @Param("minimumOrders") int minimumOrders);
 }

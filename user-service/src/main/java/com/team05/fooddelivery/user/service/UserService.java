@@ -175,19 +175,10 @@ public class UserService {
         {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet or minimum orders cannot be null or empty");
         }
-        List<Object[]> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
+        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
         List<User> users = new ArrayList<>();
-        result.forEach(object -> {
-            User user = new User();
-            user.setId((Long) object[0]);
-            user.setName((String) object[1]);
-            user.setEmail((String) object[2]);
-            user.setPhone((String) object[3]);
-            user.setUserRole(UserRole.valueOf((String) object[4]));
-            user.setStatus(UserStatus.valueOf((String) object[5]));
-            user.setPreferences((Map<String, Object>) object[6]);
-            users.add(user);
-        });
+
+        result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
         return users;
     }
 
