@@ -8,17 +8,13 @@ http:
   url: http://localhost:8085/api/payments/offers
   body:
     type: json
-    data: "{\r
-
-      \    \"discountApplied\": 15.0,\r
-
-      \    \"paymentId\": 1,\r
-
-      \    \"offerId\": 1,\r
-
-      \    \"appliedAt\": \"2026-12-31T23:59:59\"\r
-
-      }"
+    data: |-
+      {
+          "discountApplied": 15.0,
+          "paymentId": 36,
+          "offerId": 1,
+          "appliedAt": "2026-12-31T23:59:59"
+      }
   auth: inherit
 
 settings:
