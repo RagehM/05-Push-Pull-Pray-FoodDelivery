@@ -1,7 +1,10 @@
 package com.team05.fooddelivery.delivery.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,9 +35,23 @@ public class DeliveryController {
         return new ResponseEntity<>(deliveryService.createDelivery(delivery), HttpStatus.CREATED);
     }
 
+    @PostMapping("/order/{orderId}")
+    public ResponseEntity<Delivery> createOrderDelivery(@PathVariable Long orderId, @RequestBody Delivery delivery) {
+        return new ResponseEntity<>(deliveryService.createOrderDelivery(orderId, delivery), HttpStatus.CREATED);
+    }
+
     @GetMapping("/{id}")
     public Delivery getDeliveryById(@PathVariable Long id) {
         return deliveryService.getDeliveryById(id);
+    }
+
+    @GetMapping("/order/{orderId}/history")
+    public List<Delivery> getOrderDeliveryHistory(
+            @PathVariable Long orderId,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+
+        return deliveryService.getOrderDeliveryHistory(orderId, startDate, endDate);
     }
 
     @GetMapping
@@ -47,6 +64,15 @@ public class DeliveryController {
                                                      @RequestParam String operator,
                                                      @RequestParam String value) {
         return deliveryService.searchDeliveriesByMetadata(key, operator, value);
+    }
+
+    @GetMapping("/nearby")
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(
+            @RequestParam Double lat,
+            @RequestParam Double lon,
+            @RequestParam Double radiusKm) {
+
+        return deliveryService.getNearbyDeliveries(lat, lon, radiusKm);
     }
 
     @PutMapping("/{id}")

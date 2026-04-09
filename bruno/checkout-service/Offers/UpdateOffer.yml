@@ -1,0 +1,32 @@
+info:
+  name: UpdateOffer
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: http://localhost:8085/api/offers/1
+  body:
+    type: json
+    data: "{\r
+
+      \  \"code\": \"SUMMER2020\",\r
+
+      \  \"discountType\": \"PERCENTAGE\",\r
+
+      \  \"discountValue\": 20.0,\r
+
+      \  \"maxUses\": 100,\r
+
+      \  \"expiryDate\": \"2026-12-08T23:59:59\",\r
+
+      \  \"active\": false\r
+
+      }\r\n"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

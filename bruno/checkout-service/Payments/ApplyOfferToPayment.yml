@@ -1,0 +1,15 @@
+info:
+  name: ApplyOfferToPayment
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: http://localhost:8085/api/payments/1/offers/1
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
