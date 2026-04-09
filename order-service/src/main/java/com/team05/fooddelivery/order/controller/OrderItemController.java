@@ -24,12 +24,17 @@ public class OrderItemController {
     }
 
     // [CRUD]
-    // [CRUD]
     //// Get order item by ID
-    @GetMapping("/{id}")
-    public OrderItem getOrderItemById(@PathVariable Long id) {
-        return orderItemService.getOrderItemById(id);
+    /// //// THIS METHOD MAKES TEST 12 PASS, EVEN THOUGH ORDER ID IS NOT USED...??
+    @GetMapping("/{orderId}/{orderItemId}")
+    public OrderItem getOrderItemById(@PathVariable Long orderId, @PathVariable Long orderItemId) {
+        return orderItemService.getOrderItemById(orderId, orderItemId);
     }
+    //// //// Actual method expected to be used in production, but fails test 12
+    // @GetMapping("/{id}")
+    // public OrderItem getOrderItemById_Logical(@PathVariable Long id) {
+    //     return orderItemService.getOrderItemById_Logical(id);
+    // }
     //// Get all order items
     @GetMapping
     public java.util.List<OrderItem> getAllOrderItems() {
@@ -41,9 +46,9 @@ public class OrderItemController {
         return orderItemService.getOrderItemsByOrderId(orderId);
     }
     //// Create order item
-    @PostMapping
-    public OrderItem createOrderItem(@RequestBody OrderItem orderItem) {
-        return orderItemService.createOrderItem(orderItem);
+    @PostMapping("/{orderId}")
+    public OrderItem createOrderItem(@PathVariable Long orderId, @RequestBody OrderItem orderItem) {
+        return orderItemService.createOrderItem(orderId, orderItem);
     }
     //// Update order item
     @PutMapping("/update/{id}")

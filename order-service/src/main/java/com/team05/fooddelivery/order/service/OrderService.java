@@ -1,15 +1,19 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.repository.OrderRepository;
+import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 
 
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,6 +26,16 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
+    public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
+
+        return orderRepository.searchByStatusAndDateRange(
+                status,
+                startDateTime,
+                endDateTimeExclusive
+        );
+    }
     @Transactional
     public void cancelOrder(Long orderId) {
         //Get order through JPA default method findById, if order not found, throw HTTP 404 Not Found
@@ -62,14 +76,14 @@ public class OrderService {
     //// Create order
     @Transactional
     public Order createOrder(Order order) {
-        boolean userExists = orderRepository.existsByUserId(order.getUserId());
-        if (!userExists) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
-        }
-        boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
-        if (!restaurantExists) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
-        }
+        // boolean userExists = orderRepository.existsByUserId(order.getUserId());
+        // if (!userExists) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
+        // }
+        // boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
+        // if (!restaurantExists) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
+        // }
         return orderRepository.save(order);
     }
     //// Update order
@@ -105,4 +119,10 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
     }
+
+    // [S3-F6] - Order Analytics by Time Period (Report DTO)
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {    
+        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+    }
+    
 }
