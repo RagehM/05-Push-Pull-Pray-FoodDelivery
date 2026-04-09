@@ -3,17 +3,20 @@ package com.team05.fooddelivery.user.service;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
+import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -163,6 +166,29 @@ public class UserService {
                 totalSpent,
                 averageOrderAmount
         );
+    }
+
+
+    public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders)
+    {
+        if(diet == null || diet.isEmpty() || minimumOrders == null || minimumOrders < 0 || diet.equalsIgnoreCase("null"))
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet or minimum orders cannot be null or empty");
+        }
+        List<Object[]> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
+        List<User> users = new ArrayList<>();
+        result.forEach(object -> {
+            User user = new User();
+            user.setId((Long) object[0]);
+            user.setName((String) object[1]);
+            user.setEmail((String) object[2]);
+            user.setPhone((String) object[3]);
+            user.setUserRole(UserRole.valueOf((String) object[4]));
+            user.setStatus(UserStatus.valueOf((String) object[5]));
+            user.setPreferences((Map<String, Object>) object[6]);
+            users.add(user);
+        });
+        return users;
     }
 
 }

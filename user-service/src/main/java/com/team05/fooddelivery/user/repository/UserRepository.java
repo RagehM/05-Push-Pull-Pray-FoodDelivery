@@ -20,7 +20,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     FROM users u
     WHERE (:name IS NULL OR u.name ILIKE '%' || :name || '%')
       AND (:email IS NULL OR u.email ILIKE '%' || :email || '%')
-      AND (:role IS NULL OR u.user_role = :role)
+      AND (:role IS NULL OR u.role = :role)
     """, nativeQuery = true)
     List<User> searchUsers(
             @Param("name") String name,
@@ -37,8 +37,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
             nativeQuery = true)
     List<Object> findOrdersByUserId(@Param("userId") Long userId);
 
-
-    @Query(
+ 
+    @Query(           
             value = """
     SELECT * FROM users u WHERE u.preferences ->> ?1 = ?2
 
@@ -92,4 +92,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                                          @Param("start") LocalDate start,
                                          @Param("end") LocalDate end);
 
+
+    @Query(value = """
+    SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.preferences,u.deliveryAddresses  FROM orders o  JOIN users u ON o.user_id = u.id
+    WHERE  u.preferences ->> 'dietaryRestrictions' = ?1
+    group by u
+    HAVING count(o) >= :minimumOrders
+
+""", nativeQuery = true)
+    List<Object[]> findUsersByDietaryPreferenceAndMinimumOrders(String dietaryRestrictions, @Param("minimumOrders") int minimumOrders);
 }
