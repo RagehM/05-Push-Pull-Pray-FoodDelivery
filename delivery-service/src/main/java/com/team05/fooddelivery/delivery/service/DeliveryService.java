@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.time.LocalDateTime;
 
 import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
@@ -232,7 +231,6 @@ validateOrder(orderId);
                 .toList();
     }
 
-<<<<<<< Updated upstream
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
@@ -250,16 +248,19 @@ validateOrder(orderId);
         Map<String, Integer> response = new HashMap<>();
         response.put("deletedCount", deletedCount);
         return response;
-=======
+    }
     @Transactional(readOnly = true)
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             String driverName, LocalDate startDate, LocalDate endDate) {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
-        Object[] row = deliveryRepository.findPerformanceSummary(driverName, start, end)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No deliveries found for driver: " + driverName));
+        List<Object[]> results = deliveryRepository.findPerformanceSummary(driverName, start, end);
+        if (results.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No deliveries found for driver: " + driverName);
+        }
+        Object[] row = results.get(0);
 
         return new DeliveryPerformanceSummaryDTO(
                 (String) row[0],
@@ -269,7 +270,6 @@ validateOrder(orderId);
                 (LocalDateTime) row[4],
                 (LocalDateTime) row[5]
         );
->>>>>>> Stashed changes
     }
 }
 

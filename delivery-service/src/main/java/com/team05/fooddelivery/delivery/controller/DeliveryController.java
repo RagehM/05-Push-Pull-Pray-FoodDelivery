@@ -109,18 +109,16 @@ public class DeliveryController {
         return deliveryService.getDelayedDeliveries(maxEstimatedArrival, sinceMinutes);
     }
 
-<<<<<<< Updated upstream
     @DeleteMapping("/purge")
     public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
         return deliveryService.purgeOldDeliveries(olderThanDays);
-=======
+    }
     @GetMapping("/driver/{driverName}/summary")
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             @PathVariable String driverName,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate) {
         return deliveryService.getDeliveryPerformanceSummary(driverName, startDate, endDate);
->>>>>>> Stashed changes
     }
 }
 

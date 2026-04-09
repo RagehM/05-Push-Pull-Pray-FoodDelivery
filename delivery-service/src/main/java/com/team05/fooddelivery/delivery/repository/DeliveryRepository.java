@@ -113,7 +113,6 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			@Param("sinceMinutes") int sinceMinutes
 	);
 
-<<<<<<< Updated upstream
 	@Query(value = "SELECT COUNT(*) FROM deliveries d WHERE " +
 			"d.status = :status AND " +
 			"d.updated_at < CAST(:cutoff AS timestamp)",
@@ -127,7 +126,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			"d.updated_at < CAST(:cutoff AS timestamp)",
 		nativeQuery = true)
 	int deleteOldByStatus(@Param("status") String status, @Param("cutoff") java.time.LocalDateTime cutoff);
-=======
+	
 	@Query(value = """
     SELECT
         d.driver_name,
@@ -142,10 +141,9 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
       AND d.updated_at <= :end
     GROUP BY d.driver_name
 """, nativeQuery = true)
-	Optional<Object[]> findPerformanceSummary(
+	List<Object[]> findPerformanceSummary(
 			@Param("driverName") String driverName,
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
->>>>>>> Stashed changes
 }
