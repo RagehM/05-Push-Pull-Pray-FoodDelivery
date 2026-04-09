@@ -1,7 +1,0 @@
-info:
-  name: S1F1
-  type: folder
-  seq: 1
-
-request:
-  auth: inherit
