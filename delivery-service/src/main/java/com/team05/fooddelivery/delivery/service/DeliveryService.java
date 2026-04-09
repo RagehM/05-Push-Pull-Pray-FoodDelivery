@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 
+import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -118,6 +119,20 @@ public class DeliveryService {
 
         return deliveryRepository
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
+    }
+
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(Double lat, Double lon, Double radiusKm) {
+        return deliveryRepository.findNearbyDeliveries(lat, lon, radiusKm)
+                .stream()
+                .map(row -> new NearbyDeliveryDTO(
+                        ((Number) row[0]).longValue(),
+                        (String) row[1],
+                        ((Number) row[2]).longValue(),
+                        ((Number) row[3]).doubleValue(),
+                        ((Number) row[4]).doubleValue(),
+                        ((Number) row[5]).doubleValue()
+                ))
+                .toList();
     }
 }
 

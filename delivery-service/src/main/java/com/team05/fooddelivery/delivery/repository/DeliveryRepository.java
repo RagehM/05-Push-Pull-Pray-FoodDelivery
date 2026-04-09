@@ -9,23 +9,51 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.team05.fooddelivery.delivery.model.Delivery;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 
 	Optional<Delivery> findByOrderId(Long orderId);
 
 	@Query(value = "SELECT * FROM deliveries d WHERE " +
-			"(CAST(:status AS deliverystatus) IS NULL OR d.status = CAST(:status AS deliverystatus)) " +
+			"(:status IS NULL OR d.status = status) " +
 			"ORDER BY d.updated_at DESC",
 		nativeQuery = true)
 	List<Delivery> findByStatus(@Param("status") String status);
 
 	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId AND " +
-			"(CAST(:status AS deliverystatus) IS NULL OR d.status = CAST(:status AS deliverystatus)) " +
+			"(:status IS NULL OR d.status = status) " +
 			"ORDER BY d.updated_at DESC LIMIT 1",
 		nativeQuery = true)
 	Optional<Delivery> findByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") String status);
+
+	@Query(value = """
+    SELECT
+		 d.id,
+		 d.driver_name,
+		 d.order_id,
+		 (d.latitude)::numeric AS latitude,
+		 (d.longitude)::numeric AS longitude,
+		 (
+			 SQRT(
+				 POWER((d.latitude)::numeric - :lat, 2) +
+				 POWER((d.longitude)::numeric - :lon, 2)
+			 ) * 111
+		 ) AS distanceKm
+	FROM deliveries d
+    WHERE d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
+    AND (
+        SQRT(
+            POWER((d.latitude)::numeric - :lat, 2) +
+            POWER((d.longitude)::numeric - :lon, 2)
+        ) * 111
+    ) <= :radiusKm
+    ORDER BY distanceKm ASC
+	""", nativeQuery = true)
+	List<Object[]> findNearbyDeliveries(
+			Double lat,
+			Double lon,
+			Double radiusKm
+	);
 
 	List<Delivery> findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(
 			Long orderId,
