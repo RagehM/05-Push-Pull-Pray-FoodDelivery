@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.repository.OrderRepository;
@@ -9,13 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.team05.fooddelivery.order.model.Order;
-import com.team05.fooddelivery.order.repository.OrderRepository;
-
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -96,4 +91,10 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
     }
+
+    // [S3-F6] - Order Analytics by Time Period (Report DTO)
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {    
+        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+    }
+    
 }
