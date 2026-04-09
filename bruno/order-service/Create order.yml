@@ -1,0 +1,40 @@
+info:
+  name: Create order
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8083/api/orders
+  body:
+    type: json
+    data: "{\r
+
+      \  \"userId\": 1,\r
+
+      \  \"restaurantId\": 1,\r
+
+      \  \"deliveryAddress\": \"123 Nile Street, Giza, Egypt\",\r
+
+      \  \"status\": \"DELIVERED\",\r
+
+      \  \"totalAmount\": 150.75,\r
+
+      \  \"metadata\": {\r
+
+      \    \"notes\": \"No onions please\",\r
+
+      \    \"paymentMethod\": \"cash_on_delivery\"\r
+
+      \  },\r
+
+      \  \"orderDate\": \"2026-04-08T14:30:00\"\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

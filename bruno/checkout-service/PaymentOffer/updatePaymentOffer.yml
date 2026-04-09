@@ -1,0 +1,26 @@
+info:
+  name: updatePaymentOffer
+  type: http
+  seq: 5
+
+http:
+  method: PUT
+  url: http://localhost:8085/api/payment/offers/2
+  body:
+    type: json
+    data: "{\r
+
+      \    \"discountApplied\": 30.0,\r
+
+      \    \"paymentId\": 1,\r
+
+      \    \"offerId\": 1\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

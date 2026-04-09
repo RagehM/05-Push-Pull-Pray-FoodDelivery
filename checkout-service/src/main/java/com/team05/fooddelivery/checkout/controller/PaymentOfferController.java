@@ -1,15 +1,19 @@
+
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.dto.PaymentOfferDTO;
 import com.team05.fooddelivery.checkout.service.PaymentOfferService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/payment-offers")
+@RequestMapping("/api/payments/offers")
 public class PaymentOfferController {
     private final PaymentOfferService  paymentOfferService;
 
@@ -18,8 +22,9 @@ public class PaymentOfferController {
     }
 
     @PostMapping
-    public PaymentOffer createPaymentOffer(@RequestBody PaymentOfferDTO dto) {
-        return paymentOfferService.createPaymentOffer(dto);
+    public ResponseEntity<PaymentOffer> createPaymentOffer(@RequestBody PaymentOfferDTO dto) {
+        PaymentOffer paymentOffer = paymentOfferService.createPaymentOffer(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(paymentOffer);
     }
 
     @GetMapping
@@ -27,9 +32,9 @@ public class PaymentOfferController {
         return paymentOfferService.getPaymentOffers();
     }
 
-    @GetMapping("/{id}")
-    public PaymentOffer getPaymentOfferById(@PathVariable Long id) {
-        return paymentOfferService.getPaymentOfferById(id);
+    @GetMapping("/{paymentOfferId}/{offerId}")
+    public ResponseEntity<PaymentOffer> getPaymentOfferById(@PathVariable Long paymentOfferId,  @PathVariable Long offerId) {
+        return ResponseEntity.ok(paymentOfferService.getPaymentOfferById(paymentOfferId));
     }
 
     @PutMapping("/{id}")
@@ -42,5 +47,5 @@ public class PaymentOfferController {
         paymentOfferService.deletePaymentOfferById(id);
     }
 
-
 }
+

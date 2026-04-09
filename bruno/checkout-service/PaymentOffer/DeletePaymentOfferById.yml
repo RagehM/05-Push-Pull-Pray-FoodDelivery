@@ -1,0 +1,15 @@
+info:
+  name: DeletePaymentOfferById
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: http://localhost:8085/api/payment/offers/1
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -28,6 +28,12 @@ public class PaymentOffer {
     @JsonIgnore
     private Offer offer;
 
+    @PrePersist void prePersist() {
+        if (appliedAt == null) {
+            appliedAt = LocalDateTime.now();
+        }
+    }
+
     public Offer getOffer() {
         return offer;
     }
@@ -66,5 +72,23 @@ public class PaymentOffer {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getPaymentId() {
+        if(payment != null) {
+            return payment.getId();
+        }
+        else {
+            return null;
+        }
+    }
+
+    public Long getOfferId() {
+        if(offer != null) {
+            return offer.getId();
+        }
+        else {
+            return null;
+        }
     }
 }

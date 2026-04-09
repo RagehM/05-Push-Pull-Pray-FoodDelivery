@@ -1,8 +1,12 @@
 package com.team05.fooddelivery.delivery.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 
+import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +24,29 @@ public class DeliveryService {
 
     public DeliveryService(DeliveryRepository deliveryRepository) {
         this.deliveryRepository = deliveryRepository;
+    }
+
+    public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
+        if (!deliveryRepository.orderExists(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        if (delivery.getDriverName() == null || delivery.getDriverName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName is required");
+        }
+        if (delivery.getLatitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude is required");
+        }
+        if (delivery.getLongitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude is required");
+        }
+        delivery.setOrderId(orderId);
+        if (delivery.getMetadata() == null) {
+            delivery.setMetadata(new HashMap<>());
+        }
+        if (delivery.getStatus() == null) {
+            delivery.setStatus(DeliveryStatus.ASSIGNED);
+        }
+        return deliveryRepository.save(delivery);
     }
 
     public Delivery createDelivery(Delivery delivery) {
@@ -86,6 +113,55 @@ public class DeliveryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
         deliveryRepository.deleteById(id);
+    }
+
+    private void validateOrder(Long orderId) {
+        if (!deliveryRepository.orderExists(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+    }
+
+    public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
+        validateOrder(orderId);
+
+        // No Date filter
+        if (startDate == null && endDate == null) {
+            return deliveryRepository.findByOrderIdOrderByUpdatedAtAsc(orderId);
+        }
+
+        // Only start date filter
+        if (startDate != null && endDate == null) {
+            LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
+            return deliveryRepository
+                    .findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(orderId, start);
+        }
+
+        // Only end date filter
+        if (startDate == null) {
+            LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
+            return deliveryRepository
+                    .findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(orderId, end);
+        }
+
+        LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
+        LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
+
+        return deliveryRepository
+                .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
+    }
+
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(Double lat, Double lon, Double radiusKm) {
+        return deliveryRepository.findNearbyDeliveries(lat, lon, radiusKm)
+                .stream()
+                .map(row -> new NearbyDeliveryDTO(
+                        ((Number) row[0]).longValue(),
+                        (String) row[1],
+                        ((Number) row[2]).longValue(),
+                        ((Number) row[3]).doubleValue(),
+                        ((Number) row[4]).doubleValue(),
+                        ((Number) row[5]).doubleValue()
+                ))
+                .toList();
     }
 }
 
