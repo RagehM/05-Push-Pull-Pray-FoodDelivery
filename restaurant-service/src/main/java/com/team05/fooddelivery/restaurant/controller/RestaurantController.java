@@ -92,5 +92,14 @@ public class RestaurantController {
         LocalDateTime end = LocalDateTime.parse(endDate + "T23:59:59");
         return ResponseEntity.ok(restaurantService.getRevenueSummary(id, start, end));
     }
+    //S2-F5
+    @GetMapping("/details/search")
+    public ResponseEntity<List<Restaurant>> filterByDetail(
+            @RequestParam String key,
+            @RequestParam String value,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(restaurantService.filterByDetail(key, value, status));
+    }
 
 }

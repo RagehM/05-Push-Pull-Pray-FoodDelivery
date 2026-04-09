@@ -42,4 +42,15 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
             @Param("restaurantId") Long restaurantId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+//S2-F5
+    @Query(value = """
+        SELECT * FROM restaurants
+        WHERE details ->> :key = :value
+        AND (:status IS NULL OR status = :status)
+    """, nativeQuery = true)
+    List<Restaurant> findByDetailAttribute(
+            @Param("key") String key,
+            @Param("value") String value,
+            @Param("status") String status
+    );
 }

@@ -145,4 +145,8 @@ public class RestaurantService {
         }
         restaurantRepository.save(restaurant);
     }
+    //S2-F5
+    public List<Restaurant> filterByDetail(String key, String value, String status) {
+        return restaurantRepository.findByDetailAttribute(key, value, status);
+    }
 }
