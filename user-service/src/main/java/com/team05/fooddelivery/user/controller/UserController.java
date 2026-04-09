@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.controller;
 
+import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -85,4 +87,10 @@ public class UserController {
         return userService.getUserOrderSummary(id);
     }
 
+
+    @GetMapping("/reports/top-customers")
+    public List<TopCustomerDTO> topCustomersBySpending(@RequestParam LocalDateTime startDate, @RequestParam LocalDateTime endDate, @RequestParam Integer limit)
+    {
+        return userService.topCustomersBySpending(startDate, endDate, limit);
+    }
 }

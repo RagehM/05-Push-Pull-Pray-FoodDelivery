@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
@@ -12,12 +13,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
+
     @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -36,19 +40,9 @@ public class UserService {
     public User createUser(User user)
     {
         Long id=user.getId();
-        String email = user.getEmail();
-        String phone = user.getPhone();
-
-         if(email!=null && userRepository.existsByEmail(email)){
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
-        }
-         if(phone!=null && userRepository.existsByPhone(phone)){
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
-        }
         if(id!=null && userRepository.existsById(id)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
         }
-
         if(user.getCreatedAt() == null || user.getCreatedAt().equals("") || user.getCreatedAt().equals("null"))
         {
             user.setCreatedAt(LocalDateTime.now());
@@ -82,6 +76,11 @@ public class UserService {
         if(email!=null && email.isEmpty())email = null;
         if(role!=null && role.isEmpty())role = null;
 
+        if((name==null || name.isEmpty()) && (email==null || email.isEmpty()) && (role==null || role.isEmpty()))
+             throw new RuntimeException("At least one search parameter must be provided");
+
+
+
         return userRepository.searchUsers(name, email, role);
     }
 
@@ -105,6 +104,23 @@ public class UserService {
         user.setStatus(UserStatus.DEACTIVATED);
         userRepository.save(user);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
+    }
+
+    public List<TopCustomerDTO> topCustomersBySpending(LocalDateTime startDate, LocalDateTime endDate, Integer limit)
+    {
+        if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
+        }
+        List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
+        List<TopCustomerDTO> topCustomerDTOs = new ArrayList<TopCustomerDTO>();
+        result.forEach(object -> {
+            User user = (User) object[0];
+            Double totalSpent = (Double) object[1];
+            Integer orderCount = (Integer) object[2];
+            topCustomerDTOs.add(new TopCustomerDTO(user.getId(),user.getName(), totalSpent, orderCount ));
+        });
+        return topCustomerDTOs;
     }
 
     public List<User> filterUsersByPreferences(String key, String value)
