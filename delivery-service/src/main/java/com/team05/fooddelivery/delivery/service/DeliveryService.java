@@ -114,8 +114,27 @@ public class DeliveryService {
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
-        LocalDateTime start = startDate.atStartOfDay(); // 00:0000 of the start day
-        LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
+        // No Date filter
+        if (startDate == null && endDate == null) {
+            return deliveryRepository.findByOrderIdOrderByUpdatedAtAsc(orderId);
+        }
+
+        // Only start date filter
+        if (startDate != null && endDate == null) {
+            LocalDateTime start = startDate.atStartOfDay();
+            return deliveryRepository
+                    .findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(orderId, start);
+        }
+
+        // Only end date filter
+        if (startDate == null) {
+            LocalDateTime end = endDate.atTime(LocalTime.MAX);
+            return deliveryRepository
+                    .findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(orderId, end);
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
         return deliveryRepository
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
