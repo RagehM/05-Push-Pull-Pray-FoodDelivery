@@ -71,4 +71,12 @@ public class UserController {
     public ResponseStatusException deactivateUserAccount(@PathVariable long id){
        return userService.deactivateUserAccount(id);
     }
+
+    @GetMapping("/preferences/search")
+    public List<User> getUsersByPreferences(@RequestParam String key, @RequestParam String value)
+    {
+        return userService.filterUsersByPreferences(key, value);
+    }
+
+
 }

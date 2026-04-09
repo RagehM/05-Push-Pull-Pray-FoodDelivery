@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -100,5 +101,14 @@ public class UserService {
         user.setStatus(UserStatus.DEACTIVATED);
         userRepository.save(user);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
+    }
+
+    public List<User> filterUsersByPreferences(String key, String value)
+    {
+        if(key == null || key.isEmpty() || value == null || value.isEmpty())
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
+        }
+        return userRepository.findUserByPreferencesContaining(key,value);
     }
 }

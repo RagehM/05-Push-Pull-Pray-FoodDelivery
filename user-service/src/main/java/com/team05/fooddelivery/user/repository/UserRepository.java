@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -33,4 +34,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
     """,
             nativeQuery = true)
     List<Object> findOrdersByUserId(@Param("userId") Long userId);
+
+
+    @Query(
+            value = """
+    SELECT * FROM users u WHERE u.preferences ->> ?1 = ?2
+
+    """,
+            nativeQuery = true
+    )
+    List<User> findUserByPreferencesContaining(String key, String value );
+
+
 }
