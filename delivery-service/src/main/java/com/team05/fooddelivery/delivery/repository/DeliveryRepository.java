@@ -83,4 +83,23 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 
 	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId ORDER BY d.updated_at DESC LIMIT 1", nativeQuery = true)
 	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
+
+	@Query(value = """
+    SELECT 
+        d.id,
+        d.driver_name,
+        d.order_id,
+        d.latitude::numeric,
+        d.longitude::numeric,
+        (d.metadata->>'estimatedArrival')::numeric,
+        d.updated_at
+    FROM deliveries d
+    WHERE d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
+      AND (d.metadata->>'estimatedArrival')::numeric > :maxEstimatedArrival
+      AND d.updated_at >= NOW() - (:sinceMinutes * INTERVAL '1 minute')
+""", nativeQuery = true)
+	List<Object[]> findDelayedDeliveries(
+			@Param("maxEstimatedArrival") Double maxEstimatedArrival,
+			@Param("sinceMinutes") int sinceMinutes
+	);
 }
