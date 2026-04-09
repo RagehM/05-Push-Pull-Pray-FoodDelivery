@@ -24,4 +24,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			"ORDER BY d.updated_at DESC LIMIT 1",
 		nativeQuery = true)
 	Optional<Delivery> findByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") String status);
+
+	@Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
+	boolean orderExists(@Param("orderId") Long orderId);
 }

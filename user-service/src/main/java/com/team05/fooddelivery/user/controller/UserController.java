@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.controller;
 
+import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.service.UserService;
@@ -71,4 +72,17 @@ public class UserController {
     public ResponseStatusException deactivateUserAccount(@PathVariable long id){
        return userService.deactivateUserAccount(id);
     }
+
+    @GetMapping("/preferences/search")
+    public List<User> getUsersByPreferences(@RequestParam String key, @RequestParam String value)
+    {
+        return userService.filterUsersByPreferences(key, value);
+    }
+
+
+    @GetMapping("/{id}/order-summary")
+    public UserOrderSummaryDTO getUserOrderSummary(@PathVariable long id){
+        return userService.getUserOrderSummary(id);
+    }
+
 }
