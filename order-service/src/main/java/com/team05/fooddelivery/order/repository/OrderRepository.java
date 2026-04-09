@@ -77,4 +77,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Transactional(readOnly = true)
         OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
+
+
+        @Query("""
+        SELECT o FROM Order o
+        LEFT JOIN FETCH o.orderItems
+        WHERE o.id = :orderId
+        """)
+        @Transactional(readOnly = true)
+        Order getOrderWithOrderItemsById(@Param("orderId") Long orderId);
 }
