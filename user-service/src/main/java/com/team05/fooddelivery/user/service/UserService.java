@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
@@ -12,7 +13,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class UserService {
@@ -101,4 +101,35 @@ public class UserService {
         userRepository.save(user);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
+
+    public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        List<Object[]> orders = userRepository.findTotalOrders(userId);
+        List<Object[]> deliveredOrders = userRepository.findDeliveredOrders(userId);
+        List<Object[]> cancelledOrders = userRepository.findCancelledOrders(userId);
+
+        Double totalSpent;
+        if(!deliveredOrders.isEmpty()){
+            totalSpent = deliveredOrders.stream()
+                    .map(order -> ((Number) order[5]).doubleValue())  // total_amount is at index 5
+                    .reduce(0.0, Double::sum);
+        } else {
+            totalSpent = 0.0;
+        }
+
+        Double averageOrderAmount = !orders.isEmpty() ? totalSpent / deliveredOrders.size() : 0.0;
+
+
+
+        return new UserOrderSummaryDTO(
+                user.getId(),
+                user.getName(),
+                orders.size(),
+                deliveredOrders.size(),
+                cancelledOrders.size(),
+                totalSpent,
+                averageOrderAmount
+        );
+    }
+
 }
