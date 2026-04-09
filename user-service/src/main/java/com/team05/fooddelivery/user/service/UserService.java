@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -100,5 +102,22 @@ public class UserService {
         user.setStatus(UserStatus.DEACTIVATED);
         userRepository.save(user);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
+    }
+
+    public List<TopCustomerDTO> topCustomersBySpending(LocalDateTime startDate, LocalDateTime endDate, Integer limit)
+    {
+        if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
+        }
+        List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
+        List<TopCustomerDTO> topCustomerDTOs = new ArrayList<TopCustomerDTO>();
+        result.forEach(object -> {
+            User user = (User) object[0];
+            Double totalSpent = (Double) object[1];
+            Integer orderCount = (Integer) object[2];
+            topCustomerDTOs.add(new TopCustomerDTO(user.getId(),user.getName(), totalSpent, orderCount ));
+        });
+        return topCustomerDTOs;
     }
 }
