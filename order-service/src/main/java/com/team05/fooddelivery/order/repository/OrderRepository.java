@@ -8,23 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
-
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
+import java.util.List;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-
-    @Query(value = """
-            SELECT *
-            FROM orders
-            WHERE metadata ->> :key = :value
-            """, nativeQuery = true)
-    List<Order> findByMetadataKeyValue(@Param("key") String key,
-                                       @Param("value") String value);
 
         // [S3-F1]
     @Query("""
@@ -34,7 +23,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
           AND o.orderDate < :endDateTimeExclusive
           AND (:status IS NULL OR o.status = :status)
         ORDER BY o.orderDate DESC
-        """)
+    """)
     List<Order> searchByStatusAndDateRange(
             @Param("status") OrderStatusEnum status,
             @Param("startDateTime") LocalDateTime startDateTime,
