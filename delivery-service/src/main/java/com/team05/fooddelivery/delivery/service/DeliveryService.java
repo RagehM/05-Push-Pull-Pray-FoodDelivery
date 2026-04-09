@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.delivery.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 
@@ -20,6 +23,29 @@ public class DeliveryService {
 
     public DeliveryService(DeliveryRepository deliveryRepository) {
         this.deliveryRepository = deliveryRepository;
+    }
+
+    public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
+        if (!deliveryRepository.orderExists(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        if (delivery.getDriverName() == null || delivery.getDriverName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName is required");
+        }
+        if (delivery.getLatitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude is required");
+        }
+        if (delivery.getLongitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude is required");
+        }
+        delivery.setOrderId(orderId);
+        if (delivery.getMetadata() == null) {
+            delivery.setMetadata(new HashMap<>());
+        }
+        if (delivery.getStatus() == null) {
+            delivery.setStatus(DeliveryStatus.ASSIGNED);
+        }
+        return deliveryRepository.save(delivery);
     }
 
     public Delivery createDelivery(Delivery delivery) {
@@ -76,6 +102,22 @@ public class DeliveryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
         deliveryRepository.deleteById(id);
+    }
+
+    private void validateOrder(Long orderId) {
+        if (!deliveryRepository.orderExists(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+    }
+
+    public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
+        validateOrder(orderId);
+
+        LocalDateTime start = startDate.atStartOfDay(); // 00:0000 of the start day
+        LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
+
+        return deliveryRepository
+                .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
     }
 }
 

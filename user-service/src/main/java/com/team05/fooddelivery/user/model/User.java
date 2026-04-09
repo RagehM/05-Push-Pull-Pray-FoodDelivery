@@ -34,7 +34,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     @JsonAlias({ "UserRole", "role" })
     @Column(nullable = false)
-    private UserRole userRole;
+    private UserRole role = UserRole.CUSTOMER;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -50,6 +50,13 @@ public class User {
     @OneToMany(mappedBy = "user",cascade = CascadeType.ALL)
     @JsonIgnore
     private List<DeliveryAddress> deliveryAddresses;
+
+    @PrePersist void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+
 
     public Long getId() {
         return id;
@@ -91,12 +98,20 @@ public class User {
         this.phone = phone;
     }
 
-    public UserRole getUserRole() {
-        return userRole;
+    public UserRole getRole() {
+        return role;
     }
 
-    public void setUserRole(UserRole userRole) {
-        this.userRole = userRole;
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+
+    public UserRole getUserRole() {
+        return getRole();
+    }
+
+    public void setUserRole(UserRole role) {
+        setRole(role);
     }
 
     public UserStatus getStatus() {
