@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
+import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.service.DeliveryService;
 
@@ -98,7 +99,8 @@ public class DeliveryController {
     public ResponseEntity<Integer> batchCreate(@RequestBody BatchDeliveryRequestDTO request) {
         int count = deliveryService.batchCreate(request);
         return new ResponseEntity<>(count, HttpStatus.CREATED);
-      
+    }
+
     @GetMapping("/delayed")
     public List<DelayedDeliveryDTO> getDelayedDeliveries(
             @RequestParam Double maxEstimatedArrival,
@@ -107,9 +109,18 @@ public class DeliveryController {
         return deliveryService.getDelayedDeliveries(maxEstimatedArrival, sinceMinutes);
     }
 
+<<<<<<< Updated upstream
     @DeleteMapping("/purge")
     public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
         return deliveryService.purgeOldDeliveries(olderThanDays);
+=======
+    @GetMapping("/driver/{driverName}/summary")
+    public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
+            @PathVariable String driverName,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        return deliveryService.getDeliveryPerformanceSummary(driverName, startDate, endDate);
+>>>>>>> Stashed changes
     }
 }
 
