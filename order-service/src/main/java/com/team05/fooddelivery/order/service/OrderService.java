@@ -1,19 +1,13 @@
 package com.team05.fooddelivery.order.service;
 
 import com.team05.fooddelivery.order.model.Order;
-
-import java.util.List;
-
-public interface OrderService {
-    List<Order> searchOrdersByMetadata(String key, String value);
 import com.team05.fooddelivery.order.repository.OrderRepository;
-
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @Service
 public class OrderService {
@@ -25,31 +19,32 @@ public class OrderService {
     }
 
     // [CRUD]
-    //// Get order by ID
     @Transactional(readOnly = true)
     public Order getOrderById(Long orderId) {
-        return orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
     }
-    //// Get all orders
+
     @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
-        List<Order> allOrders = orderRepository.findAll();
-        return allOrders;
+        return orderRepository.findAll();
     }
-    //// Create order
+
     @Transactional
     public Order createOrder(Order order) {
         boolean userExists = orderRepository.existsByUserId(order.getUserId());
         if (!userExists) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
         }
+
         boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
         if (!restaurantExists) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
         }
+
         return orderRepository.save(order);
     }
-    //// Update order
+
     @Transactional
     public Order updateOrder(Long orderId, Order updatedOrder) {
         Order existingOrder = getOrderById(orderId);
@@ -76,10 +71,23 @@ public class OrderService {
 
         return orderRepository.save(existingOrder);
     }
-    //// Delete order
+
     @Transactional
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> searchOrdersByMetadata(String key, String value) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalArgumentException("Metadata key must not be empty");
+        }
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("Metadata value must not be empty");
+        }
+
+        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
     }
 }
