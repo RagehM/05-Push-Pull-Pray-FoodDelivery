@@ -5,10 +5,12 @@ import com.team05.fooddelivery.order.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+@Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("""
@@ -24,17 +26,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTimeExclusive") LocalDateTime endDateTimeExclusive
     );
-import com.team05.fooddelivery.order.model.Order;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-
-@Repository
-public interface OrderRepository extends JpaRepository<Order, Long> {
         // [CRUD]
         //// Check for existence of user
         @Query(value =  """

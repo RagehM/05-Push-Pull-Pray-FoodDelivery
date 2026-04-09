@@ -11,10 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import com.team05.fooddelivery.order.model.Order;
-import com.team05.fooddelivery.order.service.OrderService;
 
-import org.springframework.web.bind.annotation.*;
 
 
 @RestController
@@ -27,10 +24,6 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        return ResponseEntity.ok(orderService.createOrder(order));
-    }
 
     @GetMapping("/search")
     public ResponseEntity<List<Order>> searchOrders(

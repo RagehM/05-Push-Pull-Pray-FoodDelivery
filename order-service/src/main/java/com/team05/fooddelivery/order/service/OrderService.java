@@ -28,10 +28,6 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
-    public Order createOrder(Order order) {
-        return orderRepository.save(order);
-    }
-
     public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
@@ -41,6 +37,7 @@ public class OrderService {
                 startDateTime,
                 endDateTimeExclusive
         );
+    }
     // [CRUD]
     //// Get order by ID
     @Transactional(readOnly = true)
