@@ -22,7 +22,7 @@ public class DeliveryService {
         this.deliveryRepository = deliveryRepository;
     }
 
-    public Delivery createForOrder(Long orderId, Delivery delivery) {
+    public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }

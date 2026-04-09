@@ -33,8 +33,8 @@ public class DeliveryController {
     }
 
     @PostMapping("/order/{orderId}")
-    public ResponseEntity<Delivery> createForOrder(@PathVariable Long orderId, @RequestBody Delivery delivery) {
-        return new ResponseEntity<>(deliveryService.createForOrder(orderId, delivery), HttpStatus.CREATED);
+    public ResponseEntity<Delivery> createOrderDelivery(@PathVariable Long orderId, @RequestBody Delivery delivery) {
+        return new ResponseEntity<>(deliveryService.createOrderDelivery(orderId, delivery), HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
