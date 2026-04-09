@@ -7,10 +7,6 @@ import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import com.team05.fooddelivery.order.model.Order;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -29,7 +25,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    // [S3-F1]
+
     @GetMapping("/search")
     public ResponseEntity<List<Order>> searchOrders(
             @RequestParam(required = false) OrderStatusEnum status,
@@ -37,15 +33,6 @@ public class OrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
         return ResponseEntity.ok(orderService.searchOrders(status, startDate, endDate));
-    }
-    // [S3-F5]
-    @GetMapping("/metadata/search")
-    public ResponseEntity<List<Order>> searchOrdersByMetadata(
-            @RequestParam String key,
-            @RequestParam String value) {
-
-        List<Order> orders = orderService.searchOrdersByMetadata(key, value);
-        return ResponseEntity.ok(orders);
     }
     @PutMapping("{id}/cancel")
     public ResponseEntity<Void> cancelOrder(@PathVariable String id) {
