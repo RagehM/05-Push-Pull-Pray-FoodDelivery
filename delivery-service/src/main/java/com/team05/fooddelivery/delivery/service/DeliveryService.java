@@ -75,9 +75,7 @@ public class DeliveryService {
 
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
-        if (!deliveryRepository.existsOrderById(orderId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+validateOrder(orderId);
 
         return deliveryRepository.findLatestByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
