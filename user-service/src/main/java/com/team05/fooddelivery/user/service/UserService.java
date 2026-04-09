@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.user.service;
 
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
+import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
@@ -106,6 +107,7 @@ public class UserService {
         userRepository.save(user);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
+
 
     public List<TopCustomerDTO> topCustomersBySpending(LocalDate startDate, LocalDate endDate, Integer limit)
     {
