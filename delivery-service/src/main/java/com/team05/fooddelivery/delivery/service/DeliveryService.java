@@ -75,6 +75,14 @@ public class DeliveryService {
     }
 
     @Transactional(readOnly = true)
+    public Delivery getLatestDeliveryByOrderId(Long orderId) {
+validateOrder(orderId);
+
+        return deliveryRepository.findLatestByOrderId(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Transactional(readOnly = true)
     public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
         if (operator == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");

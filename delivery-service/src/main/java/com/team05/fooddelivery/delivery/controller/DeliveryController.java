@@ -59,6 +59,11 @@ public class DeliveryController {
         return deliveryService.getAllDeliveries(status);
     }
 
+    @GetMapping("/order/{orderId}/latest")
+    public Delivery getLatestDeliveryByOrderId(@PathVariable Long orderId) {
+        return deliveryService.getLatestDeliveryByOrderId(orderId);
+    }
+
     @GetMapping("/metadata/search")
     public List<Delivery> searchDeliveriesByMetadata(@RequestParam String key,
                                                      @RequestParam String operator,
