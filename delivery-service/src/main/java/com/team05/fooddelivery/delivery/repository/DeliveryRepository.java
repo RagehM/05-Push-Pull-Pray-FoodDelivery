@@ -84,6 +84,14 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId ORDER BY d.updated_at DESC LIMIT 1", nativeQuery = true)
 	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
 
+	@Query(value = "SELECT * FROM deliveries d WHERE d.metadata ->> :key = :value", nativeQuery = true)
+	List<Delivery> findByMetadataEquals(@Param("key") String key, @Param("value") String value);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE CAST(d.metadata ->> :key AS numeric) > CAST(:value AS numeric)", nativeQuery = true)
+	List<Delivery> findByMetadataGreaterThan(@Param("key") String key, @Param("value") String value);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE CAST(d.metadata ->> :key AS numeric) < CAST(:value AS numeric)", nativeQuery = true)
+	List<Delivery> findByMetadataLessThan(@Param("key") String key, @Param("value") String value);
 	@Query(value = """
     SELECT 
         d.id,

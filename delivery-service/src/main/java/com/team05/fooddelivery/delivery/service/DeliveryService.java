@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
@@ -80,6 +81,21 @@ validateOrder(orderId);
 
         return deliveryRepository.findLatestByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
+        if (operator == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        }
+
+        String normalizedOperator = operator.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedOperator) {
+            case "eq" -> deliveryRepository.findByMetadataEquals(key, value);
+            case "gt" -> deliveryRepository.findByMetadataGreaterThan(key, value);
+            case "lt" -> deliveryRepository.findByMetadataLessThan(key, value);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        };
     }
 
     public Delivery updateDelivery(Long id, Delivery delivery) {

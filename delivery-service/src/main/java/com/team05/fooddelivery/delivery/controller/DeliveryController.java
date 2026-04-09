@@ -65,6 +65,13 @@ public class DeliveryController {
         return deliveryService.getLatestDeliveryByOrderId(orderId);
     }
 
+    @GetMapping("/metadata/search")
+    public List<Delivery> searchDeliveriesByMetadata(@RequestParam String key,
+                                                     @RequestParam String operator,
+                                                     @RequestParam String value) {
+        return deliveryService.searchDeliveriesByMetadata(key, operator, value);
+    }
+
     @GetMapping("/nearby")
     public List<NearbyDeliveryDTO> getNearbyDeliveries(
             @RequestParam Double lat,
