@@ -32,8 +32,8 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     @JsonAlias({ "UserRole", "role" })
+    @Column(nullable = false)
     private UserRole userRole;
 
     @Enumerated(EnumType.STRING)
