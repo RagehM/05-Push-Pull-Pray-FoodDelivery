@@ -105,7 +105,7 @@ public class DeliveryService {
     }
 
     private void validateOrder(Long orderId) {
-        if (!deliveryRepository.existsByOrderId(orderId)) {
+        if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
     }
