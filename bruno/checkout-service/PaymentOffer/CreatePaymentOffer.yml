@@ -1,0 +1,28 @@
+info:
+  name: CreatePaymentOffer
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8085/api/payments/offers
+  body:
+    type: json
+    data: "{\r
+
+      \    \"discountApplied\": 15.0,\r
+
+      \    \"paymentId\": 1,\r
+
+      \    \"offerId\": 1,\r
+
+      \    \"appliedAt\": \"2026-12-31T23:59:59\"\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

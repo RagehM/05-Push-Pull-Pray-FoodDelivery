@@ -1,0 +1,33 @@
+info:
+  name: GetPaymentById
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:8085/api/payments/1
+  body:
+    type: text
+    data: "{\r
+
+      \  \"orderId\": 123,\r
+
+      \  \"userId\": 456,\r
+
+      \  \"amount\": 500,\r
+
+      \  \"method\": \"CASH_ON_DELIVERY\",\r
+
+      \  \"status\": \"PENDING\",\r
+
+      \  \"transactionDetails\": {},\r
+
+      \  \"paymentOffers\": []\r
+
+      }\r\n"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
