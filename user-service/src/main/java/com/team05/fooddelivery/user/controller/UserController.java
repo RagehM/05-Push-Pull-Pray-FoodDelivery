@@ -6,10 +6,12 @@ import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +91,7 @@ public class UserController {
 
 
     @GetMapping("/reports/top-customers")
-    public List<TopCustomerDTO> topCustomersBySpending(@RequestParam LocalDateTime startDate, @RequestParam LocalDateTime endDate, @RequestParam Integer limit)
+    public List<TopCustomerDTO> topCustomersBySpending(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate, @RequestParam Integer limit)
     {
         return userService.topCustomersBySpending(startDate, endDate, limit);
     }

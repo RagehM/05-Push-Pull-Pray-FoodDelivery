@@ -1,0 +1,22 @@
+info:
+  name: Filter Users by Preference
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:8081/api/users/preferences/search?key=dietaryRestrictions&value=vegetarian
+  params:
+    - name: key
+      value: dietaryRestrictions
+      type: query
+    - name: value
+      value: vegetarian
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

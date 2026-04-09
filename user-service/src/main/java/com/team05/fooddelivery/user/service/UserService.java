@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -106,7 +107,7 @@ public class UserService {
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
 
-    public List<TopCustomerDTO> topCustomersBySpending(LocalDateTime startDate, LocalDateTime endDate, Integer limit)
+    public List<TopCustomerDTO> topCustomersBySpending(LocalDate startDate, LocalDate endDate, Integer limit)
     {
         if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
         {
@@ -115,10 +116,11 @@ public class UserService {
         List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
         List<TopCustomerDTO> topCustomerDTOs = new ArrayList<TopCustomerDTO>();
         result.forEach(object -> {
-            User user = (User) object[0];
-            Double totalSpent = (Double) object[1];
-            Integer orderCount = (Integer) object[2];
-            topCustomerDTOs.add(new TopCustomerDTO(user.getId(),user.getName(), totalSpent, orderCount ));
+            Long userID = (Long) object[0];
+            String userName = (String) object[1];
+            Double totalSpent = (Double) object[2];
+            Integer orderCount = Math.toIntExact((Long) object[3]);
+            topCustomerDTOs.add(new TopCustomerDTO(userID,userName, totalSpent, orderCount ));
         });
         return topCustomerDTOs;
     }

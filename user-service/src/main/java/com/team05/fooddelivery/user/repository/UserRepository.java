@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import com.team05.fooddelivery.order.model.Order;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -80,15 +80,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 
     @Query(value = """
-        SELECT DISTINCT(u), SUM(o.totalAmount), COUNT(o) as total_spent 
-        FROM Order o JOIN o.userId u 
-        WHERE o.orderDate >= :startDate AND o.orderDate <= :endDate
-        GROUP BY u
-        order by total_spent desc
-        LIMIT :limit
-""")
+       SELECT u.id,u.name, SUM(o.total_amount) as total_spent , COUNT(o) 
+       FROM orders o  JOIN users u ON o.user_id = u.id
+       WHERE o.order_date >= :start AND o.order_date <= :end
+       GROUP BY u.id, u.name
+       order by total_spent desc
+       LIMIT :limit
+""",
+            nativeQuery = true)
     List<Object[]> findUsersWithHighestSpent(@Param("limit") Integer limit,
-                                         @Param("start")LocalDateTime start,
-                                         @Param("end")LocalDateTime end);
+                                         @Param("start") LocalDate start,
+                                         @Param("end") LocalDate end);
 
 }
