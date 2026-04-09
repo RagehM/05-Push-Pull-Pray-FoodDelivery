@@ -25,7 +25,7 @@ public class OrderItem {
     @Column(nullable = false)
     private Double unitPrice;
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "orderitemstatusenum")
+    @Column(nullable = false)
     private OrderItemStatusEnum status;
     @Column(nullable = false, columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
@@ -33,7 +33,29 @@ public class OrderItem {
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
+
     
+    
+    public OrderItem() {
+        status = OrderItemStatusEnum.PENDING;
+    }
+    public OrderItem(Integer lineNumber, Long menuItemId, String itemName, Integer quantity, Double unitPrice,
+            OrderItemStatusEnum status, Map<String, Object> metadata, Order order) {
+        this.lineNumber = lineNumber;
+        this.menuItemId = menuItemId;
+        this.itemName = itemName;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.status = status;
+        this.metadata = metadata;
+        this.order = order;
+    }
+    
+    public OrderItem(Integer lineNumber, Long menuItemId, String itemName, Integer quantity, Double unitPrice,
+            Map<String, Object> metadata, Order order) {
+        this(lineNumber, menuItemId, itemName, quantity, unitPrice, OrderItemStatusEnum.PENDING, metadata, order);
+    }
+
     public Long getId() {
         return id;
     }
