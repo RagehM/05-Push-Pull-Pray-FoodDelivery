@@ -98,7 +98,7 @@ public class DeliveryController {
     public ResponseEntity<Integer> batchCreate(@RequestBody BatchDeliveryRequestDTO request) {
         int count = deliveryService.batchCreate(request);
         return new ResponseEntity<>(count, HttpStatus.CREATED);
-      
+    }
     @GetMapping("/delayed")
     public List<DelayedDeliveryDTO> getDelayedDeliveries(
             @RequestParam Double maxEstimatedArrival,
