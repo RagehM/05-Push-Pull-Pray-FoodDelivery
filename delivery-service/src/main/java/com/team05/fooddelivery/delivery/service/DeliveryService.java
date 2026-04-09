@@ -109,26 +109,30 @@ public class DeliveryService {
     }
 
     public int batchCreate(BatchDeliveryRequestDTO request) {
-        if (!deliveryRepository.orderExists(request.orderId())) {
+        if (!deliveryRepository.orderExists(request.getOrderId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
 
+        if (request.getDeliveries() == null || request.getDeliveries().isEmpty()) {
+            return 0;
+        }
+
         List<Delivery> toSave = new ArrayList<>();
-        for (DeliveryItemDTO item : request.deliveries()) {
-            if (item.latitude() == null || item.latitude() < -90 || item.latitude() > 90) {
+        for (DeliveryItemDTO item : request.getDeliveries()) {
+            if (item.getLatitude() == null || item.getLatitude() < -90 || item.getLatitude() > 90) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Latitude must be between -90 and 90");
             }
-            if (item.longitude() == null || item.longitude() < -180 || item.longitude() > 180) {
+            if (item.getLongitude() == null || item.getLongitude() < -180 || item.getLongitude() > 180) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Longitude must be between -180 and 180");
             }
 
             Delivery delivery = new Delivery();
-            delivery.setOrderId(request.orderId());
-            delivery.setDriverName(item.driverName());
-            delivery.setLatitude(item.latitude());
-            delivery.setLongitude(item.longitude());
-            delivery.setStatus(item.status() != null ? item.status() : DeliveryStatus.ASSIGNED);
-            delivery.setMetadata(item.metadata() != null ? item.metadata() : new HashMap<>());
+            delivery.setOrderId(request.getOrderId());
+            delivery.setDriverName(item.getDriverName());
+            delivery.setLatitude(item.getLatitude());
+            delivery.setLongitude(item.getLongitude());
+            delivery.setStatus(item.getStatus() != null ? item.getStatus() : DeliveryStatus.ASSIGNED);
+            delivery.setMetadata(item.getMetadata() != null ? item.getMetadata() : new HashMap<>());
             toSave.add(delivery);
         }
 
