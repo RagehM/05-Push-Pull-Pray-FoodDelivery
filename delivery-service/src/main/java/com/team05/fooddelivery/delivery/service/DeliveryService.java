@@ -121,20 +121,20 @@ public class DeliveryService {
 
         // Only start date filter
         if (startDate != null && endDate == null) {
-            LocalDateTime start = startDate.atStartOfDay();
+            LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
             return deliveryRepository
                     .findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(orderId, start);
         }
 
         // Only end date filter
         if (startDate == null) {
-            LocalDateTime end = endDate.atTime(LocalTime.MAX);
+            LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
             return deliveryRepository
                     .findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(orderId, end);
         }
 
-        LocalDateTime start = startDate.atStartOfDay();
-        LocalDateTime end = endDate.atTime(LocalTime.MAX);
+        LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
+        LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
 
         return deliveryRepository
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
