@@ -80,4 +80,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	//// Check for the existence of order
 	@Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
 	boolean orderExists(@Param("orderId") Long orderId);
+
+	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId ORDER BY d.updated_at DESC LIMIT 1", nativeQuery = true)
+	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
 }
