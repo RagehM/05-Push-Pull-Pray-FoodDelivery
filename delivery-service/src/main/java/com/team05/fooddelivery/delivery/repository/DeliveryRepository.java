@@ -83,6 +83,9 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	@Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
 	boolean orderExists(@Param("orderId") Long orderId);
 
+	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId ORDER BY d.updated_at DESC LIMIT 1", nativeQuery = true)
+	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
+
 	@Query(value = "SELECT COUNT(*) FROM deliveries d WHERE " +
 			"d.status = CAST(:status AS deliverystatus) AND " +
 			"d.updated_at < CAST(:cutoff AS timestamp)",

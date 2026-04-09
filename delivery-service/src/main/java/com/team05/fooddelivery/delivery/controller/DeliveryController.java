@@ -60,6 +60,11 @@ public class DeliveryController {
         return deliveryService.getAllDeliveries(status);
     }
 
+    @GetMapping("/order/{orderId}/latest")
+    public Delivery getLatestDeliveryByOrderId(@PathVariable Long orderId) {
+        return deliveryService.getLatestDeliveryByOrderId(orderId);
+    }
+
     @GetMapping("/nearby")
     public List<NearbyDeliveryDTO> getNearbyDeliveries(
             @RequestParam Double lat,
