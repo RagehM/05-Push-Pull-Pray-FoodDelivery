@@ -30,6 +30,7 @@ public class Order {
     @Column(nullable = true)
     private Double totalAmount;
     @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
     @Column(nullable = false)
     private LocalDateTime orderDate;
