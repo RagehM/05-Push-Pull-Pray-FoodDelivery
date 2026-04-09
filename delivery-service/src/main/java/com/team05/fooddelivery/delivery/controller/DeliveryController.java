@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.delivery.controller;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -48,8 +49,8 @@ public class DeliveryController {
     @GetMapping("/order/{orderId}/history")
     public List<Delivery> getOrderDeliveryHistory(
             @PathVariable Long orderId,
-            @RequestParam LocalDate startDate,
-            @RequestParam LocalDate endDate) {
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
 
         return deliveryService.getOrderDeliveryHistory(orderId, startDate, endDate);
     }

@@ -57,6 +57,22 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			Double radiusKm
 	);
 
+	// No Date filter
+	List<Delivery> findByOrderIdOrderByUpdatedAtAsc(Long orderId);
+
+	// Only start date filter
+	List<Delivery> findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
+			Long orderId,
+			LocalDateTime start
+	);
+
+	// Only end date filter
+	List<Delivery> findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(
+			Long orderId,
+			LocalDateTime end
+	);
+
+	// Both start and end date filter
 	List<Delivery> findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(
 			Long orderId,
 			LocalDateTime start,
