@@ -96,4 +96,14 @@ public class RestaurantController {
         return ResponseEntity.ok().build();
     }
 
+    //S2-F5
+    @GetMapping("/details/search")
+    public ResponseEntity<List<Restaurant>> filterByDetail(
+            @RequestParam String key,
+            @RequestParam String value,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(restaurantService.filterByDetail(key, value, status));
+    }
+
 }
