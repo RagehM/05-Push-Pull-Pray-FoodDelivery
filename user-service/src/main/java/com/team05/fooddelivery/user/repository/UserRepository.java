@@ -16,7 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     FROM users u
     WHERE (:name IS NULL OR u.name ILIKE '%' || :name || '%')
       AND (:email IS NULL OR u.email ILIKE '%' || :email || '%')
-      AND (:role IS NULL OR u.user_role = :role)
+      AND (:role IS NULL OR u.role = :role)
     """, nativeQuery = true)
     List<User> searchUsers(
             @Param("name") String name,

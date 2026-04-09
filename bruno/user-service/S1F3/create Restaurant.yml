@@ -1,0 +1,42 @@
+info:
+  name: create Restaurant
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:8082/api/restaurants
+  body:
+    type: json
+    data: "{\r
+
+      \  \"name\": \"Cairo Bites\",\r
+
+      \  \"email\": \"cairobites@example.com\",\r
+
+      \  \"phone\": \"01098765432\",\r
+
+      \  \"cuisineType\": \"EGYPTIAN\",\r
+
+      \  \"status\": \"SUSPENDED\",\r
+
+      \  \"details\": {\r
+
+      \    \"address\": \"45 Tahrir Square, Cairo, Egypt\",\r
+
+      \    \"openingHours\": \"09:00 - 23:00\",\r
+
+      \    \"deliveryTime\": \"30-45 mins\",\r
+
+      \    \"minimumOrder\": 50.00\r
+
+      \  }\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

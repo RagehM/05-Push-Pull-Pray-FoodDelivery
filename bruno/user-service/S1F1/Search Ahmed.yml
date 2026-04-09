@@ -1,0 +1,19 @@
+info:
+  name: Search ahmed
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: http://localhost:8081/api/users/search?name=Ahmed
+  params:
+    - name: name
+      value: Ahmed
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
