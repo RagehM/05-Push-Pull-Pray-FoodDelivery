@@ -1,0 +1,26 @@
+info:
+  name: create Restaurant
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8082/api/restaurants
+  body:
+    type: json
+    data: "{\r
+
+      \  \"name\": \"Cairo Bites\",\r
+
+      \  \"email\": \"cairobites@example.com\",\r
+
+      \  \"phone\": \"01098765432\",\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
