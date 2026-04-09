@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.restaurant.controller;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
+import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
@@ -100,6 +101,13 @@ public class RestaurantController {
             @RequestParam(required = false) String status
     ) {
         return ResponseEntity.ok(restaurantService.filterByDetail(key, value, status));
+    }
+    //s2-f6
+    @GetMapping("/reports/top-rated")
+    public ResponseEntity<List<TopRestaurantDTO>> getTopRated(
+            @RequestParam int limit
+    ) {
+        return ResponseEntity.ok(restaurantService.getTopRated(limit));
     }
 
 }
