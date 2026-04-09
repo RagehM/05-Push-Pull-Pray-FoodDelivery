@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.restaurant.service;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
+import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 
@@ -141,6 +142,11 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
+    }
+
+    //S2-F5
+    public List<Restaurant> filterByDetail(String key, String value, String status) {
+        return restaurantRepository.findByDetailAttribute(key, value, status);
     }
 
 }
