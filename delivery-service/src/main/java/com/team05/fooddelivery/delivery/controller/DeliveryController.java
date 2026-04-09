@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -65,6 +66,13 @@ public class DeliveryController {
         return deliveryService.getLatestDeliveryByOrderId(orderId);
     }
 
+    @GetMapping("/metadata/search")
+    public List<Delivery> searchDeliveriesByMetadata(@RequestParam String key,
+                                                     @RequestParam String operator,
+                                                     @RequestParam String value) {
+        return deliveryService.searchDeliveriesByMetadata(key, operator, value);
+    }
+
     @GetMapping("/nearby")
     public List<NearbyDeliveryDTO> getNearbyDeliveries(
             @RequestParam Double lat,
@@ -83,6 +91,14 @@ public class DeliveryController {
     public ResponseEntity<Void> deleteDelivery(@PathVariable Long id) {
         deliveryService.deleteDelivery(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/delayed")
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(
+            @RequestParam Double maxEstimatedArrival,
+            @RequestParam int sinceMinutes) {
+
+        return deliveryService.getDelayedDeliveries(maxEstimatedArrival, sinceMinutes);
     }
 
     @DeleteMapping("/purge")

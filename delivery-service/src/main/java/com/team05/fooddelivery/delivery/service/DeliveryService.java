@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.time.LocalDateTime;
 
+import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -81,6 +83,21 @@ validateOrder(orderId);
 
         return deliveryRepository.findLatestByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
+        if (operator == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        }
+
+        String normalizedOperator = operator.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedOperator) {
+            case "eq" -> deliveryRepository.findByMetadataEquals(key, value);
+            case "gt" -> deliveryRepository.findByMetadataGreaterThan(key, value);
+            case "lt" -> deliveryRepository.findByMetadataLessThan(key, value);
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid operator");
+        };
     }
 
     public Delivery updateDelivery(Long id, Delivery delivery) {
@@ -160,6 +177,21 @@ validateOrder(orderId);
                         ((Number) row[3]).doubleValue(),
                         ((Number) row[4]).doubleValue(),
                         ((Number) row[5]).doubleValue()
+                ))
+                .toList();
+    }
+
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(Double maxEstimatedArrival, int sinceMinutes) {
+        return deliveryRepository.findDelayedDeliveries(maxEstimatedArrival, sinceMinutes)
+                .stream()
+                .map(row -> new DelayedDeliveryDTO(
+                        ((Number) row[0]).longValue(),
+                        (String) row[1],
+                        ((Number) row[2]).longValue(),
+                        ((Number) row[3]).doubleValue(),
+                        ((Number) row[4]).doubleValue(),
+                        ((Number) row[5]).doubleValue(),
+                        (LocalDateTime) row[6]
                 ))
                 .toList();
     }
