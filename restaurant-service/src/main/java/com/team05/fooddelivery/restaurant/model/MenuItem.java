@@ -26,7 +26,7 @@ public class MenuItem {
     private Double price;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "menucategory")
+    @Column(nullable = false)
     private MenuCategoryEnum category;
 
     @Column(nullable = false)

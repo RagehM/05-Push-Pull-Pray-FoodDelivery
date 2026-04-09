@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.order.repository;
 
+import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,6 +8,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+@Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query(value = """
@@ -17,15 +23,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByMetadataKeyValue(@Param("key") String key,
                                        @Param("value") String value);
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
+    @Query("""
+        SELECT o
+        FROM Order o
+        WHERE o.orderDate >= :startDateTime
+          AND o.orderDate < :endDateTimeExclusive
+          AND (:status IS NULL OR o.status = :status)
+        ORDER BY o.orderDate DESC
+        """)
+    List<Order> searchByStatusAndDateRange(
+            @Param("status") OrderStatusEnum status,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTimeExclusive") LocalDateTime endDateTimeExclusive
+    );
 
-
-@Repository
-public interface OrderRepository extends JpaRepository<Order, Long> {
         // [CRUD]
         //// Check for existence of user
         @Query(value =  """

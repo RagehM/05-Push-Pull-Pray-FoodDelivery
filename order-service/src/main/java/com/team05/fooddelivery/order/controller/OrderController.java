@@ -1,16 +1,21 @@
 package com.team05.fooddelivery.order.controller;
 
+import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import com.team05.fooddelivery.order.service.OrderService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
-import org.springframework.web.bind.annotation.*;
 
 
 @RestController
@@ -23,6 +28,16 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    // [S3-F1]
+    @GetMapping("/search")
+    public ResponseEntity<List<Order>> searchOrders(
+            @RequestParam(required = false) OrderStatusEnum status,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ResponseEntity.ok(orderService.searchOrders(status, startDate, endDate));
+    }
+    // [S3-F5]
     @GetMapping("/metadata/search")
     public ResponseEntity<List<Order>> searchOrdersByMetadata(
             @RequestParam String key,
