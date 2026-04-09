@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.delivery.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.team05.fooddelivery.delivery.model.Delivery;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 
@@ -25,6 +27,13 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 		nativeQuery = true)
 	Optional<Delivery> findByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") String status);
 
+	List<Delivery> findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(
+			Long orderId,
+			LocalDateTime start,
+			LocalDateTime end
+	);
+
+	//// Check for the existence of order
 	@Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
 	boolean orderExists(@Param("orderId") Long orderId);
 }

@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.delivery.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,15 @@ public class DeliveryController {
     @GetMapping("/{id}")
     public Delivery getDeliveryById(@PathVariable Long id) {
         return deliveryService.getDeliveryById(id);
+    }
+
+    @GetMapping("/order/{orderId}/history")
+    public List<Delivery> getOrderDeliveryHistory(
+            @PathVariable Long orderId,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+
+        return deliveryService.getOrderDeliveryHistory(orderId, startDate, endDate);
     }
 
     @GetMapping
