@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -89,6 +90,14 @@ public class DeliveryController {
     public ResponseEntity<Void> deleteDelivery(@PathVariable Long id) {
         deliveryService.deleteDelivery(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/delayed")
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(
+            @RequestParam Double maxEstimatedArrival,
+            @RequestParam int sinceMinutes) {
+
+        return deliveryService.getDelayedDeliveries(maxEstimatedArrival, sinceMinutes);
     }
 }
 

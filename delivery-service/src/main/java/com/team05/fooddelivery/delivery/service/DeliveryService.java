@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
+import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -174,6 +175,21 @@ validateOrder(orderId);
                         ((Number) row[3]).doubleValue(),
                         ((Number) row[4]).doubleValue(),
                         ((Number) row[5]).doubleValue()
+                ))
+                .toList();
+    }
+
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(Double maxEstimatedArrival, int sinceMinutes) {
+        return deliveryRepository.findDelayedDeliveries(maxEstimatedArrival, sinceMinutes)
+                .stream()
+                .map(row -> new DelayedDeliveryDTO(
+                        ((Number) row[0]).longValue(),
+                        (String) row[1],
+                        ((Number) row[2]).longValue(),
+                        ((Number) row[3]).doubleValue(),
+                        ((Number) row[4]).doubleValue(),
+                        ((Number) row[5]).doubleValue(),
+                        (LocalDateTime) row[6]
                 ))
                 .toList();
     }
