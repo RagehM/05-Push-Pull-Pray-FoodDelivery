@@ -87,7 +87,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
 
 	@Query(value = "SELECT COUNT(*) FROM deliveries d WHERE " +
-			"d.status = CAST(:status AS deliverystatus) AND " +
+			"d.status = :status AND " +
 			"d.updated_at < CAST(:cutoff AS timestamp)",
 		nativeQuery = true)
 	long countOldByStatus(@Param("status") String status, @Param("cutoff") java.time.LocalDateTime cutoff);
@@ -95,7 +95,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	@Modifying
 	@Transactional
 	@Query(value = "DELETE FROM deliveries d WHERE " +
-			"d.status = CAST(:status AS deliverystatus) AND " +
+			"d.status = :status AND " +
 			"d.updated_at < CAST(:cutoff AS timestamp)",
 		nativeQuery = true)
 	int deleteOldByStatus(@Param("status") String status, @Param("cutoff") java.time.LocalDateTime cutoff);
