@@ -6,6 +6,7 @@ import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 import java.time.LocalDateTime;
@@ -116,6 +117,30 @@ public class RestaurantService {
         Double averageOrderAmount = ((Number) result[2]).doubleValue();
         return new RestaurantRevenueDTO(restaurant.getId(), restaurant.getName(), totalOrders, totalRevenue,
                 averageOrderAmount);
+    }
+    @Transactional
+    public void updateRestaurantStatus(Long id, String newStatus) {
+        if (newStatus == null || newStatus.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+
+        if ("SUSPENDED".equals(newStatus)) {
+            int activeOrders = restaurantRepository.countActiveOrders(id);
+            if (activeOrders > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cannot suspend restaurant with active orders");
+            }
+        }
+
+        try {
+            restaurant.setStatus(RestaurantStatusEnum.valueOf(newStatus));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
+        }
+        restaurantRepository.save(restaurant);
     }
 
 }

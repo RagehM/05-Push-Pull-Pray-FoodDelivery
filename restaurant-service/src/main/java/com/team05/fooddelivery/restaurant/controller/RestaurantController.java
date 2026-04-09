@@ -43,11 +43,11 @@ public class RestaurantController {
     }
 
     // The update method handles PUT requests to update an existing restaurant.
-    // @PutMapping("/{id}")
-    // public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody
-    // Restaurant restaurant) {
-    // return ResponseEntity.ok(restaurantService.update(id, restaurant));
-    // }
+     @PutMapping("/{id}")
+     public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody
+     Restaurant restaurant) {
+     return ResponseEntity.ok(restaurantService.update(id, restaurant));
+    }
 
     // The delete method handles DELETE requests to remove a restaurant by its ID.
     @DeleteMapping("/{id}")
@@ -83,6 +83,17 @@ public class RestaurantController {
         LocalDateTime start = LocalDateTime.parse(startDate + "T00:00:00");
         LocalDateTime end = LocalDateTime.parse(endDate + "T23:59:59");
         return ResponseEntity.ok(restaurantService.getRevenueSummary(id, start, end));
+    }
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+
+        String status = body.get("status");
+
+        restaurantService.updateRestaurantStatus(id, status);
+
+        return ResponseEntity.ok().build();
     }
 
 }
