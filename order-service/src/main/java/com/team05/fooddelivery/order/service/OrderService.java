@@ -96,4 +96,29 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
     }
+    //// Confirm Order and Assign Restaurant (Transactional)
+    @Transactional
+    public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
+        Order order = getOrderById(orderId);
+        if (order.getStatus() != OrderStatusEnum.PLACED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "only a newly placed order can be confirmed"
+            );
+        }
+        boolean restaurantExists = orderRepository.existsByRestaurantId(restaurantId);
+        if (!restaurantExists) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        boolean restaurantOpen = orderRepository.isRestaurantOpen(restaurantId);
+        if (!restaurantOpen) {
+            throw new ResponseStatusException( HttpStatus.BAD_REQUEST,  "Restaurant is not open"
+            );
+        }
+        order.setRestaurantId(restaurantId);
+        order.setStatus(OrderStatusEnum.CONFIRMED);
+
+        return orderRepository.save(order);
+
+    }
 }

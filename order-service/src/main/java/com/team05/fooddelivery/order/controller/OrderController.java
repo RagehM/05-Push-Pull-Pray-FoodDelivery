@@ -59,5 +59,9 @@ public class OrderController {
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
     }
-
+    //// Confirm order and Assign Resturant
+    @PutMapping("/{orderId}/confirm")
+    public Order confirmOrder(@PathVariable Long orderId, @RequestParam Long restaurantId) {
+        return orderService.confirmOrderAndAssignRestaurant(orderId, restaurantId);
+    }
 }
