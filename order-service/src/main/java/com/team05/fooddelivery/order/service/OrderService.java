@@ -1,5 +1,14 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.model.Order;
+import com.team05.fooddelivery.order.repository.OrderRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 
@@ -19,6 +28,16 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
+    public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
+
+        return orderRepository.searchByStatusAndDateRange(
+                status,
+                startDateTime,
+                endDateTimeExclusive
+        );
+    }
     // [CRUD]
     //// Get order by ID
     @Transactional(readOnly = true)
