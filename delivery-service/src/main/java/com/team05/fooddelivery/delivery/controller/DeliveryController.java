@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.service.DeliveryService;
 
@@ -76,6 +77,12 @@ public class DeliveryController {
     public ResponseEntity<Void> deleteDelivery(@PathVariable Long id) {
         deliveryService.deleteDelivery(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<Integer> batchCreate(@RequestBody BatchDeliveryRequestDTO request) {
+        int count = deliveryService.batchCreate(request);
+        return new ResponseEntity<>(count, HttpStatus.CREATED);
     }
 }
 
