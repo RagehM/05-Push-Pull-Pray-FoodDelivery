@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.time.LocalDateTime;
 
 import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
@@ -227,6 +229,25 @@ validateOrder(orderId);
                         (LocalDateTime) row[6]
                 ))
                 .toList();
+    }
+
+    public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
+        if (olderThanDays == null || olderThanDays <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
+        }
+
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(olderThanDays);
+        String deliveredStatus = DeliveryStatus.DELIVERED.name();
+
+        long count = deliveryRepository.countOldByStatus(deliveredStatus, cutoff);
+        int deletedCount = 0;
+        if (count > 0) {
+            deletedCount = deliveryRepository.deleteOldByStatus(deliveredStatus, cutoff);
+        }
+
+        Map<String, Integer> response = new HashMap<>();
+        response.put("deletedCount", deletedCount);
+        return response;
     }
 }
 

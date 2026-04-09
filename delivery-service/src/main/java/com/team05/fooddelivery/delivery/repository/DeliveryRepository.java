@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.team05.fooddelivery.delivery.model.Delivery;
 
@@ -110,4 +112,18 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			@Param("maxEstimatedArrival") Double maxEstimatedArrival,
 			@Param("sinceMinutes") int sinceMinutes
 	);
+
+	@Query(value = "SELECT COUNT(*) FROM deliveries d WHERE " +
+			"d.status = :status AND " +
+			"d.updated_at < CAST(:cutoff AS timestamp)",
+		nativeQuery = true)
+	long countOldByStatus(@Param("status") String status, @Param("cutoff") java.time.LocalDateTime cutoff);
+
+	@Modifying
+	@Transactional
+	@Query(value = "DELETE FROM deliveries d WHERE " +
+			"d.status = :status AND " +
+			"d.updated_at < CAST(:cutoff AS timestamp)",
+		nativeQuery = true)
+	int deleteOldByStatus(@Param("status") String status, @Param("cutoff") java.time.LocalDateTime cutoff);
 }

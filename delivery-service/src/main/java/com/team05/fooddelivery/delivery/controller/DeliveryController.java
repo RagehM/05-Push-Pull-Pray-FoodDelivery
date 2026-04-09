@@ -3,6 +3,7 @@ package com.team05.fooddelivery.delivery.controller;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
@@ -104,6 +105,11 @@ public class DeliveryController {
             @RequestParam int sinceMinutes) {
 
         return deliveryService.getDelayedDeliveries(maxEstimatedArrival, sinceMinutes);
+    }
+
+    @DeleteMapping("/purge")
+    public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
+        return deliveryService.purgeOldDeliveries(olderThanDays);
     }
 }
 
