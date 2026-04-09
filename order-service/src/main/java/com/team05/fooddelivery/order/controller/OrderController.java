@@ -2,15 +2,18 @@ package com.team05.fooddelivery.order.controller;
 
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import com.team05.fooddelivery.order.model.Order;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 
 
@@ -32,6 +35,11 @@ public class OrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
         return ResponseEntity.ok(orderService.searchOrders(status, startDate, endDate));
+    }
+    @PutMapping("{id}/cancel")
+    public ResponseEntity<Void> cancelOrder(@PathVariable String id) {
+        orderService.cancelOrder(Long.parseLong(id));
+        return ResponseEntity.ok().build();
     }
     // [CRUD]
     //// Get order by ID
