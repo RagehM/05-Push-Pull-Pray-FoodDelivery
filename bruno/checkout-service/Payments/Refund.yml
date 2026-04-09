@@ -1,0 +1,22 @@
+info:
+  name: Refund
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: http://localhost:8085/api/payments/5/refund
+  body:
+    type: json
+    data: "{\r
+
+      \    \"reason\": \"wrong order delivered\"\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

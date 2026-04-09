@@ -1,0 +1,36 @@
+info:
+  name: CreatePayment
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: http://localhost:8085/api/payments
+  body:
+    type: json
+    data: "{\r
+
+      \  \"orderId\": 101,\r
+
+      \  \"userId\": 1,\r
+
+      \  \"amount\": 150,\r
+
+      \  \"method\": \"CASH_ON_DELIVERY\",\r
+
+      \  \"status\": \"PENDING\",\r
+
+      \  \"createdAt\": \"2026-03-25T10:00:00Z\",\r
+
+      \  \"transactionDetails\": {},\r
+
+      \  \"paymentOffers\": []\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

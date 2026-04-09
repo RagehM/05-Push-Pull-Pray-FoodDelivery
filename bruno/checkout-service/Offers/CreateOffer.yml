@@ -1,0 +1,25 @@
+info:
+  name: CreateOffer
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: http://localhost:8085/api/offers
+  body:
+    type: json
+    data: |
+      {
+        "code": "HUNGRY9999",
+        "discountType": "FIXED",
+        "discountValue": 9999.0,
+        "maxUses": 3,
+        "expiryDate": "2026-12-31T22:59:59"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
