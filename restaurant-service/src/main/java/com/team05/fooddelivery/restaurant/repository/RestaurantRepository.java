@@ -50,4 +50,15 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
             @Param("value") String value,
             @Param("status") String status
     );
+    //s2-f6
+    @Query(value = """
+    SELECT r.id, r.name, r.rating,
+           COUNT(o.id) as total_orders
+    FROM restaurants r
+    LEFT JOIN orders o ON o.restaurant_id = r.id
+    GROUP BY r.id, r.name, r.rating
+    ORDER BY r.rating DESC
+    LIMIT :limit
+    """, nativeQuery = true)
+    List<Object[]> findTopRatedRestaurants(@Param("limit") int limit);
 }

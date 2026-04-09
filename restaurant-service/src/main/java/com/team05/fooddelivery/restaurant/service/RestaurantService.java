@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.restaurant.service;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
+import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
@@ -9,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
 import java.util.Map;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -147,6 +150,21 @@ public class RestaurantService {
     //S2-F5
     public List<Restaurant> filterByDetail(String key, String value, String status) {
         return restaurantRepository.findByDetailAttribute(key, value, status);
+    }
+    //s2-f6
+    public List<TopRestaurantDTO> getTopRated(int limit) {
+        List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
+        List<TopRestaurantDTO> dtos = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Long id = ((Number) row[0]).longValue();
+            String name = (String) row[1];
+            Double rating = ((Number) row[2]).doubleValue();
+            Long totalOrders = ((Number) row[3]).longValue();
+            dtos.add(new TopRestaurantDTO(id, name, rating, totalOrders));
+        }
+
+        return dtos;
     }
 
 }
