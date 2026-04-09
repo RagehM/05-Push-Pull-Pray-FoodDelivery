@@ -1,6 +1,9 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
+import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
+import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 
 import java.util.List;
@@ -76,5 +79,29 @@ public class OrderService {
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
+    }
+
+    @Transactional
+    // [S3-F8] Add items to existing order
+    public Order addItemsToOrder(Long orderId, List<OrderItem> orderItems) {
+        Order existingOrder = getOrderById(orderId);
+        int line_item_count = existingOrder.getOrderItems() != null ? existingOrder.getOrderItems().size() : 0;
+        if (!(existingOrder.getStatus() == OrderStatusEnum.PLACED || existingOrder.getStatus() == OrderStatusEnum.CONFIRMED)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only add items to orders that are in PLACED or CONFIRMED status");
+        }
+        for (OrderItem orderItem : orderItems) {
+            if (orderItem.getQuantity() == null || orderItem.getItemName() == null || orderItem.getUnitPrice() == null || orderItem.getMenuItemId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order item must have quantity, item name, unit price and menu item id");
+            }
+            orderItem.setLineNumber(++line_item_count);
+            orderItem.setStatus(OrderItemStatusEnum.PENDING);
+            orderItem.setOrder(existingOrder);
+        }
+        existingOrder.getOrderItems().addAll(orderItems);
+        orderRepository.save(existingOrder);
+
+        Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
+
+        return returnObject;
     }
 }

@@ -10,7 +10,6 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import jakarta.persistence.*;
 
@@ -36,7 +35,6 @@ public class Order {
     private LocalDateTime orderDate;
     @Column(nullable = true)
     private LocalDateTime deliveredAt;
-    @JsonIgnore
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private List<OrderItem> orderItems = new ArrayList<OrderItem>();

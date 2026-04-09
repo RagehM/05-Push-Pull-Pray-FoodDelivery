@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.order.controller;
 
 import com.team05.fooddelivery.order.model.Order;
+import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.service.OrderService;
 
 import org.springframework.web.bind.annotation.*;
@@ -43,4 +44,9 @@ public class OrderController {
         orderService.deleteOrder(id);
     }
 
+    // [S3-F8] Add items to existing order
+    @PostMapping("/{orderId}/items")
+    public Order addItemsToOrder(@PathVariable Long orderId, @RequestBody java.util.List<OrderItem> orderItems) {
+        return orderService.addItemsToOrder(orderId, orderItems);
+    }
 }

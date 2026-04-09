@@ -28,4 +28,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                 nativeQuery = true)
         @Transactional(readOnly = true)
         boolean existsByRestaurantId(@Param("restaurantId") Long restaurantId);
+
+
+        @Query("""
+        SELECT o FROM Order o
+        LEFT JOIN FETCH o.orderItems
+        WHERE o.id = :orderId
+        """)
+        @Transactional(readOnly = true)
+        Order getOrderWithOrderItemsById(@Param("orderId") Long orderId);
 }
