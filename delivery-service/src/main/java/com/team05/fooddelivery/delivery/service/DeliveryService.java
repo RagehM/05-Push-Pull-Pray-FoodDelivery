@@ -3,6 +3,7 @@ package com.team05.fooddelivery.delivery.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
+import com.team05.fooddelivery.delivery.dto.DeliveryItemDTO;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
@@ -128,6 +131,38 @@ validateOrder(orderId);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
         deliveryRepository.deleteById(id);
+    }
+
+    public int batchCreate(BatchDeliveryRequestDTO request) {
+        if (!deliveryRepository.orderExists(request.getOrderId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+
+        if (request.getDeliveries() == null || request.getDeliveries().isEmpty()) {
+            return 0;
+        }
+
+        List<Delivery> toSave = new ArrayList<>();
+        for (DeliveryItemDTO item : request.getDeliveries()) {
+            if (item.getLatitude() == null || item.getLatitude() < -90 || item.getLatitude() > 90) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Latitude must be between -90 and 90");
+            }
+            if (item.getLongitude() == null || item.getLongitude() < -180 || item.getLongitude() > 180) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Longitude must be between -180 and 180");
+            }
+
+            Delivery delivery = new Delivery();
+            delivery.setOrderId(request.getOrderId());
+            delivery.setDriverName(item.getDriverName());
+            delivery.setLatitude(item.getLatitude());
+            delivery.setLongitude(item.getLongitude());
+            delivery.setStatus(item.getStatus() != null ? item.getStatus() : DeliveryStatus.ASSIGNED);
+            delivery.setMetadata(item.getMetadata() != null ? item.getMetadata() : new HashMap<>());
+            toSave.add(delivery);
+        }
+
+        deliveryRepository.saveAll(toSave);
+        return toSave.size();
     }
 
     private void validateOrder(Long orderId) {
