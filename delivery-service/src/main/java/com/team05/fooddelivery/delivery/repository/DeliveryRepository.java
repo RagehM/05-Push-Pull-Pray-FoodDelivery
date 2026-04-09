@@ -31,20 +31,20 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 		 d.id,
 		 d.driver_name,
 		 d.order_id,
-		 (d.metadata->>'latitude')::numeric AS latitude,
-		 (d.metadata->>'longitude')::numeric AS longitude,
+		 (d.latitude)::numeric AS latitude,
+		 (d.longitude)::numeric AS longitude,
 		 (
 			 SQRT(
-				 POWER((d.metadata->>'latitude')::numeric - :lat, 2) +
-				 POWER((d.metadata->>'longitude')::numeric - :lon, 2)
+				 POWER((d.latitude)::numeric - :lat, 2) +
+				 POWER((d.longitude)::numeric - :lon, 2)
 			 ) * 111
 		 ) AS distanceKm
 	FROM deliveries d
     WHERE d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
     AND (
         SQRT(
-            POWER((d.metadata->>'latitude')::numeric - :lat, 2) +
-            POWER((d.metadata->>'longitude')::numeric - :lon, 2)
+            POWER((d.latitude)::numeric - :lat, 2) +
+            POWER((d.longitude)::numeric - :lon, 2)
         ) * 111
     ) <= :radiusKm
     ORDER BY distanceKm ASC
