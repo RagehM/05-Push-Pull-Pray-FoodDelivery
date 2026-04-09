@@ -26,7 +26,7 @@ public class Order {
     @Column(nullable = false)
     private String deliveryAddress;
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "orderstatusenum")
+    @Column(nullable = false)
     private OrderStatusEnum status;
     @Column(nullable = true)
     private Double totalAmount;
@@ -40,7 +40,35 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private List<OrderItem> orderItems = new ArrayList<OrderItem>();
+
     
+    
+    public Order() {
+        status = OrderStatusEnum.PLACED;
+    }
+
+    public Order(Long userId, Long restaurantId, String deliveryAddress, OrderStatusEnum status, Double totalAmount,
+            Map<String, Object> metadata, LocalDateTime orderDate, LocalDateTime deliveredAt,
+            List<OrderItem> orderItems) {
+        this.userId = userId;
+        this.restaurantId = restaurantId;
+        this.deliveryAddress = deliveryAddress;
+        this.status = status;
+        this.totalAmount = totalAmount;
+        this.metadata = metadata;
+        this.orderDate = orderDate;
+        this.deliveredAt = deliveredAt;
+        this.orderItems = orderItems;
+    }
+
+    public Order(Long userId, Long restaurantId, String deliveryAddress, Double totalAmount,
+            Map<String, Object> metadata, LocalDateTime orderDate, LocalDateTime deliveredAt,
+            List<OrderItem> orderItems) {
+        this(userId, restaurantId, deliveryAddress, OrderStatusEnum.PLACED, totalAmount,
+        metadata, orderDate, deliveredAt, orderItems);
+    }
+
+
     public Long getId() {
         return id;
     }

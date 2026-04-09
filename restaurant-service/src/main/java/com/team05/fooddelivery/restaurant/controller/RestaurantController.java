@@ -60,4 +60,14 @@ public class RestaurantController {
 
         return ResponseEntity.ok().build();
     }
+
+    //S2-F1: Implement search functionality in RestaurantController to allow filtering by cuisine type and rating range.
+    @GetMapping("/search")
+    public ResponseEntity<List<Restaurant>> search(
+            @RequestParam(required = false) String cuisineType,
+            @RequestParam Double minRating,
+            @RequestParam Double maxRating) {
+        return ResponseEntity.ok(restaurantService.searchByCuisineAndRating(cuisineType, minRating, maxRating));
+    }
+
 }

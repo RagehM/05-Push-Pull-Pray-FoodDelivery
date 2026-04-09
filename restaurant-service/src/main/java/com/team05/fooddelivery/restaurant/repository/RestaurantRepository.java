@@ -19,4 +19,15 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM orders WHERE restaurant_id = :id AND status IN ('CONFIRMED', 'PREPARING')", nativeQuery = true)
     int countActiveOrders(@Param("id") Long restaurantId);
+
+    // S2-F1: Implement search functionality in RestaurantRepository to allow
+    // filtering by cuisine type and rating range.
+    @Query(value = "SELECT * FROM restaurants WHERE " +
+            "(:cuisineType IS NULL OR cuisine_type = :cuisineType) " +
+            "AND rating BETWEEN :minRating AND :maxRating " +
+            "ORDER BY rating DESC", nativeQuery = true)
+    List<Restaurant> searchByCuisineAndRating(
+            @Param("cuisineType") String cuisineType,
+            @Param("minRating") Double minRating,
+            @Param("maxRating") Double maxRating);
 }

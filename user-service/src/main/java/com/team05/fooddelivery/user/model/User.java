@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
@@ -31,11 +32,12 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "userrole")
+    @Column(nullable = false)
+    @JsonAlias({ "UserRole", "role" })
     private UserRole userRole;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "userstatus")
+    @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -49,5 +51,83 @@ public class User {
     @JsonIgnore
     private List<DeliveryAddress> deliveryAddresses;
 
+    public Long getId() {
+        return id;
+    }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public UserRole getUserRole() {
+        return userRole;
+    }
+
+    public void setUserRole(UserRole userRole) {
+        this.userRole = userRole;
+    }
+
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    public Map<String, Object> getPreferences() {
+        return preferences;
+    }
+
+    public void setPreferences(Map<String, Object> preferences) {
+        this.preferences = preferences;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public List<DeliveryAddress> getDeliveryAddresses() {
+        return deliveryAddresses;
+    }
+
+    public void setDeliveryAddresses(List<DeliveryAddress> deliveryAddresses) {
+        this.deliveryAddresses = deliveryAddresses;
+    }
 }
