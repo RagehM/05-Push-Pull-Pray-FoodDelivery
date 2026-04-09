@@ -95,7 +95,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	@Query(value = "SELECT * FROM deliveries d WHERE CAST(d.metadata ->> :key AS numeric) < CAST(:value AS numeric)", nativeQuery = true)
 	List<Delivery> findByMetadataLessThan(@Param("key") String key, @Param("value") String value);
 	@Query(value = """
-    SELECT 
+    SELECT
         d.id,
         d.driver_name,
         d.order_id,
@@ -126,4 +126,24 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			"d.updated_at < CAST(:cutoff AS timestamp)",
 		nativeQuery = true)
 	int deleteOldByStatus(@Param("status") String status, @Param("cutoff") java.time.LocalDateTime cutoff);
+	
+	@Query(value = """
+    SELECT
+        d.driver_name,
+        COUNT(*),
+        AVG((d.metadata->>'speed')::numeric),
+        MAX((d.metadata->>'speed')::numeric),
+        MIN(d.updated_at),
+        MAX(d.updated_at)
+    FROM deliveries d
+    WHERE d.driver_name = :driverName
+      AND d.updated_at >= :start
+      AND d.updated_at <= :end
+    GROUP BY d.driver_name
+""", nativeQuery = true)
+	List<Object[]> findPerformanceSummary(
+			@Param("driverName") String driverName,
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
+	);
 }
