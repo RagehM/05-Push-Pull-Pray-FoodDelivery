@@ -1,15 +1,16 @@
 package com.team05.fooddelivery.order.controller;
 
+import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.model.Order;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import com.team05.fooddelivery.order.model.Order;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 
@@ -33,6 +34,11 @@ public class OrderController {
     ) {
         return ResponseEntity.ok(orderService.searchOrders(status, startDate, endDate));
     }
+    @PutMapping("{id}/cancel")
+    public ResponseEntity<Void> cancelOrder(@PathVariable String id) {
+        orderService.cancelOrder(Long.parseLong(id));
+        return ResponseEntity.ok().build();
+    }
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")
@@ -50,14 +56,28 @@ public class OrderController {
         return orderService.createOrder(order);
     }
     //// Update order
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public Order updateOrder(@PathVariable Long id, @RequestBody Order order) {
         return orderService.updateOrder(id, order);
     }
     //// Delete order
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
     }
 
+        // [S3-F6] - Order Analytics by Time Period (Report DTO)
+    @GetMapping("/analytics")
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return orderService.getOrderAnalyticsByTimePeriod(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+    }
+
+    // [S3-F8] Add items to existing order
+    @PostMapping("/{orderId}/items")
+    public Order addItemsToOrder(@PathVariable Long orderId, @RequestBody java.util.List<OrderItem> orderItems) {
+        return orderService.addItemsToOrder(orderId, orderItems);
+    }
 }
