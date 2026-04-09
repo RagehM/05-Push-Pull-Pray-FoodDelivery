@@ -22,7 +22,7 @@ public class Offer {
     private String code;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "offerdiscounttype")
+    @Column(nullable = false)
     private OfferDiscountType discountType;
 
     @Column(nullable = false)

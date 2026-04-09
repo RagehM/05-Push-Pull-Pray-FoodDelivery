@@ -1,0 +1,44 @@
+info:
+  name: UpdatePaymentById
+  type: http
+  seq: 1
+
+http:
+  method: PUT
+  url: http://localhost:8085/api/payments/1
+  body:
+    type: json
+    data: "{\r
+
+      \  \"orderId\": 105,\r
+
+      \  \"userId\": 3,\r
+
+      \  \"amount\": 2000,\r
+
+      \  \"method\": \"CREDIT_CARD\",\r
+
+      \  \"status\": \"COMPLETED\",\r
+
+      \  \"transactionDetails\": {\r
+
+      \"gatewayResponse\":\"declined\",\r
+
+      \"cardLastFour\":\"4242\",\r
+
+      \"retryAttempt\":5,\r
+
+      \"failureReason\":\"insufficient funds\"\r
+
+      },\r
+
+      \  \"paymentOffers\": []\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

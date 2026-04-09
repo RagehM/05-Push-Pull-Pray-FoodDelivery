@@ -29,11 +29,11 @@ public class Payment {
     private Double amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "paymentmethod")
+    @Column(nullable = false)
     private PaymentMethod method;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "paymentstatus")
+    @Column(nullable = false)
     private PaymentStatus status;
 
     @Column(columnDefinition = "jsonb")
@@ -46,10 +46,10 @@ public class Payment {
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL)
     private List<PaymentOffer> paymentOffers = new ArrayList<>();
 
-    // this was not specified in the requirements but i think it makes sense (should be checked)
-    @PrePersist
-    public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+    @PrePersist void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 
     public Long getOrderId() {
