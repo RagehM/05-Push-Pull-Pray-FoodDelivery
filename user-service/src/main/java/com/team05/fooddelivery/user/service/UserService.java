@@ -11,13 +11,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
-
     @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -36,9 +36,19 @@ public class UserService {
     public User createUser(User user)
     {
         Long id=user.getId();
+        String email = user.getEmail();
+        String phone = user.getPhone();
+
+         if(email!=null && userRepository.existsByEmail(email)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+         if(phone!=null && userRepository.existsByPhone(phone)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
         if(id!=null && userRepository.existsById(id)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
         }
+
         if(user.getCreatedAt() == null || user.getCreatedAt().equals("") || user.getCreatedAt().equals("null"))
         {
             user.setCreatedAt(LocalDateTime.now());
@@ -72,11 +82,6 @@ public class UserService {
         if(email!=null && email.isEmpty())email = null;
         if(role!=null && role.isEmpty())role = null;
 
-        if((name==null || name.isEmpty()) && (email==null || email.isEmpty()) && (role==null || role.isEmpty()))
-             throw new RuntimeException("At least one search parameter must be provided");
-
-
-
         return userRepository.searchUsers(name, email, role);
     }
 
@@ -102,6 +107,14 @@ public class UserService {
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
 
+    public List<User> filterUsersByPreferences(String key, String value)
+    {
+        if(key == null || key.isEmpty() || value == null || value.isEmpty())
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
+        }
+        return userRepository.findUserByPreferencesContaining(key,value);
+    }
     public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object[]> orders = userRepository.findTotalOrders(userId);

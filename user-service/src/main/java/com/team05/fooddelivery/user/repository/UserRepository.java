@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -32,6 +33,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     """,
             nativeQuery = true)
     List<Object> findOrdersByUserId(@Param("userId") Long userId);
+
+ 
+    @Query(           
+            value = """
+    SELECT * FROM users u WHERE u.preferences ->> ?1 = ?2
+
+    """,
+            nativeQuery = true
+    )
+    List<User> findUserByPreferencesContaining(String key, String value );
+
 
     @Query(value = """
     SELECT o.id, o.user_id, o.restaurant_id, o.delivery_address, o.status, o.total_amount, o.metadata, o.order_date, o.delivered_at
@@ -60,4 +72,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
             nativeQuery = true)
     List<Object[]> findCancelledOrders(@Param("userId") Long userId);
 
+    boolean existsByEmail(String email);
+    boolean existsByPhone(String phone);
 }

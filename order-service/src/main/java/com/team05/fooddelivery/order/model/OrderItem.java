@@ -5,6 +5,7 @@ import java.util.Map;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 
 import jakarta.persistence.*;
@@ -30,10 +31,33 @@ public class OrderItem {
     @Column(nullable = false, columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> metadata;
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
+
     
+    
+    public OrderItem() {
+        status = OrderItemStatusEnum.PENDING;
+    }
+    public OrderItem(Integer lineNumber, Long menuItemId, String itemName, Integer quantity, Double unitPrice,
+            OrderItemStatusEnum status, Map<String, Object> metadata, Order order) {
+        this.lineNumber = lineNumber;
+        this.menuItemId = menuItemId;
+        this.itemName = itemName;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.status = status;
+        this.metadata = metadata;
+        this.order = order;
+    }
+    
+    public OrderItem(Integer lineNumber, Long menuItemId, String itemName, Integer quantity, Double unitPrice,
+            Map<String, Object> metadata, Order order) {
+        this(lineNumber, menuItemId, itemName, quantity, unitPrice, OrderItemStatusEnum.PENDING, metadata, order);
+    }
+
     public Long getId() {
         return id;
     }
