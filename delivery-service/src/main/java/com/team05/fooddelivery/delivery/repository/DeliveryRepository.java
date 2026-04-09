@@ -15,13 +15,13 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	Optional<Delivery> findByOrderId(Long orderId);
 
 	@Query(value = "SELECT * FROM deliveries d WHERE " +
-			"(CAST(:status AS deliverystatus) IS NULL OR d.status = CAST(:status AS deliverystatus)) " +
+			"(:status IS NULL OR d.status = status) " +
 			"ORDER BY d.updated_at DESC",
 		nativeQuery = true)
 	List<Delivery> findByStatus(@Param("status") String status);
 
 	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId AND " +
-			"(CAST(:status AS deliverystatus) IS NULL OR d.status = CAST(:status AS deliverystatus)) " +
+			"(:status IS NULL OR d.status = status) " +
 			"ORDER BY d.updated_at DESC LIMIT 1",
 		nativeQuery = true)
 	Optional<Delivery> findByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") String status);

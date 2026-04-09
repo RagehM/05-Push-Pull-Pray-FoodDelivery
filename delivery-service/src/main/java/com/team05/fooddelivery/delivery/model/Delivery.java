@@ -41,7 +41,7 @@ public class Delivery {
     private Double longitude;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "deliverystatus")
+    @Column(nullable = false)
     private DeliveryStatus status;
 
     @Column(nullable = false)
