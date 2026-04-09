@@ -50,12 +50,12 @@ public class OrderController {
         return orderService.createOrder(order);
     }
     //// Update order
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public Order updateOrder(@PathVariable Long id, @RequestBody Order order) {
         return orderService.updateOrder(id, order);
     }
     //// Delete order
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
     }
