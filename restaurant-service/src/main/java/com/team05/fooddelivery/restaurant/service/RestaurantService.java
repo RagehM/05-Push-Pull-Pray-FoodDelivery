@@ -166,5 +166,37 @@ public class RestaurantService {
 
         return dtos;
     }
+		//s2-f7
+		@Transactional
+		public void rateRestaurant(Long restaurantId,Long orderId,Integer rating){
+			if (rating == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Rating must not be null"
+        );
+      }
+			if (rating < 1 || rating > 5) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5");
+      }
+			Restaurant rest = restaurantRepository.findById(restaurantId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+			//get order details
+			Object[] order = restaurantRepository.findOrderDetailsById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+			//extract data
+			Long orderRestaurantId = ((Number) order[0]).longValue();
+			String orderStatus = (String) order[1];
+			//check order does belong ot this restaurant
+			if (!orderRestaurantId.equals(restaurantId)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order does not belong to this restaurant");
+      }
+			//check that the order was delieverd
+			if (!"DELIVERED".equals(orderStatus)) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is not delivered");
+      }
+			//calcul. rating
+			int newTRating = rest.getTotalRatings() + 1;
+			double newRating = ((rest.getRating() * rest.getTotalRatings()) + rating) / newTRating;
+			//update the rating
+			rest.setRating(newRating);
+			rest.setTotalRatings(newTRating);
+			restaurantRepository.save(rest);
+		}
 
 }

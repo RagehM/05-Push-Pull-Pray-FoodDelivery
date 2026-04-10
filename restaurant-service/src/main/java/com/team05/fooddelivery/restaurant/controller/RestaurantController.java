@@ -113,5 +113,15 @@ public class RestaurantController {
     ) {
         return ResponseEntity.ok(restaurantService.getTopRated(limit));
     }
+    //s2-f7
+		@PostMapping("/{id}/rate")
+		public ResponseEntity<Void> rateRestaurant(
+			@PathVariable Long id,
+			@RequestBody Map<String, Object> body) {
+	  Long orderId = Long.valueOf(body.get("orderId").toString());
+		Integer rating = Integer.valueOf(body.get("rating").toString());
+		restaurantService.rateRestaurant(id, orderId, rating);
+		return ResponseEntity.ok().build();
+}
 
 }
