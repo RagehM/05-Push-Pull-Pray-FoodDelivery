@@ -39,15 +39,15 @@ public class OrderService {
 
     @Transactional
     public Order createOrder(Order order) {
-        boolean userExists = orderRepository.existsByUserId(order.getUserId());
-        if (!userExists) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
-        }
-
-        boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
-        if (!restaurantExists) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
-        }
+//        boolean userExists = orderRepository.existsByUserId(order.getUserId());
+//        if (!userExists) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
+//        }
+//
+//        boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
+//        if (!restaurantExists) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
+//        }
 
         return orderRepository.save(order);
     }

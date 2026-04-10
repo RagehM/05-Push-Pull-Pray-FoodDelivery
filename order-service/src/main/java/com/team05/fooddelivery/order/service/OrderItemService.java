@@ -43,12 +43,12 @@ public class OrderItemService {
     @Transactional
     public OrderItem createOrderItem(OrderItem orderItem) {
         Order order = orderService.getOrderById(orderItem.getOrder().getId());
-        String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
-        if (itemName == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
-        }
+//        String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
+//        if (itemName == null) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
+//        }
         orderItem.setOrder(order);
-        orderItem.setItemName(itemName);
+    //    orderItem.setItemName(itemName);
         return orderItemRepository.save(orderItem);
     }
 
