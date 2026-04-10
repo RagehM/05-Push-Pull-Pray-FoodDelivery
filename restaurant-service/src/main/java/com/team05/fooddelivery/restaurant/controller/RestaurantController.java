@@ -2,6 +2,7 @@ package com.team05.fooddelivery.restaurant.controller;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
+import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
@@ -150,5 +151,11 @@ public class RestaurantController {
     public ResponseEntity<List<RestaurantMenuAlertDTO>> getRestaurantsWithUnavailableItems() {
         return ResponseEntity.ok(restaurantService.getRestaurantsWithUnavailableItems());
     }
+
+    //TESTTTTTTTTTTT
+    @PostMapping("/{restaurantId}/menu-items")
+    public ResponseEntity<MenuItem> createMenuItem(@PathVariable Long restaurantId, @RequestBody MenuItem menuItem) {
+        return ResponseEntity.ok(menuItemService.create(restaurantId, menuItem));
+}
 
 }

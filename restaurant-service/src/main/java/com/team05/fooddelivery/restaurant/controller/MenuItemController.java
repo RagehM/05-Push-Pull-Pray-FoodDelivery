@@ -19,12 +19,12 @@ public class MenuItemController {
         this.menuItemService = menuItemService;
     }
 
-    // The create method handles POST requests to create a new menu item for a
-    // specific restaurant.
-     @PostMapping("/api/restaurants/{restaurantId}/menu-items")
-    public ResponseEntity<MenuItem> create(@PathVariable Long restaurantId, @RequestBody MenuItem menuItem) {
-        return ResponseEntity.ok(menuItemService.create(restaurantId, menuItem));
-    }
+    // // The create method handles POST requests to create a new menu item for a
+    // // specific restaurant.
+    //  @PostMapping("/api/restaurants/{restaurantId}/menu-items")
+    // public ResponseEntity<MenuItem> create(@PathVariable Long restaurantId, @RequestBody MenuItem menuItem) {
+    //     return ResponseEntity.ok(menuItemService.create(restaurantId, menuItem));
+    // }
 
     // The getById method handles GET requests to retrieve a menu item by its ID.
     @GetMapping("/api/menu-items/{id}")
