@@ -35,14 +35,27 @@ public class Order {
     private LocalDateTime orderDate;
     @Column(nullable = true)
     private LocalDateTime deliveredAt;
+    ///////
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+    ///////
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private List<OrderItem> orderItems = new ArrayList<OrderItem>();
 
-    
+    @PrePersist
+    void setDefaults() {
+        if (status == null) status = OrderStatusEnum.PLACED;
+        if (orderDate == null) orderDate = LocalDateTime.now();
+        ////////////////
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        ////////////////
+    }
     
     public Order() {
         status = OrderStatusEnum.PLACED;
+        ////////////////
+        // this.createdAt = LocalDateTime.now();
     }
 
     public Order(Long userId, Long restaurantId, String deliveryAddress, OrderStatusEnum status, Double totalAmount,
@@ -56,6 +69,9 @@ public class Order {
         this.metadata = metadata;
         this.orderDate = orderDate;
         this.deliveredAt = deliveredAt;
+        ////////////////
+        // this.createdAt = LocalDateTime.now();
+        ////////////////
         this.orderItems = orderItems;
     }
 
@@ -127,5 +143,15 @@ public class Order {
     public void setOrderItems(List<OrderItem> orderItems) {
         this.orderItems = orderItems;
     }
+    //////////
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    
 
 }
