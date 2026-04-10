@@ -67,4 +67,8 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 		//s2-f8
 		@Query(value = "SELECT COUNT(*) FROM users WHERE id = :userId AND role = 'ADMIN'", nativeQuery = true)
     int countAdminById(@Param("userId") Long userId);
+		//s2-f9
+		@Query(value = "SELECT DISTINCT r.* FROM restaurants r JOIN menu_items m ON m.restaurant_id = r.id WHERE m.available = false", nativeQuery = true)
+    List<Restaurant> findRestaurantsWithUnavailableItems();
+
 }
