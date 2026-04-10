@@ -5,7 +5,9 @@ import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
+import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
+import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,10 +28,12 @@ import java.util.Optional;
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final DeliveryAddressRepository deliveryAddressRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository) {
         this.userRepository = userRepository;
+        this.deliveryAddressRepository=deliveryAddressRepository;
     }
 
     public List<User> findAll()
@@ -186,5 +190,23 @@ public class UserService {
         result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
         return users;
     }
+    @Transactional
+    public User setDefaultDeliveryAddress(long userId, long addressId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        DeliveryAddress address = deliveryAddressRepository.findById(addressId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
+        if(!user.equals(address.getUser())){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address does not belong to user");
+        }
+        user.getDeliveryAddresses().forEach(addr -> {;
+            if (addr.getId().equals(addressId)) {
+                addr.setDefault(true);
+                deliveryAddressRepository.save(addr);
+            } else {
+                addr.setDefault(false);
+                deliveryAddressRepository.save(addr);
+            }
+        });
 
+        return user;
+    }
 }

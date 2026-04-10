@@ -3,7 +3,9 @@ package com.team05.fooddelivery.user.service;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,11 +49,22 @@ public class DeliveryAddressService {
         {
             deliveryAddress.setCreatedAt(LocalDateTime.now());
         }
+        deliveryAddressRepository.findUserById(deliveryAddress.getUser().getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
         return deliveryAddressRepository.save(deliveryAddress);
     }
 
     public void deleteDeliveryAddress(Long id)
     {
         deliveryAddressRepository.deleteById(id);
+    }
+
+    public DeliveryAddress createDeliveryAddressForUser(DeliveryAddress deliveryAddress, long userId) {
+        if (deliveryAddress.getCreatedAt() == null || deliveryAddress.getCreatedAt().equals("") || deliveryAddress.getCreatedAt().equals("null"))
+        {
+            deliveryAddress.setCreatedAt(LocalDateTime.now());
+        }
+        deliveryAddressRepository.findUserById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
+        deliveryAddress.setUser(deliveryAddressRepository.findUserById(userId).get());
+        return deliveryAddressRepository.save(deliveryAddress);
     }
 }
