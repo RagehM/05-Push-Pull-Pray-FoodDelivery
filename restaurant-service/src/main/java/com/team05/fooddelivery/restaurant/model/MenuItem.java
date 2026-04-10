@@ -42,7 +42,7 @@ public class MenuItem {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne()
     @JoinColumn(name = "restaurant_id")
     @JsonIgnore
     private Restaurant restaurant;
@@ -50,6 +50,7 @@ public class MenuItem {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.available = true ; 
     }
 
     public Long getId() {

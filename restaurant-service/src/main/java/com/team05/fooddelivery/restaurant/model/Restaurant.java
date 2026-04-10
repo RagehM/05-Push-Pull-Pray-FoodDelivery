@@ -60,6 +60,8 @@ public class Restaurant {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.totalRatings = 0 ;
+        this.rating = 0.0 ;
     }
 
     public Long getId() {
