@@ -106,12 +106,19 @@ public class UserController {
         return userService.findUsersByPreferencesAndMinimumOrders(diet, minOrders);
     }
 
-    @PostMapping("{userId}/addresses")
+    @PostMapping("/{userId}/addresses")
     public DeliveryAddress createUserAddresses(@PathVariable long userId, @RequestBody DeliveryAddress deliveryAddress){
         return deliveryAddressService.createDeliveryAddressForUser(deliveryAddress, userId);
     }
-
-    @PutMapping("{userId}/addresses/{addressId}/default")
+    @GetMapping("/{userId}/addresses")
+    public List<DeliveryAddress> getUserAddresses(@PathVariable long userId){
+        return userService.getDeliveryAddressesForUser(userId);
+    }
+    @DeleteMapping("/addresses/{id}")
+    public void deleteUserAddresses(@PathVariable long id){
+        deliveryAddressService.deleteDeliveryAddress(id);
+    }
+    @PutMapping("/{userId}/addresses/{addressId}/default")
     public User setDefaultDeliveryAddress(@PathVariable long userId, @PathVariable long addressId)
     {
         return userService.setDefaultDeliveryAddress(userId, addressId);
