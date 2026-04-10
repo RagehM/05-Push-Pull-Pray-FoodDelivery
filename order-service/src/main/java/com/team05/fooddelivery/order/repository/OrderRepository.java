@@ -30,6 +30,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("endDateTimeExclusive") LocalDateTime endDateTimeExclusive
     );
 
+    // [S3-F5]
+    @Query(value = """
+            SELECT *
+            FROM orders
+            WHERE metadata ->> :key = :value
+            """, nativeQuery = true)
+    List<Order> findByMetadataKeyValue(@Param("key") String key,
+                                       @Param("value") String value);
+
     // [S3-F7]
     @Transactional
     @Modifying

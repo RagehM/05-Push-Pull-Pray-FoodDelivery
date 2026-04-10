@@ -150,4 +150,17 @@ public class OrderService {
 
         return returnObject;
     }
+
+    @Transactional(readOnly = true)
+    public List<Order> searchOrdersByMetadata(String key, String value) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Metadata key must not be empty");
+        }
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Metadata value must not be empty");
+        }
+
+        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+    }
 }
