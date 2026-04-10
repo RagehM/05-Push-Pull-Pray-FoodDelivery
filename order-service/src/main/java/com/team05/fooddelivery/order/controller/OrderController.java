@@ -74,6 +74,11 @@ public class OrderController {
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
     }
+    //// Deliver order
+    @PutMapping("/{id}/deliver")
+    public Order deliverOrder(@PathVariable Long id) {
+        return orderService.deliverOrder(id);
+    }
 
         // [S3-F6] - Order Analytics by Time Period (Report DTO)
     @GetMapping("/analytics")
