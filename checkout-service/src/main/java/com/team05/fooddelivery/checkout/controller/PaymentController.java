@@ -67,17 +67,13 @@ public class PaymentController {
         return ResponseEntity.ok(results);
     }
 
+    // S5-F2: PUT /api/payments/{id}/refund
     @PutMapping("/{id}/refund")
-    public ResponseEntity<Payment> refundPayment(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        Payment refundedPayment = paymentService.refundPayment(id, body.get("reason"));
+    public ResponseEntity<Payment> refundPayment(@PathVariable Long id, @RequestBody String reason) {
+        Payment refundedPayment = paymentService.refundPayment(id, reason);
         return ResponseEntity.ok(refundedPayment);
     }
 
-    @PostMapping("/{paymentId}/offers/{offerId}")
-    public ResponseEntity<Payment> applyOfferToPayment(@PathVariable Long paymentId, @PathVariable Long offerId) {
-        Payment updatedPayment = paymentService.applyOfferToPayment(paymentId, offerId);
-        return ResponseEntity.ok(updatedPayment);
-    }
     // S5-F3: GET /api/payments/user/{userId}/summary
     @GetMapping("/user/{userId}/summary")
     public ResponseEntity<UserPaymentSummaryDTO> getUserPaymentSummary(@PathVariable Long userId) {
@@ -85,6 +81,14 @@ public class PaymentController {
         return ResponseEntity.ok(summary);
     }
 
+    // S5-F5: POST /api/payments/{paymentId}/offers/{offerId}
+    @PostMapping("/{paymentId}/offers/{offerId}")
+    public ResponseEntity<Payment> applyOfferToPayment(@PathVariable Long paymentId, @PathVariable Long offerId) {
+        Payment updatedPayment = paymentService.applyOfferToPayment(paymentId, offerId);
+        return ResponseEntity.ok(updatedPayment);
+    }
+
+    // S5-F6: GET /api/payments/reports/revenue?startDate={d}&endDate={d}
     @GetMapping("/reports/revenue")
     public ResponseEntity<RevenueReportDTO> generateRevenueReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

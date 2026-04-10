@@ -47,4 +47,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                    "GROUP BY p.method",
            nativeQuery = true)
     List<Object[]> findCompletedPaymentSummaryByUserId(@Param("userId") Long userId);
+
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
+    boolean orderExists(@Param("orderId") Long orderId);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE id = :userId", nativeQuery = true)
+    boolean userExists(@Param("userId") Long userId);
 }
