@@ -209,4 +209,9 @@ public class UserService {
 
         return user;
     }
+
+    public List<DeliveryAddress> getDeliveryAddressesForUser(long userId) {
+        User user=userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getDeliveryAddresses();
+    }
 }

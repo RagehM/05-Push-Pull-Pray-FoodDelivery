@@ -55,6 +55,7 @@ public class DeliveryAddressService {
 
     public void deleteDeliveryAddress(Long id)
     {
+        deliveryAddressRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery Address not found"));
         deliveryAddressRepository.deleteById(id);
     }
 

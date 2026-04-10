@@ -2,7 +2,6 @@ package com.team05.fooddelivery.user.repository;
 
 import com.team05.fooddelivery.user.model.User;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

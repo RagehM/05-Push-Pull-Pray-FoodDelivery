@@ -109,6 +109,10 @@ public class UserController {
     public DeliveryAddress createUserAddresses(@PathVariable long userId, @RequestBody DeliveryAddress deliveryAddress){
         return deliveryAddressService.createDeliveryAddressForUser(deliveryAddress, userId);
     }
+    @GetMapping("{userId}/addresses")
+    public List<DeliveryAddress> getUserAddresses(@PathVariable long userId){
+        return userService.getDeliveryAddressesForUser(userId);
+    }
 
     @PutMapping("{userId}/addresses/{addressId}/default")
     public User setDefaultDeliveryAddress(@PathVariable long userId, @PathVariable long addressId)
