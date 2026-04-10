@@ -22,7 +22,7 @@ public class OrderItemService {
     public OrderItem getOrderItemById_Logical(Long orderItemId) {
         return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
-    
+
 
     public OrderItemService(OrderItemRepository orderItemRepository, OrderService orderService) {
         this.orderItemRepository = orderItemRepository;
@@ -103,4 +103,5 @@ public class OrderItemService {
         OrderItem existingOrderItem = getOrderItemById_Logical(id);
         orderItemRepository.delete(existingOrderItem);
     }
+    
 }

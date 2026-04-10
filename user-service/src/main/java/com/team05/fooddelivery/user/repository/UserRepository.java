@@ -2,7 +2,6 @@ package com.team05.fooddelivery.user.repository;
 
 import com.team05.fooddelivery.user.model.User;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -42,12 +41,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
  
     @Query(           
             value = """
-    SELECT * FROM users u WHERE u.preferences ->> ?1 = ?2
+    SELECT * FROM users u WHERE u.preferences ->> :key = :value
 
     """,
             nativeQuery = true
     )
-    List<User> findUserByPreferencesContaining(String key, String value );
+    List<User> findUserByPreferencesContaining(@Param("key") String key,@Param("value") String value );
 
 
     @Query(value = """
@@ -94,7 +93,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = """
        SELECT u.id,u.name, SUM(o.total_amount) as total_spent , COUNT(o) 
        FROM orders o  JOIN users u ON o.user_id = u.id
-       WHERE o.order_date >= :start AND o.order_date <= :end
+       WHERE o.order_date >= :start AND o.order_date <= :end AND o.status = 'DELIVERED'
        GROUP BY u.id, u.name
        order by total_spent desc
        LIMIT :limit
