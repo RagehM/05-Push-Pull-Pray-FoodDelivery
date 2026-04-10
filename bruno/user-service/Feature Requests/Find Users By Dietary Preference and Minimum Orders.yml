@@ -5,10 +5,10 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8081/api/users/preferences/dietary?diet=&minOrders=1
+  url: http://localhost:8081/api/users/preferences/dietary?diet=halal&minOrders=1
   params:
     - name: diet
-      value: ""
+      value: halal
       type: query
     - name: minOrders
       value: "1"
