@@ -79,14 +79,18 @@ public class OrderService {
     //// Create order
     @Transactional
     public Order createOrder(Order order) {
-        // boolean userExists = orderRepository.existsByUserId(order.getUserId());
-        // if (!userExists) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
-        // }
-        // boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
-        // if (!restaurantExists) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
-        // }
+        boolean userExists = orderRepository.existsByUserId(order.getUserId());
+        if (!userExists) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
+        }
+        if(order.getRestaurantId() != null){
+            boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
+            if (!restaurantExists) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
+        }
+        }
+
+
         return orderRepository.save(order);
     }
     //// Update order
@@ -100,6 +104,15 @@ public class OrderService {
 
         if (updatedOrder.getTotalAmount() != null) {
             existingOrder.setTotalAmount(updatedOrder.getTotalAmount());
+        }
+
+        if (updatedOrder.getRestaurantId() != null){
+            boolean restaurantExists = orderRepository.existsByRestaurantId(updatedOrder.getRestaurantId());
+            if (!restaurantExists) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant you're trying to set does not exist");
+            }
+
+            existingOrder.setRestaurantId(updatedOrder.getRestaurantId());
         }
 
         if (updatedOrder.getMetadata() != null) {
