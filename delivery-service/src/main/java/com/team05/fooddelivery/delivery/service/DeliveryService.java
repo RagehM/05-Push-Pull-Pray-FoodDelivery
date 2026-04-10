@@ -34,18 +34,11 @@ public class DeliveryService {
     }
 
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
-        if (!deliveryRepository.orderExists(orderId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        if (delivery == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "delivery body is required");
         }
-        if (delivery.getDriverName() == null || delivery.getDriverName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName is required");
-        }
-        if (delivery.getLatitude() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude is required");
-        }
-        if (delivery.getLongitude() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude is required");
-        }
+        validateOrder(orderId);
+        validateRequiredDeliveryFields(delivery.getDriverName(), delivery.getLatitude(), delivery.getLongitude());
         delivery.setOrderId(orderId);
         if (delivery.getMetadata() == null) {
             delivery.setMetadata(new HashMap<>());
@@ -57,6 +50,14 @@ public class DeliveryService {
     }
 
     public Delivery createDelivery(Delivery delivery) {
+        if (delivery == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "delivery body is required");
+        }
+        if (delivery.getOrderId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "orderId is required");
+        }
+        validateOrder(delivery.getOrderId());
+        validateRequiredDeliveryFields(delivery.getDriverName(), delivery.getLatitude(), delivery.getLongitude());
         if (delivery.getMetadata() == null) {
             delivery.setMetadata(new HashMap<>());
         }
@@ -82,7 +83,7 @@ public class DeliveryService {
 
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
-validateOrder(orderId);
+        validateOrder(orderId);
 
         return deliveryRepository.findLatestByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
@@ -104,18 +105,27 @@ validateOrder(orderId);
     }
 
     public Delivery updateDelivery(Long id, Delivery delivery) {
+        if (delivery == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "delivery body is required");
+        }
         Delivery existingDelivery = getDeliveryById(id);
 
         if (delivery.getOrderId() != null) {
+            validateOrder(delivery.getOrderId());
             existingDelivery.setOrderId(delivery.getOrderId());
         }
         if (delivery.getDriverName() != null) {
+            if (delivery.getDriverName().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName must not be blank");
+            }
             existingDelivery.setDriverName(delivery.getDriverName());
         }
         if (delivery.getLatitude() != null) {
+            validateLatitude(delivery.getLatitude());
             existingDelivery.setLatitude(delivery.getLatitude());
         }
         if (delivery.getLongitude() != null) {
+            validateLongitude(delivery.getLongitude());
             existingDelivery.setLongitude(delivery.getLongitude());
         }
         if (delivery.getStatus() != null) {
@@ -136,9 +146,13 @@ validateOrder(orderId);
     }
 
     public int batchCreate(BatchDeliveryRequestDTO request) {
-        if (!deliveryRepository.orderExists(request.getOrderId())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "request body is required");
         }
+        if (request.getOrderId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "orderId is required");
+        }
+        validateOrder(request.getOrderId());
 
         if (request.getDeliveries() == null || request.getDeliveries().isEmpty()) {
             return 0;
@@ -146,16 +160,14 @@ validateOrder(orderId);
 
         List<Delivery> toSave = new ArrayList<>();
         for (DeliveryItemDTO item : request.getDeliveries()) {
-            if (item.getLatitude() == null || item.getLatitude() < -90 || item.getLatitude() > 90) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Latitude must be between -90 and 90");
+            if (item == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "delivery item is required");
             }
-            if (item.getLongitude() == null || item.getLongitude() < -180 || item.getLongitude() > 180) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Longitude must be between -180 and 180");
-            }
+            validateRequiredDeliveryFields(item.getDriverName(), item.getLatitude(), item.getLongitude());
 
             Delivery delivery = new Delivery();
             delivery.setOrderId(request.getOrderId());
-            delivery.setDriverName(item.getDriverName());
+            delivery.setDriverName(item.getDriverName().trim());
             delivery.setLatitude(item.getLatitude());
             delivery.setLongitude(item.getLongitude());
             delivery.setStatus(item.getStatus() != null ? item.getStatus() : DeliveryStatus.ASSIGNED);
@@ -168,11 +180,41 @@ validateOrder(orderId);
     }
 
     private void validateOrder(Long orderId) {
+        if (orderId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "orderId is required");
+        }
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
     }
 
+    private void validateRequiredDeliveryFields(String driverName, Double latitude, Double longitude) {
+        if (driverName == null || driverName.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName is required");
+        }
+        if (latitude == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude is required");
+        }
+        if (longitude == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude is required");
+        }
+        validateLatitude(latitude);
+        validateLongitude(longitude);
+    }
+
+    private void validateLatitude(Double latitude) {
+        if (latitude < -90 || latitude > 90) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Latitude must be between -90 and 90");
+        }
+    }
+
+    private void validateLongitude(Double longitude) {
+        if (longitude < -180 || longitude > 180) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Longitude must be between -180 and 180");
+        }
+    }
+
+    @Transactional(readOnly = true)
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
