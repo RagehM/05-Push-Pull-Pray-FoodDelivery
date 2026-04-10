@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -78,11 +79,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
 
+    @Query(
+            value = """
+            SELECT u.*
+            FROM users u
+            LEFT JOIN delivery_addresses da ON da.user_id = u.id
+            WHERE u.id = :id
+        """,
+            nativeQuery = true
+    )
+    Optional<User> findByIdWithDeliveryAddresses(@Param("id") Long id);
 
     @Query(value = """
        SELECT u.id,u.name, SUM(o.total_amount) as total_spent , COUNT(o) 
        FROM orders o  JOIN users u ON o.user_id = u.id
-       WHERE o.order_date >= :start AND o.order_date <= :end
+       WHERE o.order_date >= :start AND o.order_date <= :end AND o.status = 'DELIVERED'
        GROUP BY u.id, u.name
        order by total_spent desc
        LIMIT :limit

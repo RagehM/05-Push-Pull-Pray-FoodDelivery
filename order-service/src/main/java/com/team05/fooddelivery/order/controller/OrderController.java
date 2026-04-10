@@ -3,15 +3,20 @@ package com.team05.fooddelivery.order.controller;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
+import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
+import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.OrderItem;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 
 
@@ -25,6 +30,29 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    // [S3-F5]
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Order>> searchOrdersByMetadata(
+            @RequestParam String key,
+            @RequestParam String value) {
+
+        List<Order> orders = orderService.searchOrdersByMetadata(key, value);
+        return ResponseEntity.ok(orders);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Order>> searchOrders(
+            @RequestParam(required = false) OrderStatusEnum status,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ResponseEntity.ok(orderService.searchOrders(status, startDate, endDate));
+    }
+    @PutMapping("{id}/cancel")
+    public ResponseEntity<Void> cancelOrder(@PathVariable String id) {
+        orderService.cancelOrder(Long.parseLong(id));
+        return ResponseEntity.ok().build();
+    }
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")
@@ -42,14 +70,19 @@ public class OrderController {
         return orderService.createOrder(order);
     }
     //// Update order
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public Order updateOrder(@PathVariable Long id, @RequestBody Order order) {
         return orderService.updateOrder(id, order);
     }
     //// Delete order
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
+    }
+    //// Deliver order
+    @PutMapping("/{id}/deliver")
+    public Order deliverOrder(@PathVariable Long id) {
+        return orderService.deliverOrder(id);
     }
 
     @GetMapping("/{orderId}/details")
@@ -70,5 +103,15 @@ public class OrderController {
     @PostMapping("/{orderId}/items")
     public Order addItemsToOrder(@PathVariable Long orderId, @RequestBody java.util.List<OrderItem> orderItems) {
         return orderService.addItemsToOrder(orderId, orderItems);
+    }
+    ////
+    @PostMapping("/estimate")
+    public OrderCostEstimateDTO estimateOrder(@RequestBody OrderEstimateRequest request) {
+        return orderService.estimateOrderCost(request);
+    }
+    //// Confirm order and Assign Resturant
+    @PutMapping("/{orderId}/confirm")
+    public Order confirmOrder(@PathVariable Long orderId, @RequestParam Long restaurantId) {
+        return orderService.confirmOrderAndAssignRestaurant(orderId, restaurantId);
     }
 }

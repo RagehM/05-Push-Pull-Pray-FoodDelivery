@@ -32,8 +32,8 @@ public class PaymentOfferController {
         return paymentOfferService.getPaymentOffers();
     }
 
-    @GetMapping("/{paymentOfferId}/{offerId}")
-    public ResponseEntity<PaymentOffer> getPaymentOfferById(@PathVariable Long paymentOfferId,  @PathVariable Long offerId) {
+    @GetMapping("/{paymentOfferId}")
+    public ResponseEntity<PaymentOffer> getPaymentOfferById(@PathVariable Long paymentOfferId) {
         return ResponseEntity.ok(paymentOfferService.getPaymentOfferById(paymentOfferId));
     }
 

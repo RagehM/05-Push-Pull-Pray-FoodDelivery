@@ -96,6 +96,43 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         """)
         @Transactional(readOnly = true)
         Order getOrderWithOrderItemsById(@Param("orderId") Long orderId);
+        //// Check for create Payment with Pending status
+        @Query(value = """
+                        INSERT INTO payments (order_id, user_id, amount, method, status, created_at)
+                        VALUES (:orderId, :userId, :total, 'CASH_ON_DELIVERY', 'PENDING', NOW())
+                        """,
+                nativeQuery = true)
+        @Modifying
+        @Transactional
+        int createPaymentWithPendingStatus(@Param("orderId") Long orderId,
+                                           @Param("userId") Long userId,
+                                           @Param("total") Double total);
+
+
+        //// averaging Restaurant's menu price
+        @Query(value = """
+                        SELECT AVG(menu.price) FROM menu_items menu 
+                        WHERE menu.restaurant_id = :restaurantId
+                        """,
+                nativeQuery = true)
+        Double findAverageMenuItemPriceByRestaurantId(@Param("restaurantId") Long restaurantId);
+        //// determine surgemultiplayer
+        @Query(value = """
+                        SELECT COUNT(*) FROM orders ord 
+                        WHERE ord.restaurant_id = :restaurantId
+                            AND ord.status IN ('PLACED', 'CONFIRMED', 'PREPARING')
+                        """,
+                nativeQuery = true)
+        Long countActiveOrdersByRestaurantId(@Param("restaurantId") Long restaurantId);
+    //// Check if Restaurant is open
+    @Query(value = """
+            SELECT COUNT(*) > 0
+            FROM restaurants r
+            WHERE r.id = :restaurantId
+              AND r.status = 'OPEN'
+            """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        boolean isRestaurantOpen(@Param("restaurantId") Long restaurantId);
 
         @Query("""
            SELECT DISTINCT o

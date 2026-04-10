@@ -2,8 +2,11 @@ package com.team05.fooddelivery.user.controller;
 
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
+import com.team05.fooddelivery.user.dto.UserProfileDTO;
+import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
+import com.team05.fooddelivery.user.service.DeliveryAddressService;
 import com.team05.fooddelivery.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -20,11 +23,13 @@ import java.util.Map;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
+    private final DeliveryAddressService deliveryAddressService;
 
     @Autowired
-    public UserController(UserService userService)
+    public UserController(UserService userService,DeliveryAddressService deliveryAddressService)
     {
         this.userService = userService;
+        this.deliveryAddressService=deliveryAddressService;
     }
 
     @GetMapping
@@ -101,4 +106,26 @@ public class UserController {
         return userService.findUsersByPreferencesAndMinimumOrders(diet, minOrders);
     }
 
+    @PostMapping("/{userId}/addresses")
+    public DeliveryAddress createUserAddresses(@PathVariable long userId, @RequestBody DeliveryAddress deliveryAddress){
+        return deliveryAddressService.createDeliveryAddressForUser(deliveryAddress, userId);
+    }
+    @GetMapping("/{userId}/addresses")
+    public List<DeliveryAddress> getUserAddresses(@PathVariable long userId){
+        return userService.getDeliveryAddressesForUser(userId);
+    }
+    @DeleteMapping("/addresses/{id}")
+    public void deleteUserAddresses(@PathVariable long id){
+        deliveryAddressService.deleteDeliveryAddress(id);
+    }
+    @PutMapping("/{userId}/addresses/{addressId}/default")
+    public User setDefaultDeliveryAddress(@PathVariable long userId, @PathVariable long addressId)
+    {
+        return userService.setDefaultDeliveryAddress(userId, addressId);
+    }
+
+    @GetMapping("/{id}/profile")
+    public UserProfileDTO getUserProfile(@PathVariable long id) {
+        return userService.getUserProfile(id);
+    }
 }
