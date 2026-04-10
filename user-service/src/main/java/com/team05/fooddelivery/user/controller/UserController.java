@@ -2,6 +2,7 @@ package com.team05.fooddelivery.user.controller;
 
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
+import com.team05.fooddelivery.user.dto.UserProfileDTO;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
@@ -116,4 +117,8 @@ public class UserController {
         return userService.setDefaultDeliveryAddress(userId, addressId);
     }
 
+    @GetMapping("/{id}/profile")
+    public UserProfileDTO getUserProfile(@PathVariable long id) {
+        return userService.getUserProfile(id);
+    }
 }
