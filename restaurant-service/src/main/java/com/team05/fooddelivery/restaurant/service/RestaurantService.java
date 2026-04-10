@@ -5,12 +5,13 @@ import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
-
+import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
+import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.team05.fooddelivery.restaurant.model.MenuItem;
 import java.util.ArrayList;
 import java.util.Map;
 import java.time.LocalDateTime;
@@ -24,12 +25,15 @@ public class RestaurantService {
     // It contains business logic related to restaurant operations and interacts
     // with the RestaurantRepository to perform database operations.
     private final RestaurantRepository restaurantRepository;
+		private final MenuItemRepository menuItemRepository;
 
     // Constructor injection of the RestaurantRepository dependency
     // allows the service to interact with the database through the repository
     // layer.
-    public RestaurantService(RestaurantRepository restaurantRepository) {
+    public RestaurantService(RestaurantRepository restaurantRepository, MenuItemRepository menuItemRepository) {
         this.restaurantRepository = restaurantRepository;
+				this.menuItemRepository = menuItemRepository;
+
     }
 
     // The create method takes a Restaurant object as input and saves it to the
@@ -198,5 +202,20 @@ public class RestaurantService {
 			rest.setTotalRatings(newTRating);
 			restaurantRepository.save(rest);
 		}
-
+		//s2-f9
+		public List<RestaurantMenuAlertDTO> getRestaurantsWithUnavailableItems() {
+			List<Restaurant> restaurants = restaurantRepository.findRestaurantsWithUnavailableItems();
+			List<RestaurantMenuAlertDTO> dtos = new ArrayList<>();
+			for (Restaurant r : restaurants) {
+					List<MenuItem> unavailableItems = menuItemRepository.findByRestaurantIdAndAvailable(r.getId(), false);
+					dtos.add(new RestaurantMenuAlertDTO(
+							r.getId(),
+							r.getName(),
+							r.getStatus().toString(),
+							unavailableItems,
+							unavailableItems.size()
+					));
+			}
+			return dtos;
+	}
 }

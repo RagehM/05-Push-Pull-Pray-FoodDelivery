@@ -10,6 +10,7 @@ import com.team05.fooddelivery.restaurant.service.MenuItemService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -133,6 +134,12 @@ public class RestaurantController {
         @RequestBody Map<String, Object> body) {
     Long toggledBy = Long.valueOf(body.get("toggledBy").toString());
     return ResponseEntity.ok(menuItemService.toggleAvailability(restaurantId, menuItemId, toggledBy));
+
   }
+	//s2-f9
+	@GetMapping("/menu-items/unavailable")
+	public ResponseEntity<List<RestaurantMenuAlertDTO>> getRestaurantsWithUnavailableItems() {
+		return ResponseEntity.ok(restaurantService.getRestaurantsWithUnavailableItems());
+	}
 
 }
