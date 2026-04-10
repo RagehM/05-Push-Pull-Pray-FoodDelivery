@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/restaurants")
 public class MenuItemController {
 
     private final MenuItemService menuItemService;
@@ -22,31 +21,31 @@ public class MenuItemController {
 
     // The create method handles POST requests to create a new menu item for a
     // specific restaurant.
-    @PostMapping("/{restaurantId}/menu-items")
+     @PostMapping("/api/restaurants/{restaurantId}/menu-items")
     public ResponseEntity<MenuItem> create(@PathVariable Long restaurantId, @RequestBody MenuItem menuItem) {
         return ResponseEntity.ok(menuItemService.create(restaurantId, menuItem));
     }
 
     // The getById method handles GET requests to retrieve a menu item by its ID.
-    @GetMapping("/menu-items/{id}")
+    @GetMapping("/api/menu-items/{id}")
     public ResponseEntity<MenuItem> getById(@PathVariable Long id) {
         return ResponseEntity.ok(menuItemService.getById(id));
     }
 
     // The getAll method handles GET requests to retrieve all menu items.
-    @GetMapping("/menu-items")
+    @GetMapping("/api/menu-items")
     public ResponseEntity<List<MenuItem>> getAll() {
         return ResponseEntity.ok(menuItemService.getAll());
     }
 
     // The update method handles PUT requests to update an existing menu item.
-    @PutMapping("/menu-items/{id}")
+    @PutMapping("/api/menu-items/{id}")
     public ResponseEntity<MenuItem> update(@PathVariable Long id, @RequestBody MenuItem menuItem) {
         return ResponseEntity.ok(menuItemService.update(id, menuItem));
     }
 
     // The delete method handles DELETE requests to remove a menu item by its ID.
-    @DeleteMapping("/menu-items/{id}")
+    @DeleteMapping("/api/menu-items/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         menuItemService.delete(id);
         return ResponseEntity.noContent().build();
