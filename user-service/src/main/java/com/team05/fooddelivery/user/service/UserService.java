@@ -1,26 +1,39 @@
 package com.team05.fooddelivery.user.service;
 
-import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
+import com.team05.fooddelivery.user.dto.*;
+import com.team05.fooddelivery.user.dto.TopCustomerDTO;
+import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
+import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
+import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final DeliveryAddressRepository deliveryAddressRepository;
+
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository) {
         this.userRepository = userRepository;
+        this.deliveryAddressRepository=deliveryAddressRepository;
     }
 
     public List<User> findAll()
@@ -38,17 +51,16 @@ public class UserService {
         Long id=user.getId();
         String email = user.getEmail();
         String phone = user.getPhone();
-
-         if(email!=null && userRepository.existsByEmail(email)){
+        if(email!=null && userRepository.existsByEmail(email)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
-         if(phone!=null && userRepository.existsByPhone(phone)){
+        if(phone!=null && userRepository.existsByPhone(phone)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
         }
+
         if(id!=null && userRepository.existsById(id)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
         }
-
         if(user.getCreatedAt() == null || user.getCreatedAt().equals("") || user.getCreatedAt().equals("null"))
         {
             user.setCreatedAt(LocalDateTime.now());
@@ -82,6 +94,7 @@ public class UserService {
         if(email!=null && email.isEmpty())email = null;
         if(role!=null && role.isEmpty())role = null;
 
+
         return userRepository.searchUsers(name, email, role);
     }
 
@@ -105,6 +118,25 @@ public class UserService {
         user.setStatus(UserStatus.DEACTIVATED);
         userRepository.save(user);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
+    }
+
+
+    public List<TopCustomerDTO> topCustomersBySpending(LocalDate startDate, LocalDate endDate, Integer limit)
+    {
+        if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
+        }
+        List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
+        List<TopCustomerDTO> topCustomerDTOs = new ArrayList<TopCustomerDTO>();
+        result.forEach(object -> {
+            Long userID = (Long) object[0];
+            String userName = (String) object[1];
+            Double totalSpent = (Double) object[2];
+            Integer orderCount = Math.toIntExact((Long) object[3]);
+            topCustomerDTOs.add(new TopCustomerDTO(userID,userName, totalSpent, orderCount ));
+        });
+        return topCustomerDTOs;
     }
 
     public List<User> filterUsersByPreferences(String key, String value)
@@ -145,4 +177,63 @@ public class UserService {
         );
     }
 
+
+    public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders)
+    {
+        if(diet == null || diet.isEmpty() || minimumOrders == null || minimumOrders < 0 || diet.equalsIgnoreCase("null"))
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet or minimum orders cannot be null or empty");
+        }
+        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
+        List<User> users = new ArrayList<>();
+
+        result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
+        return users;
+    }
+    @Transactional
+    public User setDefaultDeliveryAddress(long userId, long addressId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        DeliveryAddress address = deliveryAddressRepository.findById(addressId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
+        if(!user.equals(address.getUser())){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address does not belong to user");
+        }
+        user.getDeliveryAddresses().forEach(addr -> {;
+            if (addr.getId().equals(addressId)) {
+                addr.setDefault(true);
+                deliveryAddressRepository.save(addr);
+            } else {
+                addr.setDefault(false);
+                deliveryAddressRepository.save(addr);
+            }
+        });
+
+        return user;
+    }
+    public UserProfileDTO getUserProfile(Long id) {
+        User user = userRepository.findByIdWithDeliveryAddresses(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found with id: " + id));
+
+        List<DeliveryAddressDTO> addressDtos = user.getDeliveryAddresses()
+                .stream()
+                .map(addr -> new DeliveryAddressDTO(
+                        addr.getId(),
+                        addr.getLabel(),
+                        addr.getStreetAddress(),
+                        addr.getCity(),
+                        addr.getLatitude(),
+                        addr.getLongitude(),
+                        addr.getDefault(),
+                        addr.getMetadata(),
+                        addr.getCreatedAt())).collect(Collectors.toList());
+
+        return new UserProfileDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getPreferences(),
+                addressDtos,
+                addressDtos.size());
+    }
 }

@@ -1,13 +1,18 @@
 package com.team05.fooddelivery.user.repository;
 
 import com.team05.fooddelivery.user.model.User;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -74,4 +79,38 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
+
+    @Query(
+            value = """
+            SELECT u.*
+            FROM users u
+            LEFT JOIN delivery_addresses da ON da.user_id = u.id
+            WHERE u.id = :id
+        """,
+            nativeQuery = true
+    )
+    Optional<User> findByIdWithDeliveryAddresses(@Param("id") Long id);
+
+    @Query(value = """
+       SELECT u.id,u.name, SUM(o.total_amount) as total_spent , COUNT(o) 
+       FROM orders o  JOIN users u ON o.user_id = u.id
+       WHERE o.order_date >= :start AND o.order_date <= :end
+       GROUP BY u.id, u.name
+       order by total_spent desc
+       LIMIT :limit
+""",
+            nativeQuery = true)
+    List<Object[]> findUsersWithHighestSpent(@Param("limit") Integer limit,
+                                         @Param("start") LocalDate start,
+                                         @Param("end") LocalDate end);
+
+
+    @Query(value = """
+    SELECT u.id FROM orders o  JOIN users u ON o.user_id = u.id
+    WHERE  u.preferences ->> 'dietaryRestrictions' = ?1 AND o.status ILIKE 'DELIVERED'
+    group by u.id
+    HAVING count(o) >= :minimumOrders
+
+""", nativeQuery = true)
+    List<Long> findUsersByDietaryPreferenceAndMinimumOrders(String dietaryRestrictions, @Param("minimumOrders") int minimumOrders);
 }
