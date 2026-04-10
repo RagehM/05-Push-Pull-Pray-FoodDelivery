@@ -29,7 +29,6 @@ public class PaymentOfferService {
         PaymentOffer paymentOffer = new PaymentOffer();
 
 
-        // This is required by the grader and i have sent a message to ask about why
         Payment payment = null;
         if (dto.paymentId() != null) {
             payment = paymentRepository.findById(dto.paymentId()).orElse(null);

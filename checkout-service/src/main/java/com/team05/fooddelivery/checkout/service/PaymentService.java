@@ -36,6 +36,12 @@ public class PaymentService {
 
     // Payment CRUD
     public Payment createPayment(Payment payment) {
+        if(paymentRepository.userExists(payment.getUserId()) == false) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        if(paymentRepository.orderExists(payment.getOrderId()) == false) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
         return paymentRepository.save(payment);
     }
 
