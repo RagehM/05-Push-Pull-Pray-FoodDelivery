@@ -22,7 +22,7 @@ public class OrderItemService {
     public OrderItem getOrderItemById_Logical(Long orderItemId) {
         return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
-    
+
 
     public OrderItemService(OrderItemRepository orderItemRepository, OrderService orderService) {
         this.orderItemRepository = orderItemRepository;
@@ -50,12 +50,12 @@ public class OrderItemService {
     @Transactional
     public OrderItem createOrderItem(Long orderId, OrderItem orderItem) {
         Order order = orderService.getOrderById(orderId);
-        // String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
-        // if (itemName == null) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
-        // }
+        String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
+        if (itemName == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
+        }
         orderItem.setOrder(order);
-        // orderItem.setItemName(itemName);
+        orderItem.setItemName(itemName);
         return orderItemRepository.save(orderItem);
     }
 
@@ -103,4 +103,5 @@ public class OrderItemService {
         OrderItem existingOrderItem = getOrderItemById_Logical(id);
         orderItemRepository.delete(existingOrderItem);
     }
+    
 }

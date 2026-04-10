@@ -1,15 +1,22 @@
 package com.team05.fooddelivery.order.service;
 
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
-import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
+import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
+import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
+import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -77,14 +84,18 @@ public class OrderService {
     //// Create order
     @Transactional
     public Order createOrder(Order order) {
-        // boolean userExists = orderRepository.existsByUserId(order.getUserId());
-        // if (!userExists) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
-        // }
-        // boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
-        // if (!restaurantExists) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
-        // }
+        boolean userExists = orderRepository.existsByUserId(order.getUserId());
+        if (!userExists) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
+        }
+        if(order.getRestaurantId() != null){
+            boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
+            if (!restaurantExists) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
+        }
+        }
+
+
         return orderRepository.save(order);
     }
     //// Update order
@@ -98,6 +109,15 @@ public class OrderService {
 
         if (updatedOrder.getTotalAmount() != null) {
             existingOrder.setTotalAmount(updatedOrder.getTotalAmount());
+        }
+
+        if (updatedOrder.getRestaurantId() != null){
+            boolean restaurantExists = orderRepository.existsByRestaurantId(updatedOrder.getRestaurantId());
+            if (!restaurantExists) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant you're trying to set does not exist");
+            }
+
+            existingOrder.setRestaurantId(updatedOrder.getRestaurantId());
         }
 
         if (updatedOrder.getMetadata() != null) {
@@ -120,12 +140,58 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
     }
+    //// Confirm Order and Assign Restaurant (Transactional)
+    @Transactional
+    public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
+        Order order = getOrderById(orderId);
+        if (order.getStatus() != OrderStatusEnum.PLACED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "only a newly placed order can be confirmed"
+            );
+        }
+        boolean restaurantExists = orderRepository.existsByRestaurantId(restaurantId);
+        if (!restaurantExists) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        boolean restaurantOpen = orderRepository.isRestaurantOpen(restaurantId);
+        if (!restaurantOpen) {
+            throw new ResponseStatusException( HttpStatus.BAD_REQUEST,  "Restaurant is not open"
+            );
+        }
+        order.setRestaurantId(restaurantId);
+        order.setStatus(OrderStatusEnum.CONFIRMED);
+
+        return orderRepository.save(order);
+
+    }
+    @Transactional
+    public Order deliverOrder(Long id) {
+        Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
+
+        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
+        foundOrder.setDeliveredAt(LocalDateTime.now());
+
+        if (foundOrder.getTotalAmount() == null) {
+            List<OrderItem> orderItems = foundOrder.getOrderItems();
+            double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
+            foundOrder.setTotalAmount(total);
+        }
+        // Create payment record with status PENDING. Save order. Return the order after the update.
+        orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
+        return orderRepository.save(foundOrder);
+
+
+    }
 
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
-    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {    
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
         return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
     }
-    
+
 
     @Transactional
     // [S3-F8] Add items to existing order
@@ -149,5 +215,96 @@ public class OrderService {
         Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
 
         return returnObject;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> searchOrdersByMetadata(String key, String value) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Metadata key must not be empty");
+        }
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Metadata value must not be empty");
+        }
+
+        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+    }
+    ////Get Order Cost Estimate Service
+    public OrderCostEstimateDTO estimateOrderCost(OrderEstimateRequest request) {
+        if(request == null || request.restaurantId() == null || request.itemCount() == null || request.deliveryDistance() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order estimate request");
+        }
+        if (request.itemCount() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemCount must be greater than 0");
+        }
+        if (request.deliveryDistance() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "deliveryDistance must be > 0");
+        }
+        boolean restaurantExists = orderRepository.existsByRestaurantId(request.restaurantId());
+        if (!restaurantExists) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        Double avgMenuPrice = orderRepository.findAverageMenuItemPriceByRestaurantId(request.restaurantId());
+        if (avgMenuPrice == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant has no menu items right now");
+        }
+        double foodCost = avgMenuPrice * request.itemCount();
+        double deliveryFee = 10.0 * request.deliveryDistance();
+        double serviceFee = foodCost * 0.05;
+        long activeOrders = orderRepository.countActiveOrdersByRestaurantId(request.restaurantId());
+        double surgeMultiplier = activeOrders > 10 ? (activeOrders > 20 ? 1.5: 1.2) : 1.0;
+        double total = (foodCost+deliveryFee + serviceFee) * surgeMultiplier;
+        return new OrderCostEstimateDTO(
+                foodCost,
+                deliveryFee,
+                serviceFee,
+                total,
+                surgeMultiplier
+        );
+
+    }
+
+
+    // [S3-F9]
+    @Transactional(readOnly = true)
+    public OrderDetailsDTO getOrderDetails(Long orderId) {
+        Order order = orderRepository.findByIdWithItems(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        List<OrderItem> orderItems = order.getOrderItems() != null
+                ? new ArrayList<>(order.getOrderItems())
+                : new ArrayList<>();
+
+        orderItems.sort(Comparator.comparing(OrderItem::getLineNumber));
+
+        List<OrderItemDetailsDTO> items = orderItems.stream()
+                .map(item -> new OrderItemDetailsDTO(
+                        item.getId(),
+                        item.getLineNumber(),
+                        item.getItemName(),
+                        item.getQuantity(),
+                        item.getUnitPrice(),
+                        item.getStatus(),
+                        item.getMetadata()
+                ))
+                .toList();
+
+        int totalItems = items.size();
+
+        int preparedItems = (int) orderItems.stream()
+                .filter(item -> item.getStatus() == OrderItemStatusEnum.PREPARED)
+                .count();
+
+        return new OrderDetailsDTO(
+                order.getId(),
+                order.getUserId(),
+                order.getRestaurantId(),
+                order.getStatus(),
+                order.getTotalAmount(),
+                order.getMetadata(),
+                items,
+                totalItems,
+                preparedItems
+        );
     }
 }

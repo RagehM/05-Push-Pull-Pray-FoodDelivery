@@ -1,7 +1,6 @@
 package com.team05.fooddelivery.order.repository;
 
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +8,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +32,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("endDateTimeExclusive") LocalDateTime endDateTimeExclusive
     );
 
+    // [S3-F5]
+    @Query(value = """
+            SELECT *
+            FROM orders
+            WHERE metadata ->> :key = :value
+            """, nativeQuery = true)
+    List<Order> findByMetadataKeyValue(@Param("key") String key,
+                                       @Param("value") String value);
+
     // [S3-F7]
     @Transactional
     @Modifying
@@ -40,13 +51,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             nativeQuery = true
     )
     void cancelDeliveryByOrderId(@Param("orderId") Long orderId);
-  
+
     // [CRUD]
     //// Check for existence of user
     @Query(value =  """
                     SELECT COUNT(*) > 0 FROM users u 
                     WHERE u.id = :userId
-                    """, 
+                    """,
             nativeQuery = true)
     @Transactional(readOnly = true)
     boolean existsByUserId(@Param("userId") Long userId);
@@ -54,7 +65,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query(value =  """
                     SELECT COUNT(*) > 0 FROM restaurants r 
                     WHERE r.id = :restaurantId
-                    """, 
+                    """,
             nativeQuery = true)
     @Transactional(readOnly = true)
     boolean existsByRestaurantId(@Param("restaurantId") Long restaurantId);
@@ -78,7 +89,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
 
-
         @Query("""
         SELECT o FROM Order o
         LEFT JOIN FETCH o.orderItems
@@ -86,4 +96,50 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         """)
         @Transactional(readOnly = true)
         Order getOrderWithOrderItemsById(@Param("orderId") Long orderId);
+        //// Check for create Payment with Pending status
+        @Query(value = """
+                        INSERT INTO payments (order_id, user_id, amount, method, status, created_at)
+                        VALUES (:orderId, :userId, :total, 'CASH_ON_DELIVERY', 'PENDING', NOW())
+                        """,
+                nativeQuery = true)
+        @Modifying
+        @Transactional
+        int createPaymentWithPendingStatus(@Param("orderId") Long orderId,
+                                           @Param("userId") Long userId,
+                                           @Param("total") Double total);
+
+
+        //// averaging Restaurant's menu price
+        @Query(value = """
+                        SELECT AVG(menu.price) FROM menu_items menu 
+                        WHERE menu.restaurant_id = :restaurantId
+                        """,
+                nativeQuery = true)
+        Double findAverageMenuItemPriceByRestaurantId(@Param("restaurantId") Long restaurantId);
+        //// determine surgemultiplayer
+        @Query(value = """
+                        SELECT COUNT(*) FROM orders ord 
+                        WHERE ord.restaurant_id = :restaurantId
+                            AND ord.status IN ('PLACED', 'CONFIRMED', 'PREPARING')
+                        """,
+                nativeQuery = true)
+        Long countActiveOrdersByRestaurantId(@Param("restaurantId") Long restaurantId);
+    //// Check if Restaurant is open
+    @Query(value = """
+            SELECT COUNT(*) > 0
+            FROM restaurants r
+            WHERE r.id = :restaurantId
+              AND r.status = 'OPEN'
+            """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        boolean isRestaurantOpen(@Param("restaurantId") Long restaurantId);
+
+        @Query("""
+           SELECT DISTINCT o
+           FROM Order o
+           LEFT JOIN FETCH o.orderItems
+           WHERE o.id = :orderId
+           """)
+        Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
+
 }

@@ -1,12 +1,17 @@
 package com.team05.fooddelivery.order.controller;
 
+import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
+import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
+import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.OrderItem;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import com.team05.fooddelivery.order.model.Order;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -25,6 +30,15 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    // [S3-F5]
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Order>> searchOrdersByMetadata(
+            @RequestParam String key,
+            @RequestParam String value) {
+
+        List<Order> orders = orderService.searchOrdersByMetadata(key, value);
+        return ResponseEntity.ok(orders);
+    }
 
     @GetMapping("/search")
     public ResponseEntity<List<Order>> searchOrders(
@@ -65,6 +79,16 @@ public class OrderController {
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
     }
+    //// Deliver order
+    @PutMapping("/{id}/deliver")
+    public Order deliverOrder(@PathVariable Long id) {
+        return orderService.deliverOrder(id);
+    }
+
+    @GetMapping("/{orderId}/details")
+    public ResponseEntity<OrderDetailsDTO> getOrderDetails(@PathVariable Long orderId) {
+        return ResponseEntity.ok(orderService.getOrderDetails(orderId));
+    }
 
         // [S3-F6] - Order Analytics by Time Period (Report DTO)
     @GetMapping("/analytics")
@@ -79,5 +103,15 @@ public class OrderController {
     @PostMapping("/{orderId}/items")
     public Order addItemsToOrder(@PathVariable Long orderId, @RequestBody java.util.List<OrderItem> orderItems) {
         return orderService.addItemsToOrder(orderId, orderItems);
+    }
+    ////
+    @PostMapping("/estimate")
+    public OrderCostEstimateDTO estimateOrder(@RequestBody OrderEstimateRequest request) {
+        return orderService.estimateOrderCost(request);
+    }
+    //// Confirm order and Assign Resturant
+    @PutMapping("/{orderId}/confirm")
+    public Order confirmOrder(@PathVariable Long orderId, @RequestParam Long restaurantId) {
+        return orderService.confirmOrderAndAssignRestaurant(orderId, restaurantId);
     }
 }

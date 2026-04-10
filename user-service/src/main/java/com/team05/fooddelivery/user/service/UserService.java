@@ -1,32 +1,39 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
-import com.team05.fooddelivery.user.dto.TopCustomerDTO;
-import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
+import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
+import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
+import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final DeliveryAddressRepository deliveryAddressRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository) {
         this.userRepository = userRepository;
+        this.deliveryAddressRepository=deliveryAddressRepository;
     }
 
     public List<User> findAll()
@@ -42,6 +49,15 @@ public class UserService {
     public User createUser(User user)
     {
         Long id=user.getId();
+        String email = user.getEmail();
+        String phone = user.getPhone();
+        if(email!=null && userRepository.existsByEmail(email)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+        if(phone!=null && userRepository.existsByPhone(phone)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
+
         if(id!=null && userRepository.existsById(id)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
         }
@@ -56,6 +72,12 @@ public class UserService {
     {
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
+        if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+        if(user.getPhone()!=null && userRepository.existsByPhone(user.getPhone())){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
         updatedUser.setEmail(user.getEmail() == null ? updatedUser.getEmail() : user.getEmail());
         updatedUser.setPassword(user.getPassword() == null ? updatedUser.getPassword() : user.getPassword());
         updatedUser.setPhone(user.getPhone() == null ? updatedUser.getPhone() : user.getPhone());
@@ -65,11 +87,10 @@ public class UserService {
         return userRepository.save(updatedUser);
     }
 
-    public User deleteUser(Long id)
+    public void deleteUser(Long id)
     {
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
-        return deletedUser;
     }
 
     public List<User> searchUsers(String name, String email, String role)
@@ -77,10 +98,6 @@ public class UserService {
         if(name!=null && name.isEmpty())name = null;
         if(email!=null && email.isEmpty())email = null;
         if(role!=null && role.isEmpty())role = null;
-
-        if((name==null || name.isEmpty()) && (email==null || email.isEmpty()) && (role==null || role.isEmpty()))
-             throw new RuntimeException("At least one search parameter must be provided");
-
 
 
         return userRepository.searchUsers(name, email, role);
@@ -129,12 +146,15 @@ public class UserService {
 
     public List<User> filterUsersByPreferences(String key, String value)
     {
-        if(key == null || key.isEmpty() || value == null || value.isEmpty())
+        if(key == null || key.isEmpty() || value == null || value.isEmpty()
+                || key.equalsIgnoreCase("null") || value.equalsIgnoreCase("null")
+                || value.equalsIgnoreCase("") || key.equalsIgnoreCase(""))
         {
-            throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Key/Value cannot be empty");
         }
         return userRepository.findUserByPreferencesContaining(key,value);
     }
+
     public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object[]> orders = userRepository.findTotalOrders(userId);
@@ -165,4 +185,72 @@ public class UserService {
         );
     }
 
+
+    public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders)
+    {
+        if(diet == null || diet.isEmpty())
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet cannot be null or empty");
+        }
+        if(minimumOrders == null || minimumOrders < 0)
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Minimum orders cannot be null or less than 0");
+        }
+        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
+        List<User> users = new ArrayList<>();
+
+        result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
+        return users;
+    }
+    @Transactional
+    public User setDefaultDeliveryAddress(long userId, long addressId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        DeliveryAddress address = deliveryAddressRepository.findById(addressId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
+        if(!user.equals(address.getUser())){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address does not belong to user");
+        }
+        user.getDeliveryAddresses().forEach(addr -> {;
+            if (addr.getId().equals(addressId)) {
+                addr.setDefault(true);
+                deliveryAddressRepository.save(addr);
+            } else {
+                addr.setDefault(false);
+                deliveryAddressRepository.save(addr);
+            }
+        });
+
+        return user;
+    }
+
+    public List<DeliveryAddress> getDeliveryAddressesForUser(long userId) {
+        User user=userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getDeliveryAddresses();
+    }
+    public UserProfileDTO getUserProfile(Long id) {
+        User user = userRepository.findByIdWithDeliveryAddresses(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found with id: " + id));
+
+        List<DeliveryAddressDTO> addressDtos = user.getDeliveryAddresses()
+                .stream()
+                .map(addr -> new DeliveryAddressDTO(
+                        addr.getId(),
+                        addr.getLabel(),
+                        addr.getStreetAddress(),
+                        addr.getCity(),
+                        addr.getLatitude(),
+                        addr.getLongitude(),
+                        addr.getDefault(),
+                        addr.getMetadata(),
+                        addr.getCreatedAt())).collect(Collectors.toList());
+
+        return new UserProfileDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getPreferences(),
+                addressDtos,
+                addressDtos.size());
+    }
 }

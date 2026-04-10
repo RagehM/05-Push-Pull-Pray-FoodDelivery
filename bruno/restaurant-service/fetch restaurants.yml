@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8082/api/restaurants
+  url: http://localhost:8084/api/deliveries
   auth: inherit
 
 settings:
