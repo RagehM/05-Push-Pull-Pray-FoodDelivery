@@ -174,9 +174,13 @@ public class UserService {
 
     public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders)
     {
-        if(diet == null || diet.isEmpty() || minimumOrders == null || minimumOrders < 0 || diet.equalsIgnoreCase("null"))
+        if(diet == null || diet.isEmpty())
         {
-            throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet or minimum orders cannot be null or empty");
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet cannot be null or empty");
+        }
+        if(minimumOrders == null || minimumOrders < 0)
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Minimum orders cannot be null or less than 0");
         }
         List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
         List<User> users = new ArrayList<>();
