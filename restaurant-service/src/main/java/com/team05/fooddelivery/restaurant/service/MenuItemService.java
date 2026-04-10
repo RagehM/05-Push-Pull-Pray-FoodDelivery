@@ -87,7 +87,11 @@ public class MenuItemService {
 							throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot disable menu item with pending orders");
 					}
 			}
- 			int adminCount = restaurantRepository.countAdminById(toggledBy);
+			int userExists = restaurantRepository.countUserById(toggledBy);
+			if (userExists == 0) {
+					throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+			}
+			int adminCount = restaurantRepository.countAdminById(toggledBy);
 			if (adminCount == 0) {
 					throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can toggle menu item availability");
 			}
