@@ -66,7 +66,7 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
         // [S2-F7] Fetches the restaurant ID and status of an order to validate ownership and delivery state before rating.
         @Query(value = "SELECT restaurant_id,status FROM orders WHERE id = :orderId", nativeQuery = true)
-        Optional<Object[]> findOrderDetailsById(@Param("orderId") Long orderId);
+        List<Object[]> findOrderDetailsById(@Param("orderId") Long orderId);
 
         // [S2-F8] Checks whether a given user ID belongs to an ADMIN user, used to authorize menu item toggling.
         @Query(value = "SELECT COUNT(*) FROM users WHERE id = :userId AND role = 'ADMIN'", nativeQuery = true)

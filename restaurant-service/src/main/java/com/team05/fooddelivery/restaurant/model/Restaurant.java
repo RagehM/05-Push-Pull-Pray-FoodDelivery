@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,7 @@ import java.util.Map;
 @Table(name = "restaurants")
 public class Restaurant {
 
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,7 +35,7 @@ public class Restaurant {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private RestaurantStatusEnum status;
+    private RestaurantStatusEnum status = RestaurantStatusEnum.OPEN;
 
     // [S2-F7] Running average rating; recalculated each time a delivered order is rated.
     @Column(nullable = false)
@@ -53,7 +55,7 @@ public class Restaurant {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<MenuItem> menuItems;
+    private List<MenuItem> menuItems = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

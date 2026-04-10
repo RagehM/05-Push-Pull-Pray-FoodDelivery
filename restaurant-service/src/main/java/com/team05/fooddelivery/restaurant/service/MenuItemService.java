@@ -91,7 +91,7 @@ public class MenuItemService {
         MenuItem menuItem = menuItemRepository.findById(menuItemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MenuItem not found"));
         // check item belongs to this rest.
-        if (!menuItem.getRestaurant().getId().equals(restaurantId)) {
+        if (menuItem.getRestaurant() == null || !menuItem.getRestaurant().getId().equals(restaurantId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "MenuItem does not belong to this restaurant");
         }
         // if its avail.check no pending items

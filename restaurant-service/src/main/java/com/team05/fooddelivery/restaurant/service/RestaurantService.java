@@ -28,14 +28,16 @@ public class RestaurantService {
     private final MenuItemRepository menuItemRepository;
 
     // Constructor injection of the RestaurantRepository dependency
-    // allows the service to interact with the database through the repository layer.
+    // allows the service to interact with the database through the repository
+    // layer.
     public RestaurantService(RestaurantRepository restaurantRepository, MenuItemRepository menuItemRepository) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
 
     }
 
-    // The create method takes a Restaurant object as input and saves it to the database using the restaurantRepository's save method.
+    // The create method takes a Restaurant object as input and saves it to the
+    // database using the restaurantRepository's save method.
     public Restaurant create(Restaurant restaurant) {
         if (restaurant.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant must not have an id");
@@ -43,7 +45,8 @@ public class RestaurantService {
         return restaurantRepository.save(restaurant);
     }
 
-    // The getById method retrieves a Restaurant by its ID. If the restaurant is not found, it throws a ResponseStatusException.
+    // The getById method retrieves a Restaurant by its ID. If the restaurant is not
+    // found, it throws a ResponseStatusException.
     public Restaurant getById(Long id) {
         return restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
@@ -81,7 +84,8 @@ public class RestaurantService {
     }
 
     // [S2-F1] Search Restaurants by Cuisine and Rating Range
-    // Validates the rating range and delegates to the repository to filter and sort results.
+    // Validates the rating range and delegates to the repository to filter and sort
+    // results.
     public List<Restaurant> searchByCuisineAndRating(String cuisineType, Double minRating, Double maxRating) {
         if (minRating > maxRating) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minRating cannot be greater than maxRating");
@@ -90,7 +94,8 @@ public class RestaurantService {
     }
 
     // [S2-F2] Update Restaurant Details (JSONB Partial Update)
-    // Merges new detail fields into the existing details map, preserving fields not included in the request.
+    // Merges new detail fields into the existing details map, preserving fields not
+    // included in the request.
     public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
         Restaurant existing = getById(id);
         Map<String, Object> currentDetails = existing.getDetails();
@@ -104,7 +109,8 @@ public class RestaurantService {
     }
 
     // [S2-F3] Get Restaurant Order Revenue Summary
-    // Queries delivered orders in the given date range and maps aggregate results into a revenue DTO.
+    // Queries delivered orders in the given date range and maps aggregate results
+    // into a revenue DTO.
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
         List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
@@ -117,7 +123,8 @@ public class RestaurantService {
     }
 
     // [S2-F4] Update Restaurant Status (Transactional)
-    // Prevents suspending a restaurant that still has active orders; otherwise updates and saves the new status.
+    // Prevents suspending a restaurant that still has active orders; otherwise
+    // updates and saves the new status.
     @Transactional
     public void updateRestaurantStatus(Long id, String newStatus) {
         if (newStatus == null || newStatus.isBlank()) {
@@ -150,7 +157,8 @@ public class RestaurantService {
     }
 
     // [S2-F6] Top Rated Restaurants Report
-    // Fetches the top N restaurants by rating from the repository and maps raw query results into TopRestaurantDTOs.
+    // Fetches the top N restaurants by rating from the repository and maps raw
+    // query results into TopRestaurantDTOs.
     public List<TopRestaurantDTO> getTopRated(int limit) {
         List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
         List<TopRestaurantDTO> dtos = new ArrayList<>();
@@ -167,7 +175,8 @@ public class RestaurantService {
     }
 
     // [S2-F7] Rate a Restaurant After Order (Transactional)
-    // Validates the rating, order ownership, and delivery status, then recalculates the restaurant's running average rating.
+    // Validates the rating, order ownership, and delivery status, then recalculates
+    // the restaurant's running average rating.
     @Transactional
     public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
         if (rating == null) {
@@ -179,9 +188,11 @@ public class RestaurantService {
         Restaurant rest = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         // get order details
-        Object[] order = restaurantRepository.findOrderDetailsById(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        // extract data
+        List<Object[]> orderResults = restaurantRepository.findOrderDetailsById(orderId);
+        if (orderResults.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+        Object[] order = orderResults.get(0);
         Long orderRestaurantId = ((Number) order[0]).longValue();
         String orderStatus = (String) order[1];
         // check order does belong ot this restaurant
@@ -202,7 +213,8 @@ public class RestaurantService {
     }
 
     // [S2-F9] Get Restaurants with Unavailable Menu Items
-    // Finds restaurants with at least one unavailable item and builds alert DTOs containing those items and their count.
+    // Finds restaurants with at least one unavailable item and builds alert DTOs
+    // containing those items and their count.
     public List<RestaurantMenuAlertDTO> getRestaurantsWithUnavailableItems() {
         List<Restaurant> restaurants = restaurantRepository.findRestaurantsWithUnavailableItems();
         List<RestaurantMenuAlertDTO> dtos = new ArrayList<>();
