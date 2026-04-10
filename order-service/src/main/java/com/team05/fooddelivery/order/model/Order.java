@@ -36,7 +36,7 @@ public class Order {
     @Column(nullable = true)
     private LocalDateTime deliveredAt;
     ///////
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
     ///////
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
