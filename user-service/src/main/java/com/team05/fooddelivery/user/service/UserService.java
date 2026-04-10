@@ -45,6 +45,15 @@ public class UserService {
     public User createUser(User user)
     {
         Long id=user.getId();
+        String email = user.getEmail();
+        String phone = user.getPhone();
+        if(email!=null && userRepository.existsByEmail(email)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+        if(phone!=null && userRepository.existsByPhone(phone)){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
+
         if(id!=null && userRepository.existsById(id)){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists");
         }
@@ -80,10 +89,6 @@ public class UserService {
         if(name!=null && name.isEmpty())name = null;
         if(email!=null && email.isEmpty())email = null;
         if(role!=null && role.isEmpty())role = null;
-
-        if((name==null || name.isEmpty()) && (email==null || email.isEmpty()) && (role==null || role.isEmpty()))
-             throw new RuntimeException("At least one search parameter must be provided");
-
 
 
         return userRepository.searchUsers(name, email, role);
