@@ -64,4 +64,7 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 		//s2-f7
 		@Query(value="SELECT restaurant_id,status FROM orders WHERE id = :orderId", nativeQuery = true)
 		Optional<Object[]>findOrderDetailsById(@Param("orderId") Long orderId);
+		//s2-f8
+		@Query(value = "SELECT COUNT(*) FROM users WHERE id = :userId AND role = 'ADMIN'", nativeQuery = true)
+    int countAdminById(@Param("userId") Long userId);
 }
