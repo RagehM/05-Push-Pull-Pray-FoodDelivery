@@ -17,13 +17,20 @@ public class OrderItemService {
     private final OrderItemRepository orderItemRepository;
     private final OrderService orderService;
 
+
+
+    public OrderItem getOrderItemById_Logical(Long orderItemId) {
+        return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
+    }
+
+
     public OrderItemService(OrderItemRepository orderItemRepository, OrderService orderService) {
         this.orderItemRepository = orderItemRepository;
         this.orderService = orderService;
     }
 
-    public OrderItem getOrderItemById(Long id) {
-        return orderItemRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + id));
+    public OrderItem getOrderItemById(Long orderId, Long orderItemId) {
+        return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
 
     public List<OrderItem> getAllOrderItems() {
@@ -41,20 +48,21 @@ public class OrderItemService {
     }
 
     @Transactional
-    public OrderItem createOrderItem(OrderItem orderItem) {
-        Order order = orderService.getOrderById(orderItem.getOrder().getId());
-//        String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
-//        if (itemName == null) {
-//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
-//        }
+    public OrderItem createOrderItem(Long orderId, OrderItem orderItem) {
+        Order order = orderService.getOrderById(orderId);
+        // String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
+        // if (itemName == null) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
+        // }
         orderItem.setOrder(order);
+        // orderItem.setItemName(itemName);
     //    orderItem.setItemName(itemName);
         return orderItemRepository.save(orderItem);
     }
 
     @Transactional
     public OrderItem updateOrderItem(Long id, OrderItem orderItem) {
-        OrderItem existingOrderItem = getOrderItemById(id);
+        OrderItem existingOrderItem = getOrderItemById_Logical(id);
 
         if (orderItem.getLineNumber() != null) {
             existingOrderItem.setLineNumber(orderItem.getLineNumber());
@@ -93,7 +101,7 @@ public class OrderItemService {
 
     @Transactional
     public void deleteOrderItem(Long id) {
-        OrderItem existingOrderItem = getOrderItemById(id);
+        OrderItem existingOrderItem = getOrderItemById_Logical(id);
         orderItemRepository.delete(existingOrderItem);
     }
     

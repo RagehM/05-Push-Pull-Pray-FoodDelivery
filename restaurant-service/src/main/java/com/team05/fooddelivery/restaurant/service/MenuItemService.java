@@ -8,7 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
-
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 @Service
 public class MenuItemService {
 
@@ -66,4 +69,41 @@ public class MenuItemService {
         }
         menuItemRepository.deleteById(id);
     }
+		//s2-f8
+		@Transactional
+    public Restaurant toggleAvailability(Long restaurantId, Long menuItemId, Long toggledBy) {
+			//find rest.
+			Restaurant rest = restaurantRepository.findById(restaurantId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+			//  find menu item
+			MenuItem menuItem = menuItemRepository.findById(menuItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "MenuItem not found"));
+			//check item belongs to this rest.
+			if (!menuItem.getRestaurant().getId().equals(restaurantId)) {
+					throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "MenuItem does not belong to this restaurant");
+			}
+			// if its avail.check no pending items
+			if (menuItem.getAvailable()) {
+					int pendingCount = menuItemRepository.countPendingOrderItems(menuItemId);
+					if (pendingCount > 0) {
+							throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot disable menu item with pending orders");
+					}
+			}
+ 			int adminCount = restaurantRepository.countAdminById(toggledBy);
+			if (adminCount == 0) {
+					throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can toggle menu item availability");
+			}
+			// toggle avail. field
+			menuItem.setAvailable(!menuItem.getAvailable());
+			// Update metadata 
+			Map<String, Object> metadata = menuItem.getMetadata();
+			if (metadata == null) {
+					metadata = new HashMap<>();
+			}
+			metadata.put("toggledAt", LocalDateTime.now().toString());
+			metadata.put("toggledBy", toggledBy);
+			menuItem.setMetadata(metadata);
+			// save item
+			menuItemRepository.save(menuItem);
+			// return full rest.
+			return restaurantRepository.findById(restaurantId).get();
+		}
 }

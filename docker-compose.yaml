@@ -35,7 +35,7 @@ services:
   order-service:
     build:
       context: ./order-service
-      dockerfile: order.Dockerfile
+      dockerfile: Dockerfile
     container_name: fooddelivery-order-service
     ports:
       - "8083:8080"
@@ -64,7 +64,7 @@ services:
   delivery-service:
     build:
       context: ./delivery-service
-      dockerfile: delivery.Dockerfile
+      dockerfile: Dockerfile
     container_name: fooddelivery-delivery-service
     ports:
       - "8084:8080"
@@ -77,7 +77,7 @@ services:
   user-service:
     build:
       context: ./user-service
-      dockerfile: user.Dockerfile
+      dockerfile: Dockerfile
     container_name: fooddelivery-user-service
     ports:
       - "8081:8080"
@@ -90,7 +90,7 @@ services:
   restaurant-service:
     build:
       context: ./restaurant-service
-      dockerfile: restaurant.Dockerfile
+      dockerfile: Dockerfile
     container_name: fooddelivery-restaurant-service
     ports:
       - "8082:8080"

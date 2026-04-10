@@ -1,14 +1,16 @@
 package com.team05.fooddelivery.restaurant.controller;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
+import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.team05.fooddelivery.restaurant.service.MenuItemService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -19,9 +21,11 @@ public class RestaurantController {
     // It uses the RestaurantService to perform business logic and interact with the
     // database.
     private final RestaurantService restaurantService;
+		private final MenuItemService menuItemService;
 
-    public RestaurantController(RestaurantService restaurantService) {
+    public RestaurantController(RestaurantService restaurantService,MenuItemService menuItemService) {
         this.restaurantService = restaurantService;
+				this.menuItemService = menuItemService;
     }
 
     // The create method handles POST requests to create a new restaurant.
@@ -43,11 +47,11 @@ public class RestaurantController {
     }
 
     // The update method handles PUT requests to update an existing restaurant.
-    // @PutMapping("/{id}")
-    // public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody
-    // Restaurant restaurant) {
-    // return ResponseEntity.ok(restaurantService.update(id, restaurant));
-    // }
+     @PutMapping("/{id}")
+     public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody
+     Restaurant restaurant) {
+     return ResponseEntity.ok(restaurantService.update(id, restaurant));
+    }
 
     // The delete method handles DELETE requests to remove a restaurant by its ID.
     @DeleteMapping("/{id}")
@@ -84,5 +88,58 @@ public class RestaurantController {
         LocalDateTime end = LocalDateTime.parse(endDate + "T23:59:59");
         return ResponseEntity.ok(restaurantService.getRevenueSummary(id, start, end));
     }
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+
+        String status = body.get("status");
+
+        restaurantService.updateRestaurantStatus(id, status);
+
+        return ResponseEntity.ok().build();
+    }
+
+    //S2-F5
+    @GetMapping("/details/search")
+    public ResponseEntity<List<Restaurant>> filterByDetail(
+            @RequestParam String key,
+            @RequestParam String value,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(restaurantService.filterByDetail(key, value, status));
+    }
+    //s2-f6
+    @GetMapping("/reports/top-rated")
+    public ResponseEntity<List<TopRestaurantDTO>> getTopRated(
+            @RequestParam int limit
+    ) {
+        return ResponseEntity.ok(restaurantService.getTopRated(limit));
+    }
+    //s2-f7
+		@PostMapping("/{id}/rate")
+		public ResponseEntity<Void> rateRestaurant(
+			@PathVariable Long id,
+			@RequestBody Map<String, Object> body) {
+	  Long orderId = Long.valueOf(body.get("orderId").toString());
+		Integer rating = Integer.valueOf(body.get("rating").toString());
+		restaurantService.rateRestaurant(id, orderId, rating);
+		return ResponseEntity.ok().build();
+}
+  //s2-f8
+	@PutMapping("/{restaurantId}/menu-items/{menuItemId}/toggle")
+  public ResponseEntity<Restaurant> toggleMenuItemAvailability(
+        @PathVariable Long restaurantId,
+        @PathVariable Long menuItemId,
+        @RequestBody Map<String, Object> body) {
+    Long toggledBy = Long.valueOf(body.get("toggledBy").toString());
+    return ResponseEntity.ok(menuItemService.toggleAvailability(restaurantId, menuItemId, toggledBy));
+
+  }
+	//s2-f9
+	@GetMapping("/menu-items/unavailable")
+	public ResponseEntity<List<RestaurantMenuAlertDTO>> getRestaurantsWithUnavailableItems() {
+		return ResponseEntity.ok(restaurantService.getRestaurantsWithUnavailableItems());
+	}
 
 }

@@ -32,9 +32,9 @@ public class PaymentOfferController {
         return paymentOfferService.getPaymentOffers();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PaymentOffer> getPaymentOfferById(@PathVariable Long id) {
-        return ResponseEntity.ok(paymentOfferService.getPaymentOfferById(id));
+    @GetMapping("/{paymentOfferId}/{offerId}")
+    public ResponseEntity<PaymentOffer> getPaymentOfferById(@PathVariable Long paymentOfferId,  @PathVariable Long offerId) {
+        return ResponseEntity.ok(paymentOfferService.getPaymentOfferById(paymentOfferId));
     }
 
     @PutMapping("/{id}")

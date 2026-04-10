@@ -31,11 +31,11 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "userrole")
-    private UserRole userRole;
+    @Column(nullable = false)
+    private UserRole role = UserRole.CUSTOMER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "userstatus")
+    @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -48,6 +48,13 @@ public class User {
     @OneToMany(mappedBy = "user",cascade = CascadeType.ALL)
     @JsonIgnore
     private List<DeliveryAddress> deliveryAddresses;
+
+    @PrePersist void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+
 
     public Long getId() {
         return id;
@@ -89,12 +96,20 @@ public class User {
         this.phone = phone;
     }
 
-    public UserRole getUserRole() {
-        return userRole;
+    public UserRole getRole() {
+        return role;
     }
 
-    public void setUserRole(UserRole userRole) {
-        this.userRole = userRole;
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+
+    public UserRole getUserRole() {
+        return getRole();
+    }
+
+    public void setUserRole(UserRole role) {
+        setRole(role);
     }
 
     public UserStatus getStatus() {
