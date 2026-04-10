@@ -103,4 +103,9 @@ public class OrderController {
     public OrderCostEstimateDTO estimateOrder(@RequestBody OrderEstimateRequest request) {
         return orderService.estimateOrderCost(request);
     }
+    //// Confirm order and Assign Resturant
+    @PutMapping("/{orderId}/confirm")
+    public Order confirmOrder(@PathVariable Long orderId, @RequestParam Long restaurantId) {
+        return orderService.confirmOrderAndAssignRestaurant(orderId, restaurantId);
+    }
 }

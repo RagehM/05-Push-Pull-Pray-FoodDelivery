@@ -124,5 +124,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         """,
                 nativeQuery = true)
         Long countActiveOrdersByRestaurantId(@Param("restaurantId") Long restaurantId);
-
+    //// Check if Restaurant is open
+    @Query(value = """
+            SELECT COUNT(*) > 0
+            FROM restaurants r
+            WHERE r.id = :restaurantId
+              AND r.status = 'OPEN'
+            """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        boolean isRestaurantOpen(@Param("restaurantId") Long restaurantId);
 }
