@@ -25,6 +25,15 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    // [S3-F5]
+    @GetMapping("/metadata/search")
+    public ResponseEntity<List<Order>> searchOrdersByMetadata(
+            @RequestParam String key,
+            @RequestParam String value) {
+
+        List<Order> orders = orderService.searchOrdersByMetadata(key, value);
+        return ResponseEntity.ok(orders);
+    }
 
     @GetMapping("/search")
     public ResponseEntity<List<Order>> searchOrders(
