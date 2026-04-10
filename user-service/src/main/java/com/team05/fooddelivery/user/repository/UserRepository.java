@@ -82,7 +82,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = """
        SELECT u.id,u.name, SUM(o.total_amount) as total_spent , COUNT(o) 
        FROM orders o  JOIN users u ON o.user_id = u.id
-       WHERE o.order_date >= :start AND o.order_date <= :end
+       WHERE o.order_date >= :start AND o.order_date <= :end AND o.status = 'DELIVERED'
        GROUP BY u.id, u.name
        order by total_spent desc
        LIMIT :limit
