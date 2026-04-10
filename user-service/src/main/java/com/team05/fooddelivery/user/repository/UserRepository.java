@@ -40,12 +40,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
  
     @Query(           
             value = """
-    SELECT * FROM users u WHERE u.preferences ->> ?1 = ?2
+    SELECT * FROM users u WHERE u.preferences ->> :key = :value
 
     """,
             nativeQuery = true
     )
-    List<User> findUserByPreferencesContaining(String key, String value );
+    List<User> findUserByPreferencesContaining(@Param("key") String key,@Param("value") String value );
 
 
     @Query(value = """

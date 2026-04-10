@@ -132,12 +132,15 @@ public class UserService {
 
     public List<User> filterUsersByPreferences(String key, String value)
     {
-        if(key == null || key.isEmpty() || value == null || value.isEmpty())
+        if(key == null || key.isEmpty() || value == null || value.isEmpty()
+                || key.equalsIgnoreCase("null") || value.equalsIgnoreCase("null")
+                || value.equalsIgnoreCase("") || key.equalsIgnoreCase(""))
         {
-            throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Key/Value cannot be empty");
         }
         return userRepository.findUserByPreferencesContaining(key,value);
     }
+
     public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object[]> orders = userRepository.findTotalOrders(userId);
