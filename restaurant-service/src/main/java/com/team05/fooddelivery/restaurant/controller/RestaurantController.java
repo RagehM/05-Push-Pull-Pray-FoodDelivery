@@ -6,7 +6,7 @@ import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.team05.fooddelivery.restaurant.service.MenuItemService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +20,11 @@ public class RestaurantController {
     // It uses the RestaurantService to perform business logic and interact with the
     // database.
     private final RestaurantService restaurantService;
+		private final MenuItemService menuItemService;
 
-    public RestaurantController(RestaurantService restaurantService) {
+    public RestaurantController(RestaurantService restaurantService,MenuItemService menuItemService) {
         this.restaurantService = restaurantService;
+				this.menuItemService = menuItemService;
     }
 
     // The create method handles POST requests to create a new restaurant.
@@ -123,5 +125,14 @@ public class RestaurantController {
 		restaurantService.rateRestaurant(id, orderId, rating);
 		return ResponseEntity.ok().build();
 }
+  //s2-f8
+	@PutMapping("/{restaurantId}/menu-items/{menuItemId}/toggle")
+  public ResponseEntity<Restaurant> toggleMenuItemAvailability(
+        @PathVariable Long restaurantId,
+        @PathVariable Long menuItemId,
+        @RequestBody Map<String, Object> body) {
+    Long toggledBy = Long.valueOf(body.get("toggledBy").toString());
+    return ResponseEntity.ok(menuItemService.toggleAvailability(restaurantId, menuItemId, toggledBy));
+  }
 
 }
