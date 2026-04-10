@@ -95,4 +95,10 @@ public class UserController {
     {
         return userService.topCustomersBySpending(startDate, endDate, limit);
     }
+    @GetMapping("/preferences/dietary")
+    public List<User> getUsersByPreferenceAndMinimumOrder(@RequestParam String diet, @RequestParam int minOrders)
+    {
+        return userService.findUsersByPreferencesAndMinimumOrders(diet, minOrders);
+    }
+
 }

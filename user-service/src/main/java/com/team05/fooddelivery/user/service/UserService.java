@@ -3,17 +3,20 @@ package com.team05.fooddelivery.user.service;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
+import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -163,6 +166,20 @@ public class UserService {
                 totalSpent,
                 averageOrderAmount
         );
+    }
+
+
+    public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders)
+    {
+        if(diet == null || diet.isEmpty() || minimumOrders == null || minimumOrders < 0 || diet.equalsIgnoreCase("null"))
+        {
+            throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet or minimum orders cannot be null or empty");
+        }
+        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
+        List<User> users = new ArrayList<>();
+
+        result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
+        return users;
     }
 
 }
