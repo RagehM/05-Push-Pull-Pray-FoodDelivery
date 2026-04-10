@@ -8,6 +8,7 @@ import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -120,12 +121,33 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
     }
+    @Transactional
+    public Order deliverOrder(Long id) {
+        Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
+
+        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
+        foundOrder.setDeliveredAt(LocalDateTime.now());
+
+        if (foundOrder.getTotalAmount() == null) {
+            List<OrderItem> orderItems = foundOrder.getOrderItems();
+            double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
+            foundOrder.setTotalAmount(total);
+        }
+        // Create payment record with status PENDING. Save order. Return the order after the update.
+        orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
+        return orderRepository.save(foundOrder);
+
+
+    }
 
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
-    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {    
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
         return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
     }
-    
+
 
     @Transactional
     // [S3-F8] Add items to existing order

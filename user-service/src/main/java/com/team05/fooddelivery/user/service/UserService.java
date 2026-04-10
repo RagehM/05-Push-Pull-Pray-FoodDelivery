@@ -1,8 +1,7 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
-import com.team05.fooddelivery.user.dto.TopCustomerDTO;
-import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
@@ -24,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -72,6 +72,12 @@ public class UserService {
     {
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
+        if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+        if(user.getPhone()!=null && userRepository.existsByPhone(user.getPhone())){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
         updatedUser.setEmail(user.getEmail() == null ? updatedUser.getEmail() : user.getEmail());
         updatedUser.setPassword(user.getPassword() == null ? updatedUser.getPassword() : user.getPassword());
         updatedUser.setPhone(user.getPhone() == null ? updatedUser.getPhone() : user.getPhone());
@@ -81,11 +87,10 @@ public class UserService {
         return userRepository.save(updatedUser);
     }
 
-    public User deleteUser(Long id)
+    public void deleteUser(Long id)
     {
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
-        return deletedUser;
     }
 
     public List<User> searchUsers(String name, String email, String role)
@@ -213,5 +218,32 @@ public class UserService {
     public List<DeliveryAddress> getDeliveryAddressesForUser(long userId) {
         User user=userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return user.getDeliveryAddresses();
+    }
+    public UserProfileDTO getUserProfile(Long id) {
+        User user = userRepository.findByIdWithDeliveryAddresses(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found with id: " + id));
+
+        List<DeliveryAddressDTO> addressDtos = user.getDeliveryAddresses()
+                .stream()
+                .map(addr -> new DeliveryAddressDTO(
+                        addr.getId(),
+                        addr.getLabel(),
+                        addr.getStreetAddress(),
+                        addr.getCity(),
+                        addr.getLatitude(),
+                        addr.getLongitude(),
+                        addr.getDefault(),
+                        addr.getMetadata(),
+                        addr.getCreatedAt())).collect(Collectors.toList());
+
+        return new UserProfileDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getPreferences(),
+                addressDtos,
+                addressDtos.size());
     }
 }
