@@ -109,4 +109,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                            @Param("total") Double total);
 
 
+        //// averaging Restaurant's menu price
+        @Query(value = """
+                        SELECT AVG(menu.price) FROM menu_items menu 
+                        WHERE menu.restaurant_id = :restaurantId
+                        """,
+                nativeQuery = true)
+        Double findAverageMenuItemPriceByRestaurantId(@Param("restaurantId") Long restaurantId);
+        //// determine surgemultiplayer
+        @Query(value = """
+                        SELECT COUNT(*) FROM orders ord 
+                        WHERE ord.restaurant_id = :restaurantId
+                            AND ord.status IN ('PLACED', 'CONFIRMED', 'PREPARING')
+                        """,
+                nativeQuery = true)
+        Long countActiveOrdersByRestaurantId(@Param("restaurantId") Long restaurantId);
+
 }

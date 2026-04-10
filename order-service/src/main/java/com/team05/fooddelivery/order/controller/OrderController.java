@@ -1,12 +1,16 @@
 package com.team05.fooddelivery.order.controller;
 
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
+import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import com.team05.fooddelivery.order.model.Order;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -93,5 +97,10 @@ public class OrderController {
     @PostMapping("/{orderId}/items")
     public Order addItemsToOrder(@PathVariable Long orderId, @RequestBody java.util.List<OrderItem> orderItems) {
         return orderService.addItemsToOrder(orderId, orderItems);
+    }
+    ////
+    @PostMapping("/estimate")
+    public OrderCostEstimateDTO estimateOrder(@RequestBody OrderEstimateRequest request) {
+        return orderService.estimateOrderCost(request);
     }
 }
