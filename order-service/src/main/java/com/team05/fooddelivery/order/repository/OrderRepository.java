@@ -8,8 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 @Repository
@@ -49,13 +50,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             nativeQuery = true
     )
     void cancelDeliveryByOrderId(@Param("orderId") Long orderId);
-  
+
     // [CRUD]
     //// Check for existence of user
     @Query(value =  """
                     SELECT COUNT(*) > 0 FROM users u 
                     WHERE u.id = :userId
-                    """, 
+                    """,
             nativeQuery = true)
     @Transactional(readOnly = true)
     boolean existsByUserId(@Param("userId") Long userId);
@@ -63,7 +64,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query(value =  """
                     SELECT COUNT(*) > 0 FROM restaurants r 
                     WHERE r.id = :restaurantId
-                    """, 
+                    """,
             nativeQuery = true)
     @Transactional(readOnly = true)
     boolean existsByRestaurantId(@Param("restaurantId") Long restaurantId);
@@ -95,4 +96,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         """)
         @Transactional(readOnly = true)
         Order getOrderWithOrderItemsById(@Param("orderId") Long orderId);
+        //// Check for create Payment with Pending status
+        @Query(value = """
+                        INSERT INTO payments (order_id, user_id, amount, method, status, created_at)
+                        VALUES (:orderId, :userId, :total, 'CASH_ON_DELIVERY', 'PENDING', NOW())
+                        """,
+                nativeQuery = true)
+        @Modifying
+        @Transactional
+        int createPaymentWithPendingStatus(@Param("orderId") Long orderId,
+                                           @Param("userId") Long userId,
+                                           @Param("total") Double total);
+
+
 }
