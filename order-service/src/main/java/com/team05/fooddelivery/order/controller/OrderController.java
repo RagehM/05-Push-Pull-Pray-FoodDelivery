@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.controller;
 
+import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
+import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -59,5 +61,9 @@ public class OrderController {
     public void deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
     }
-
+    ////
+    @PostMapping("/estimate")
+    public OrderCostEstimateDTO estimateOrder(@RequestBody OrderEstimateRequest request) {
+        return orderService.estimateOrderCost(request);
+    }
 }

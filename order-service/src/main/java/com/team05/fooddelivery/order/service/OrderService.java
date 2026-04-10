@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
+import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.repository.OrderRepository;
@@ -96,4 +98,39 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
     }
+    ////Get Order Cost Estimate Service
+    public OrderCostEstimateDTO estimateOrderCost(OrderEstimateRequest request) {
+        if(request == null || request.restaurantId() == null || request.itemCount() == null || request.deliveryDistance() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order estimate request");
+        }
+        if (request.itemCount() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemCount must be greater than 0");
+        }
+        if (request.deliveryDistance() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "deliveryDistance must be > 0");
+        }
+        boolean restaurantExists = orderRepository.existsByRestaurantId(request.restaurantId());
+        if (!restaurantExists) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        Double avgMenuPrice = orderRepository.findAverageMenuItemPriceByRestaurantId(request.restaurantId());
+        if (avgMenuPrice == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant has no menu items right now");
+        }
+        double foodCost = avgMenuPrice * request.itemCount();
+        double deliveryFee = 10.0 * request.deliveryDistance();
+        double serviceFee = foodCost * 0.05;
+        long activeOrders = orderRepository.countActiveOrdersByRestaurantId(request.restaurantId());
+        double surgeMultiplier = activeOrders > 10 ? (activeOrders > 20 ? 1.5: 1.2) : 1.0;
+        double total = (foodCost+deliveryFee + serviceFee) * surgeMultiplier;
+        return new OrderCostEstimateDTO(
+                foodCost,
+                deliveryFee,
+                serviceFee,
+                total,
+                surgeMultiplier
+        );
+
+    }
+
 }
