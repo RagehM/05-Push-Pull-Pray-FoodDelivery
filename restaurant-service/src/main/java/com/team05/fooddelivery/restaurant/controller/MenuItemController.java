@@ -12,13 +12,16 @@ public class MenuItemController {
 
     private final MenuItemService menuItemService;
 
-    // The MenuItemController class is a REST controller that handles HTTP requests related to menu item operations.
-    // It uses the MenuItemService to perform business logic and interact with the database.
+    // The MenuItemController class is a REST controller that handles HTTP requests
+    // related to menu item operations.
+    // It uses the MenuItemService to perform business logic and interact with the
+    // database.
     public MenuItemController(MenuItemService menuItemService) {
         this.menuItemService = menuItemService;
     }
 
-    // The create method handles POST requests to create a new menu item for a specific restaurant.
+    // The create method handles POST requests to create a new menu item for a
+    // specific restaurant.
     @PostMapping("/restaurant/{restaurantId}")
     public ResponseEntity<MenuItem> create(@PathVariable Long restaurantId, @RequestBody MenuItem menuItem) {
         return ResponseEntity.ok(menuItemService.create(restaurantId, menuItem));

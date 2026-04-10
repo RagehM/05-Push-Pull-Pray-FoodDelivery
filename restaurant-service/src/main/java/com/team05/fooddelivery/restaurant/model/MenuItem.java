@@ -29,9 +29,12 @@ public class MenuItem {
     @Column(nullable = false)
     private MenuCategoryEnum category;
 
+    // [S2-F8, S2-F9] Marks whether the item is available for ordering.
+    // S2-F8 toggles this field; S2-F9 reports restaurants that have at least one item where available = false.
     @Column(nullable = false)
     private Boolean available = true;
 
+    // [S2-F8] JSONB column updated on each toggle to record toggledAt (timestamp) and toggledBy (user ID).
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
@@ -49,22 +52,75 @@ public class MenuItem {
         this.createdAt = LocalDateTime.now();
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public Double getPrice() { return price; }
-    public void setPrice(Double price) { this.price = price; }
-    public MenuCategoryEnum getCategory() { return category; }
-    public void setCategory(MenuCategoryEnum category) { this.category = category; }
-    public Boolean getAvailable() { return available; }
-    public void setAvailable(Boolean available) { this.available = available; }
-    public Map<String, Object> getMetadata() { return metadata; }
-    public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public Restaurant getRestaurant() { return restaurant; }
-    public void setRestaurant(Restaurant restaurant) { this.restaurant = restaurant; }
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+    public MenuCategoryEnum getCategory() {
+        return category;
+    }
+
+    public void setCategory(MenuCategoryEnum category) {
+        this.category = category;
+    }
+
+    public Boolean getAvailable() {
+        return available;
+    }
+
+    public void setAvailable(Boolean available) {
+        this.available = available;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Restaurant getRestaurant() {
+        return restaurant;
+    }
+
+    public void setRestaurant(Restaurant restaurant) {
+        this.restaurant = restaurant;
+    }
 }

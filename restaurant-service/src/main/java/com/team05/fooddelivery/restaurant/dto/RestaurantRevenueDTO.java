@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.restaurant.dto;
 
+// [S2-F3] Response DTO for the revenue summary endpoint.
+// Holds aggregated order data (total orders, total revenue, average order amount) for a restaurant within a date range.
 public class RestaurantRevenueDTO {
 
     private Long restaurantId;
