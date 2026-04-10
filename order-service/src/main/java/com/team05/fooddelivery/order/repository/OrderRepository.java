@@ -1,16 +1,17 @@
 package com.team05.fooddelivery.order.repository;
 
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 @Repository
@@ -88,7 +89,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
 
-
         @Query("""
         SELECT o FROM Order o
         LEFT JOIN FETCH o.orderItems
@@ -133,4 +133,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """, nativeQuery = true)
         @Transactional(readOnly = true)
         boolean isRestaurantOpen(@Param("restaurantId") Long restaurantId);
+
+        @Query("""
+           SELECT DISTINCT o
+           FROM Order o
+           LEFT JOIN FETCH o.orderItems
+           WHERE o.id = :orderId
+           """)
+        Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
+
 }

@@ -5,6 +5,8 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
+import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
@@ -12,6 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -246,4 +251,47 @@ public class OrderService {
 
     }
 
+
+    // [S3-F9]
+    @Transactional(readOnly = true)
+    public OrderDetailsDTO getOrderDetails(Long orderId) {
+        Order order = orderRepository.findByIdWithItems(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        List<OrderItem> orderItems = order.getOrderItems() != null
+                ? new ArrayList<>(order.getOrderItems())
+                : new ArrayList<>();
+
+        orderItems.sort(Comparator.comparing(OrderItem::getLineNumber));
+
+        List<OrderItemDetailsDTO> items = orderItems.stream()
+                .map(item -> new OrderItemDetailsDTO(
+                        item.getId(),
+                        item.getLineNumber(),
+                        item.getItemName(),
+                        item.getQuantity(),
+                        item.getUnitPrice(),
+                        item.getStatus(),
+                        item.getMetadata()
+                ))
+                .toList();
+
+        int totalItems = items.size();
+
+        int preparedItems = (int) orderItems.stream()
+                .filter(item -> item.getStatus() == OrderItemStatusEnum.PREPARED)
+                .count();
+
+        return new OrderDetailsDTO(
+                order.getId(),
+                order.getUserId(),
+                order.getRestaurantId(),
+                order.getStatus(),
+                order.getTotalAmount(),
+                order.getMetadata(),
+                items,
+                totalItems,
+                preparedItems
+        );
+    }
 }
