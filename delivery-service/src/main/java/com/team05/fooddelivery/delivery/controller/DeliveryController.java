@@ -1,7 +1,12 @@
 package com.team05.fooddelivery.delivery.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
+import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
+import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
+import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.service.DeliveryService;
 
@@ -32,14 +39,49 @@ public class DeliveryController {
         return new ResponseEntity<>(deliveryService.createDelivery(delivery), HttpStatus.CREATED);
     }
 
+    @PostMapping("/order/{orderId}")
+    public ResponseEntity<Delivery> createOrderDelivery(@PathVariable Long orderId, @RequestBody Delivery delivery) {
+        return new ResponseEntity<>(deliveryService.createOrderDelivery(orderId, delivery), HttpStatus.CREATED);
+    }
+
     @GetMapping("/{id}")
     public Delivery getDeliveryById(@PathVariable Long id) {
         return deliveryService.getDeliveryById(id);
     }
 
+    @GetMapping("/order/{orderId}/history")
+    public List<Delivery> getOrderDeliveryHistory(
+            @PathVariable Long orderId,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+
+        return deliveryService.getOrderDeliveryHistory(orderId, startDate, endDate);
+    }
+
     @GetMapping
     public List<Delivery> getAllDeliveries(@RequestParam(required = false) String status) {
         return deliveryService.getAllDeliveries(status);
+    }
+
+    @GetMapping("/order/{orderId}/latest")
+    public Delivery getLatestDeliveryByOrderId(@PathVariable Long orderId) {
+        return deliveryService.getLatestDeliveryByOrderId(orderId);
+    }
+
+    @GetMapping("/metadata/search")
+    public List<Delivery> searchDeliveriesByMetadata(@RequestParam String key,
+                                                     @RequestParam String operator,
+                                                     @RequestParam String value) {
+        return deliveryService.searchDeliveriesByMetadata(key, operator, value);
+    }
+
+    @GetMapping("/nearby")
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(
+            @RequestParam Double lat,
+            @RequestParam Double lon,
+            @RequestParam Double radiusKm) {
+
+        return deliveryService.getNearbyDeliveries(lat, lon, radiusKm);
     }
 
     @PutMapping("/{id}")
@@ -51,6 +93,32 @@ public class DeliveryController {
     public ResponseEntity<Void> deleteDelivery(@PathVariable Long id) {
         deliveryService.deleteDelivery(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<Integer> batchCreate(@RequestBody BatchDeliveryRequestDTO request) {
+        int count = deliveryService.batchCreate(request);
+        return new ResponseEntity<>(count, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/delayed")
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(
+            @RequestParam Double maxEstimatedArrival,
+            @RequestParam int sinceMinutes) {
+
+        return deliveryService.getDelayedDeliveries(maxEstimatedArrival, sinceMinutes);
+    }
+
+    @DeleteMapping("/purge")
+    public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
+        return deliveryService.purgeOldDeliveries(olderThanDays);
+    }
+    @GetMapping("/driver/{driverName}/summary")
+    public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
+            @PathVariable String driverName,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+        return deliveryService.getDeliveryPerformanceSummary(driverName, startDate, endDate);
     }
 }
 
