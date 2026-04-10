@@ -106,7 +106,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query(value = """
     SELECT u.id FROM orders o  JOIN users u ON o.user_id = u.id
-    WHERE  u.preferences ->> 'dietaryRestrictions' = ?1 AND o.status ILIKE 'DELIVERED'
+    WHERE  u.preferences ->> 'dietaryRestrictions' = ?1 AND o.status = 'DELIVERED'
     group by u.id
     HAVING count(o) >= :minimumOrders
 
