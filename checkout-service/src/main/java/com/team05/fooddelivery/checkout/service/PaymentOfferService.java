@@ -14,7 +14,6 @@ import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.Offer;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -94,7 +93,11 @@ public class PaymentOfferService {
             Integer timesUsed         = ((Number) row[4]).intValue();
             Double totalDiscountGiven = ((Number) row[5]).doubleValue();
             Boolean active            = (Boolean) row[6];
-            LocalDateTime expiryDate  = ((Timestamp) row[7]).toLocalDateTime();
+            // Hibernate 7 returns TIMESTAMP as LocalDateTime directly; older drivers as Timestamp
+            Object rawDate = row[7];
+            LocalDateTime expiryDate = rawDate instanceof java.sql.Timestamp ts
+                    ? ts.toLocalDateTime()
+                    : (LocalDateTime) rawDate;
             Boolean expired           = expiryDate.isBefore(LocalDateTime.now());
 
             return new OfferUsageDTO(
