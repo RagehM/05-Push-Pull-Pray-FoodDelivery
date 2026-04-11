@@ -69,4 +69,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             nativeQuery = true)
     String findOrderStatusById(@Param("orderId") Long orderId);
 
+
+    // S5-F8:The findByIdWithOffers JPQL query (added in S5-F4 section) uses LEFT JOIN FETCH to eagerly load the paymentOffers collection
+    // and the nested offer in a single round-trip, avoiding LazyInitializationException:
+    @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
+    Optional<Payment> findByIdWithOffers(@Param("id") Long id);
 }

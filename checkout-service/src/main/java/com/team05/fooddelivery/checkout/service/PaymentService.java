@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.checkout.service;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
+import com.team05.fooddelivery.checkout.dto.AppliedOfferDTO;
+import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
@@ -196,9 +198,9 @@ public class PaymentService {
             discount = payment.getAmount() * (offer.getDiscountValue() / 100);
         }
         if(discountType == OfferDiscountType.FIXED) {
-            discount = payment.getAmount() - offer.getDiscountValue();
+            discount = offer.getDiscountValue();
         }
-        if(discount < 0) {
+        if(discount > payment.getAmount()) {
             discount = payment.getAmount();
         }
 
@@ -296,4 +298,42 @@ public class PaymentService {
     }
 
 
+
+    // S5-F8: Get Payment Details with Applied Offers
+    public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
+        // Fetch payment with offers eagerly loaded via JOIN FETCH
+        Payment payment = paymentRepository.findByIdWithOffers(paymentId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payment not found"));
+
+        // Map each PaymentOffer join entity → AppliedOfferDTO
+        List<AppliedOfferDTO> appliedOffers = payment.getPaymentOffers().stream()
+                .map(po -> new AppliedOfferDTO(
+                        po.getOffer().getCode(),
+                        po.getOffer().getDiscountType(),
+                        po.getDiscountApplied(),
+                        po.getAppliedAt()
+                ))
+                .toList();
+
+        // Aggregate discount
+        Double totalDiscount = appliedOffers.stream()
+                .mapToDouble(AppliedOfferDTO::discountApplied)
+                .sum();
+
+        Double finalAmount = Math.max(0.0, payment.getAmount() - totalDiscount);
+
+        return new PaymentDetailsDTO(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getUserId(),
+                payment.getAmount(),
+                payment.getMethod(),
+                payment.getStatus(),
+                payment.getTransactionDetails(),
+                appliedOffers,
+                totalDiscount,
+                finalAmount
+        );
+    }
 }
