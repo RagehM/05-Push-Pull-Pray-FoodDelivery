@@ -198,9 +198,9 @@ public class PaymentService {
             discount = payment.getAmount() * (offer.getDiscountValue() / 100);
         }
         if(discountType == OfferDiscountType.FIXED) {
-            discount = payment.getAmount() - offer.getDiscountValue();
+            discount = offer.getDiscountValue();
         }
-        if(discount < 0) {
+        if(discount > payment.getAmount()) {
             discount = payment.getAmount();
         }
 
