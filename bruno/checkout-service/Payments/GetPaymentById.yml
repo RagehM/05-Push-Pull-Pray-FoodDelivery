@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8085/api/payments/1
+  url: http://localhost:8085/api/payments/10
   body:
     type: text
     data: "{\r
