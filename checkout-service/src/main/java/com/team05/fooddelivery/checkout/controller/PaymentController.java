@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
@@ -106,6 +107,13 @@ public class PaymentController {
     public ResponseEntity<Payment> retryFailedPayment(@PathVariable Long id) {
         Payment updated = paymentService.retryFailedPayment(id);
         return ResponseEntity.ok(updated);
+    }
+
+    // S5-F8: GET /api/payments/{paymentId}/details
+    @GetMapping("/{paymentId}/details")
+    public ResponseEntity<PaymentDetailsDTO> getPaymentDetails(@PathVariable Long paymentId) {
+        PaymentDetailsDTO details = paymentService.getPaymentDetails(paymentId);
+        return ResponseEntity.ok(details);
     }
 
 }

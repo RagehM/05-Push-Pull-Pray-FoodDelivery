@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
@@ -54,4 +55,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE id = :userId", nativeQuery = true)
     boolean userExists(@Param("userId") Long userId);
+
+    // S5-F8:The findByIdWithOffers JPQL query (added in S5-F4 section) uses LEFT JOIN FETCH to eagerly load the paymentOffers collection
+    // and the nested offer in a single round-trip, avoiding LazyInitializationException:
+    @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
+    Optional<Payment> findByIdWithOffers(@Param("id") Long id);
 }
