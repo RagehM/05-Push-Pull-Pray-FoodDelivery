@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
@@ -54,4 +55,18 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE id = :userId", nativeQuery = true)
     boolean userExists(@Param("userId") Long userId);
+
+    // S5-F4: Process Payment for Order (Transactional)
+    @Query(value = "SELECT * FROM payments WHERE order_id = :orderId AND status = 'PENDING' LIMIT 1",
+            nativeQuery = true)
+    Optional<Payment> findPendingPaymentByOrderId(@Param("orderId") Long orderId);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM payments WHERE order_id = :orderId AND status = 'COMPLETED'",
+            nativeQuery = true)
+    boolean completedPaymentExistsForOrder(@Param("orderId") Long orderId);
+
+    @Query(value = "SELECT status FROM orders WHERE id = :orderId",
+            nativeQuery = true)
+    String findOrderStatusById(@Param("orderId") Long orderId);
+
 }

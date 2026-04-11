@@ -1,4 +1,5 @@
 package com.team05.fooddelivery.checkout.service;
+import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
@@ -247,4 +248,52 @@ public class PaymentService {
 
         return revenueReport;
     }
+
+    // S5-F4: Process Payment for Order (Transactional)
+    @Transactional
+    public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto) {
+
+        // Guard 1: order must exist
+        if (!paymentRepository.orderExists(orderId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
+
+        // Guard 2: order must be DELIVERED
+        String orderStatus = paymentRepository.findOrderStatusById(orderId);
+        if (!"DELIVERED".equals(orderStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Order is not DELIVERED. Current status: " + orderStatus);
+        }
+
+        // Guard 3: no COMPLETED payment should exist for this order
+        if (paymentRepository.completedPaymentExistsForOrder(orderId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
+        }
+
+        // Guard 4: a PENDING payment must exist (created at delivery time)
+        Payment payment = paymentRepository.findPendingPaymentByOrderId(orderId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "No pending payment found for order: " + orderId));
+
+        // Update payment method
+        payment.setMethod(dto.method());
+
+        // Mark as COMPLETED
+        payment.setStatus(PaymentStatus.COMPLETED);
+
+        // Populate JSONB transactionDetails
+        Map<String, Object> details = payment.getTransactionDetails();
+        if (details == null) {
+            details = new HashMap<>();
+        }
+        details.put("gatewayResponse", "approved");
+        if (dto.cardLastFour() != null) {
+            details.put("cardLastFour", dto.cardLastFour());
+        }
+        payment.setTransactionDetails(details);
+
+        return paymentRepository.save(payment);
+    }
+
+
 }
