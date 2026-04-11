@@ -1,6 +1,7 @@
 
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.OfferUsageDTO;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.OfferService;
@@ -43,5 +44,12 @@ public class OfferController {
     @DeleteMapping("/{id}")
     public void deleteOffer(@PathVariable Long id) {
         offerService.deleteOfferById(id);
+    }
+
+    // S5-F9: GET /api/payments/offers/top-used?limit={n}
+    @GetMapping("/top-used")
+    public ResponseEntity<List<OfferUsageDTO>> getMostUsedOffers(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(offerService.getMostUsedOffers(limit));
     }
 }
