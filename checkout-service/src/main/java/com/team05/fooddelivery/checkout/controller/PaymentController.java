@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
@@ -79,6 +80,15 @@ public class PaymentController {
     public ResponseEntity<UserPaymentSummaryDTO> getUserPaymentSummary(@PathVariable Long userId) {
         UserPaymentSummaryDTO summary = paymentService.getUserPaymentSummary(userId);
         return ResponseEntity.ok(summary);
+    }
+
+    // S5-F4: POST /api/payments/order/{orderId}
+    @PostMapping("/order/{orderId}")
+    public ResponseEntity<Payment> processPaymentForOrder(
+            @PathVariable Long orderId,
+            @RequestBody ProcessPaymentRequestDTO dto) {
+        Payment payment = paymentService.processPaymentForOrder(orderId, dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }
 
     // S5-F5: POST /api/payments/{paymentId}/offers/{offerId}
