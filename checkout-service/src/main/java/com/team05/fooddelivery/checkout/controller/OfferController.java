@@ -2,7 +2,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
 import com.team05.fooddelivery.checkout.model.Offer;
-import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.OfferService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,4 +43,5 @@ public class OfferController {
     public void deleteOffer(@PathVariable Long id) {
         offerService.deleteOfferById(id);
     }
+
 }

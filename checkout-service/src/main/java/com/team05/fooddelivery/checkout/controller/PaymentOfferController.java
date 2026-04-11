@@ -1,7 +1,7 @@
 
 package com.team05.fooddelivery.checkout.controller;
 
-import com.team05.fooddelivery.checkout.model.Payment;
+import com.team05.fooddelivery.checkout.dto.OfferUsageDTO;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.dto.PaymentOfferDTO;
 import com.team05.fooddelivery.checkout.service.PaymentOfferService;
@@ -19,6 +19,13 @@ public class PaymentOfferController {
 
     public PaymentOfferController(PaymentOfferService paymentOfferService) {
         this.paymentOfferService = paymentOfferService;
+    }
+
+    // S5-F9: GET /api/payments/offers/top-used?limit={n}
+    @GetMapping("/top-used")
+    public ResponseEntity<List<OfferUsageDTO>> getMostUsedOffers(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(paymentOfferService.getMostUsedOffers(limit));
     }
 
     @PostMapping
