@@ -8,25 +8,17 @@ http:
   url: http://localhost:8085/api/payments
   body:
     type: json
-    data: "{\r
-
-      \  \"orderId\": 101,\r
-
-      \  \"userId\": 1,\r
-
-      \  \"amount\": 150,\r
-
-      \  \"method\": \"CASH_ON_DELIVERY\",\r
-
-      \  \"status\": \"PENDING\",\r
-
-      \  \"createdAt\": \"2026-03-25T10:00:00Z\",\r
-
-      \  \"transactionDetails\": {},\r
-
-      \  \"paymentOffers\": []\r
-
-      }"
+    data: |-
+      {
+        "orderId": 1,
+        "userId": 1,
+        "amount": 150,
+        "method": "CASH_ON_DELIVERY",
+        "status": "PENDING",
+        "createdAt": "2026-03-25T10:00:00Z",
+        "transactionDetails": {},
+        "paymentOffers": []
+      }
   auth: inherit
 
 settings:
