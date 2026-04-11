@@ -56,6 +56,20 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE id = :userId", nativeQuery = true)
     boolean userExists(@Param("userId") Long userId);
 
+    // S5-F4: Process Payment for Order (Transactional)
+    @Query(value = "SELECT * FROM payments WHERE order_id = :orderId AND status = 'PENDING' LIMIT 1",
+            nativeQuery = true)
+    Optional<Payment> findPendingPaymentByOrderId(@Param("orderId") Long orderId);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM payments WHERE order_id = :orderId AND status = 'COMPLETED'",
+            nativeQuery = true)
+    boolean completedPaymentExistsForOrder(@Param("orderId") Long orderId);
+
+    @Query(value = "SELECT status FROM orders WHERE id = :orderId",
+            nativeQuery = true)
+    String findOrderStatusById(@Param("orderId") Long orderId);
+
+
     // S5-F8:The findByIdWithOffers JPQL query (added in S5-F4 section) uses LEFT JOIN FETCH to eagerly load the paymentOffers collection
     // and the nested offer in a single round-trip, avoiding LazyInitializationException:
     @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
