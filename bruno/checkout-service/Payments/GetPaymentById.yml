@@ -5,8 +5,26 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8085/api/payments/1
-  auth: inherit
+  url: http://localhost:8085/api/payments/10
+  body:
+    type: text
+    data: "{\r
+
+      \  \"orderId\": 123,\r
+
+      \  \"userId\": 456,\r
+
+      \  \"amount\": 500,\r
+
+      \  \"method\": \"CASH_ON_DELIVERY\",\r
+
+      \  \"status\": \"PENDING\",\r
+
+      \  \"transactionDetails\": {},\r
+
+      \  \"paymentOffers\": []\r
+
+      }\r\n"
 
 settings:
   encodeUrl: true
