@@ -1,9 +1,9 @@
 package com.team05.fooddelivery.user.service;
 
 import com.team05.fooddelivery.user.config.JwtConfig;
+import com.team05.fooddelivery.user.dto.AuthResponse;
+import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
-import com.team05.fooddelivery.user.model.AuthResponse;
-import com.team05.fooddelivery.user.model.LoginRequest;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import org.springframework.http.HttpStatusCode;
@@ -73,4 +73,4 @@ public class AuthService {
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
-}
+        }

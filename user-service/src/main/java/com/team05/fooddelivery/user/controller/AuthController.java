@@ -1,8 +1,9 @@
 package com.team05.fooddelivery.user.controller;
 
+
+import com.team05.fooddelivery.user.dto.AuthResponse;
+import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
-import com.team05.fooddelivery.user.model.AuthResponse;
-import com.team05.fooddelivery.user.model.LoginRequest;
 import com.team05.fooddelivery.user.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
