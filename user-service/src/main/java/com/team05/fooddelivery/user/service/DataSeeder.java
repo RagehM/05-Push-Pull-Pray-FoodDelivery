@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.user.config;
+package com.team05.fooddelivery.user.service;
 
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.model.User;
