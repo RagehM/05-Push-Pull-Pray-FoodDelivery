@@ -38,4 +38,41 @@ public class AuthService {
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
+
+    public AuthResponse register(RegisterRequest request) {
+        if(request.name() == null  request.name().isEmpty()) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "name is required");
+        }
+        if(request.password() == null
+        request.password().isEmpty()) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "password is required");
+        }
+        if(request.email() == null  request.email().isEmpty()) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "email is required");
+        }
+        if(request.phone() == null
+        request.phone().isEmpty()) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400), "phone is required");
+        }
+
+        if(userRepository.existsByEmail(request.email())) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(409), "email is taken");
+        }
+        if(userRepository.existsByPhone(request.phone())) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(409), "phone is taken");
+        }
+
+        User user = new User();
+        user.setName(request.name());
+        user.setEmail(request.email());
+        user.setPhone(request.phone());
+        user.setRole(com.team05.fooddelivery.user.enums.UserRole.CUSTOMER);
+        user.setStatus(com.team05.fooddelivery.user.enums.UserStatus.ACTIVE);
+        user.setPassword(passwordEncoder.encode(request.password()));
+        userRepository.save(user);
+
+        String token = jwtService.generateToken(user);
+
+        return new AuthResponse(token, jwtConfig.getExpiration());
+    }
 }
