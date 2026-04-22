@@ -1,0 +1,16 @@
+info:
+  name: GetUserOrderSummary
+  type: http
+  seq: 10
+
+http:
+  method: GET
+  url: http://localhost:8081/api/users/1/order-summary
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

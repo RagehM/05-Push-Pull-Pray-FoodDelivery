@@ -1,0 +1,23 @@
+info:
+  name: UpdateRestaurantDetails
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: http://localhost:8082/api/restaurants/1/details
+  body:
+    type: json
+    data: |-
+      {
+        "address": "789 Updated Ave",
+        "openingHours": "09:00-22:00"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

@@ -1,0 +1,30 @@
+info:
+  name: CreateUser
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8081/api/users
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ali Ahmed",
+        "password": "securePassword123",
+        "email": "ali@example.com",
+        "phone": "+491234567890",
+        "userRole": "CUSTOMER",
+        "preferences": {
+          "language": "en",
+          "dietaryRestrictions": "none"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

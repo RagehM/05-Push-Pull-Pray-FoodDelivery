@@ -1,0 +1,31 @@
+info:
+  name: AddItemsToOrder
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: http://localhost:8083/api/orders/1/items
+  body:
+    type: json
+    data: |-
+      [
+        {
+          "menuItemId": 1,
+          "quantity": 2,
+          "unitPrice": 12.5
+        },
+        {
+          "menuItemId": 2,
+          "quantity": 1,
+          "unitPrice": 8.0
+        }
+      ]
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

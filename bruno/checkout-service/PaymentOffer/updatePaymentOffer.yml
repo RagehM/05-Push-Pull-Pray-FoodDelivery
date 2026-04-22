@@ -1,22 +1,18 @@
 info:
-  name: updatePaymentOffer
+  name: UpdatePaymentOffer
   type: http
   seq: 5
 
 http:
   method: PUT
-  url: http://localhost:8085/api/payment/offers/2
+  url: http://localhost:8085/api/payments/offers/1
   body:
     type: json
-    data: "{\r
-
-      \    \"discountApplied\": 30.0,\r
-
-      \    \"paymentId\": 1,\r
-
-      \    \"offerId\": 1\r
-
-      }"
+    data: |-
+      {
+        "paymentId": 1,
+        "offerId": 1
+      }
   auth: inherit
 
 settings:
@@ -24,3 +20,4 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+

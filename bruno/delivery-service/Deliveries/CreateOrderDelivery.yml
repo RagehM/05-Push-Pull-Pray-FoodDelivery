@@ -1,0 +1,25 @@
+info:
+  name: CreateOrderDelivery
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:8084/api/deliveries/order/1
+  body:
+    type: json
+    data: |-
+      {
+        "driverName": "John Doe",
+        "status": "PENDING",
+        "estimatedArrival": 30.0,
+        "metadata": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

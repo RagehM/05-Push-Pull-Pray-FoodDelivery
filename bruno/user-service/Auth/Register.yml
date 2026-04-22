@@ -1,0 +1,28 @@
+info:
+  name: Register
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:8081/api/auth/register
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3Njg2NjQ5OCwiZXhwIjoxNzc2ODcwMDk4fQ.bRJK8gPNyHO9cIHXqOULIpriuUwPat5VtgIHSTb195k
+      disabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "name": "rageh",
+        "email": "rageh2@msail.com",
+        "password": 1234656,
+        "phone": "0109728026990"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

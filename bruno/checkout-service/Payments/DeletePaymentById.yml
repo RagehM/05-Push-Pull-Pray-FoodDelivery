@@ -6,25 +6,7 @@ info:
 http:
   method: DELETE
   url: http://localhost:8085/api/payments/1
-  body:
-    type: text
-    data: "{\r
-
-      \  \"orderId\": 789,\r
-
-      \  \"userId\": 678,\r
-
-      \  \"amount\": 50000,\r
-
-      \  \"method\": \"WALLET\",\r
-
-      \  \"status\": \"PENDING\",\r
-
-      \  \"transactionDetails\": {},\r
-
-      \  \"paymentOffers\": []\r
-
-      }\r\n"
+  auth: inherit
 
 settings:
   encodeUrl: true

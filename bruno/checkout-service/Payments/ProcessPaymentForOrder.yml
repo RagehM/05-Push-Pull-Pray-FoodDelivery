@@ -1,0 +1,23 @@
+info:
+  name: ProcessPaymentForOrder
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: http://localhost:8085/api/payments/order/1
+  body:
+    type: json
+    data: |-
+      {
+        "method": "CREDIT_CARD",
+        "transactionDetails": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

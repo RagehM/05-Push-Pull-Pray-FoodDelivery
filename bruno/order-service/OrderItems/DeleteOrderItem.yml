@@ -1,0 +1,16 @@
+info:
+  name: DeleteOrderItem
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: http://localhost:8083/api/orderItems/delete/1
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

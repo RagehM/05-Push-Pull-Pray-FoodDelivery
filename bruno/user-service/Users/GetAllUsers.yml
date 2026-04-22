@@ -1,0 +1,18 @@
+info:
+  name: GetAllUsers
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:8081/api/users
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDJAbXNhaWwuY29tIiwidWlkIjoyLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NzY4NzUyODYsImV4cCI6MTc3Njg3ODg4Nn0.KFAK4HqtABGRGCKLc-YXJdxORqhw7g3SRZuA2-dp0zY
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

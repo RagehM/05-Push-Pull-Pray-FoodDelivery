@@ -1,0 +1,26 @@
+info:
+  name: UpdateOrder
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: http://localhost:8083/api/orders/1
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 1,
+        "restaurantId": 1,
+        "status": "CONFIRMED",
+        "totalAmount": 55.0,
+        "metadata": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

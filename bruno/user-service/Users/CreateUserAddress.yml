@@ -1,0 +1,26 @@
+info:
+  name: CreateUserAddress
+  type: http
+  seq: 14
+
+http:
+  method: POST
+  url: http://localhost:8081/api/users/1/addresses
+  body:
+    type: json
+    data: |-
+      {
+        "street": "123 Main St",
+        "city": "Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "isDefault": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
