@@ -1,0 +1,26 @@
+info:
+  name: UpdateDeliveryAddress
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: http://localhost:8081/api/addresses/1
+  body:
+    type: json
+    data: |-
+      {
+        "street": "456 New Ave",
+        "city": "Munich",
+        "country": "Germany",
+        "postalCode": "80331",
+        "isDefault": true
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

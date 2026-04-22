@@ -1,0 +1,20 @@
+info:
+  name: ConfirmOrder
+  type: http
+  seq: 14
+
+http:
+  method: PUT
+  url: http://localhost:8083/api/orders/1/confirm?restaurantId=1
+  params:
+    - name: restaurantId
+      value: "1"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

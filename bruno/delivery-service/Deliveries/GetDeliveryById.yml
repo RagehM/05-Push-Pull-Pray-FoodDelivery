@@ -1,0 +1,16 @@
+info:
+  name: GetDeliveryById
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: http://localhost:8084/api/deliveries/1
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

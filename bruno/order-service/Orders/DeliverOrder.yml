@@ -1,0 +1,16 @@
+info:
+  name: DeliverOrder
+  type: http
+  seq: 9
+
+http:
+  method: PUT
+  url: http://localhost:8083/api/orders/1/deliver
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

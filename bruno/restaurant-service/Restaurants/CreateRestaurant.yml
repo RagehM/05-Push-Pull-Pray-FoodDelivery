@@ -1,0 +1,29 @@
+info:
+  name: CreateRestaurant
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8082/api/restaurants
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Burger House",
+        "cuisineType": "American",
+        "rating": 4.5,
+        "status": "ACTIVE",
+        "details": {
+          "address": "123 Main St",
+          "phone": "+1234567890"
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

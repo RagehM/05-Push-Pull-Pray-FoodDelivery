@@ -1,0 +1,16 @@
+info:
+  name: DeactivateUser
+  type: http
+  seq: 8
+
+http:
+  method: PUT
+  url: http://localhost:8081/api/users/1/deactivate
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

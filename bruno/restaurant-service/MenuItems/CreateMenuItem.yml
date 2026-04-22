@@ -1,0 +1,26 @@
+info:
+  name: CreateMenuItem
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8082/api/restaurants/1/menu-items
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Cheeseburger",
+        "description": "Classic cheeseburger with lettuce and tomato",
+        "price": 12.5,
+        "available": true,
+        "metadata": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

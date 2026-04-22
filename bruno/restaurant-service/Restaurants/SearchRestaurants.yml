@@ -1,0 +1,27 @@
+info:
+  name: SearchRestaurants
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: http://localhost:8082/api/restaurants/search?minRating=3.0&maxRating=5.0
+  params:
+    - name: cuisineType
+      value: Italian
+      type: query
+      enabled: false
+    - name: minRating
+      value: "3.0"
+      type: query
+    - name: maxRating
+      value: "5.0"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

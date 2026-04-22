@@ -1,0 +1,23 @@
+info:
+  name: RateRestaurant
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: http://localhost:8082/api/restaurants/1/rate
+  body:
+    type: json
+    data: |-
+      {
+        "orderId": 1,
+        "rating": 5
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

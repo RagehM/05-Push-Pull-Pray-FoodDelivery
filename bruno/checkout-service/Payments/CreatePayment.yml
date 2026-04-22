@@ -6,6 +6,9 @@ info:
 http:
   method: POST
   url: http://localhost:8085/api/payments
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDJAbXNhaWwuY29tIiwidWlkIjoyLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NzY4NzUyODYsImV4cCI6MTc3Njg3ODg4Nn0.KFAK4HqtABGRGCKLc-YXJdxORqhw7g3SRZuA2-dp0zY
   body:
     type: json
     data: "{\r

@@ -1,0 +1,26 @@
+info:
+  name: CreateOrder
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8083/api/orders
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 1,
+        "restaurantId": 1,
+        "status": "PENDING",
+        "totalAmount": 50.0,
+        "metadata": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

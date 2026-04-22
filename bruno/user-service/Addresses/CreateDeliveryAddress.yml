@@ -1,0 +1,26 @@
+info:
+  name: CreateDeliveryAddress
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8081/api/addresses
+  body:
+    type: json
+    data: |-
+      {
+        "street": "123 Main St",
+        "city": "Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "isDefault": false
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

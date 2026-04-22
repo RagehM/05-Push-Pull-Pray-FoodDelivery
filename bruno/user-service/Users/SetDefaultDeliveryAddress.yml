@@ -1,0 +1,16 @@
+info:
+  name: SetDefaultDeliveryAddress
+  type: http
+  seq: 17
+
+http:
+  method: PUT
+  url: http://localhost:8081/api/users/1/addresses/1/default
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
