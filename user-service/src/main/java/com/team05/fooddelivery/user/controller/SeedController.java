@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.user.controller;
 
-import com.team05.fooddelivery.user.config.DataSeeder;
+import com.team05.fooddelivery.user.service.DataSeeder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

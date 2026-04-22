@@ -40,18 +40,16 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if(request.name() == null  request.name().isEmpty()) {
+        if(request.name() == null || request.name().isEmpty()) {
             throw new ResponseStatusException(HttpStatusCode.valueOf(400), "name is required");
         }
-        if(request.password() == null
-        request.password().isEmpty()) {
+        if(request.password() == null || request.password().isEmpty()) {
             throw new ResponseStatusException(HttpStatusCode.valueOf(400), "password is required");
         }
-        if(request.email() == null  request.email().isEmpty()) {
+        if(request.email() == null || request.email().isEmpty()) {
             throw new ResponseStatusException(HttpStatusCode.valueOf(400), "email is required");
         }
-        if(request.phone() == null
-        request.phone().isEmpty()) {
+        if(request.phone() == null || request.phone().isEmpty()) {
             throw new ResponseStatusException(HttpStatusCode.valueOf(400), "phone is required");
         }
 
@@ -75,4 +73,4 @@ public class AuthService {
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
-}
+        }
