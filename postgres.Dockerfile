@@ -1,4 +1,4 @@
-FROM postgres:18
+FROM postgres:17
 
 ENV POSTGRES_DB=fooddeliverydb
 ENV POSTGRES_USER=postgres
