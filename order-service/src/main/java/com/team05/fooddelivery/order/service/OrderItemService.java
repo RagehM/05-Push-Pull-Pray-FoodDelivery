@@ -18,15 +18,13 @@ public class OrderItemService {
     private final OrderService orderService;
 
 
-
-    public OrderItem getOrderItemById_Logical(Long orderItemId) {
-        return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
-    }
-
-
     public OrderItemService(OrderItemRepository orderItemRepository, OrderService orderService) {
         this.orderItemRepository = orderItemRepository;
         this.orderService = orderService;
+    }
+
+    public OrderItem getOrderItemById_Logical(Long orderItemId) {
+        return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
 
     public OrderItem getOrderItemById(Long orderId, Long orderItemId) {
