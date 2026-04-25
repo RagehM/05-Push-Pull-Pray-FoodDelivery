@@ -1,0 +1,37 @@
+#!/bin/sh
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Block commits on main
+if [ "$branch" = "main" ]; then
+  echo "❌ Do not commit directly on main."
+  exit 1
+fi
+
+# Block detached HEAD
+if [ "$branch" = "HEAD" ]; then
+  echo "❌ Detached HEAD. Checkout a branch first."
+  exit 1
+fi
+
+# Branch format
+pattern='^(feat|fix|hotfix|refactor|docs|test|chore|perf)/(user|restaurant|order|delivery|checkout|m1|cc|infra)/[A-Za-z0-9-]+/[0-9]+-[0-9]+$'
+
+if ! echo "$branch" | grep -Eq "$pattern"; then
+  echo "❌ Invalid branch name:"
+  echo "$branch"
+  exit 1
+fi
+
+branch_id=$(echo "$branch" | awk -F/ '{print $NF}')
+
+case "$branch_id" in
+55-3936|55-7165|55-25730|55-24778|55-16508|55-12064|55-13845|55-20836|56-29265|55-15850|55-16204|55-11063|55-12559|55-15053|55-11289)
+  ;;
+*)
+  echo "❌ Unauthorized student ID in branch: $branch_id"
+  exit 1
+  ;;
+esac
+
+exit 0

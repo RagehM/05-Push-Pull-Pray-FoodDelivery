@@ -1,0 +1,45 @@
+#!/bin/sh
+
+msg=$(cat "$1")
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Extract branch parts
+branch_scope=$(echo "$branch" | cut -d/ -f2)
+branch_id=$(echo "$branch" | cut -d/ -f4)
+
+# Validate message format
+pattern='^(feat|fix|hotfix|refactor|docs|test|chore|perf)\((user|restaurant|order|delivery|checkout|m1|cc|infra)\): .+ \([0-9]+-[0-9]+\)$'
+
+if ! echo "$msg" | grep -Eq "$pattern"; then
+  echo "❌ Invalid commit message."
+  echo "Example:"
+  echo "feat(order): S3-F11 add endpoint (55-24778)"
+  exit 1
+fi
+
+# Extract message parts
+msg_scope=$(echo "$msg" | sed -E 's/^[a-z]+\(([^)]+)\).*/\1/')
+msg_id=$(echo "$msg" | grep -oE '\([0-9]+-[0-9]+\)$' | tr -d '()')
+
+# Validate allowed ID
+case "$msg_id" in
+55-3936|55-7165|55-25730|55-24778|55-16508|55-12064|55-13845|55-20836|56-29265|55-15850|55-16204|55-11063|55-12559|55-15053|55-11289)
+  ;;
+*)
+  echo "❌ Unauthorized student ID in commit: $msg_id"
+  exit 1
+  ;;
+esac
+
+# Match branch ↔ commit
+if [ "$msg_id" != "$branch_id" ]; then
+  echo "❌ Commit ID does not match branch ID."
+  exit 1
+fi
+
+if [ "$msg_scope" != "$branch_scope" ]; then
+  echo "❌ Commit scope must match branch scope."
+  exit 1
+fi
+
+exit 0
