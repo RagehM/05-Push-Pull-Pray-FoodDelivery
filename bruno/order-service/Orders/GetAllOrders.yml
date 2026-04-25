@@ -5,10 +5,14 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8083/api/orders
+  url: http://localhost:8083/api/orders?Authorization=Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzExNjYxNiwiZXhwIjoxNzc3MjAzMDE2fQ.n5Ji__-3uJZqV3T-9Sw5-dR8Ziu1NOMwJLUiZjteP3A
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDJAbXNhaWwuY29tIiwidWlkIjoyLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NzY4NzUyODYsImV4cCI6MTc3Njg3ODg4Nn0.KFAK4HqtABGRGCKLc-YXJdxORqhw7g3SRZuA2-dp0zY
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzA1NzgyNywiZXhwIjoxNzc3MTQ0MjI3fQ.XiatO4zL04RmMPvYWUlJGovX9JcB9bpS-rsY4_XXUiU
+  params:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzExNjYxNiwiZXhwIjoxNzc3MjAzMDE2fQ.n5Ji__-3uJZqV3T-9Sw5-dR8Ziu1NOMwJLUiZjteP3A
+      type: query
   auth: inherit
 
 settings:

@@ -3,7 +3,6 @@ package com.team05.fooddelivery.order.model.neo4j;
 import org.springframework.data.neo4j.core.schema.GeneratedValue;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
-import org.springframework.data.neo4j.core.schema.Property;
 
 @Node("Restaurant")
 public class RestaurantNode {
@@ -11,10 +10,8 @@ public class RestaurantNode {
     @GeneratedValue
     private Long restaurantId;
 
-    @Property
     private String name;
 
-    @Property
     private String cuisineType;
 
     public RestaurantNode() {

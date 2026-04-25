@@ -6,7 +6,6 @@ import java.util.List;
 import org.springframework.data.neo4j.core.schema.GeneratedValue;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
-import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
 
@@ -16,11 +15,10 @@ public class UserNode {
     @GeneratedValue
     private Long userId;
 
-    @Property
     private String name;
 
     @Relationship(type = "ORDERED_FROM", direction = Relationship.Direction.OUTGOING)
-    private List<RestaurantNode> restaurantNodes = new ArrayList<RestaurantNode>();
+    private List<OrderedFrom> orderedFroms = new ArrayList<OrderedFrom>();
 
     public UserNode() {
     }
@@ -34,4 +32,7 @@ public class UserNode {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public List<OrderedFrom> getOrderedFroms() { return orderedFroms; }
+    public void setOrderedFroms(List<OrderedFrom> orderedFroms) { this.orderedFroms = orderedFroms; }
 }
