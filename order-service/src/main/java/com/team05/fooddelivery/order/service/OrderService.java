@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,11 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final RedisTemplate<String, Order> redisTemplate;
 
-    public OrderService(OrderRepository orderRepository, RedisTemplate<String, Order> redisTemplate) {
+    public OrderService(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
-        this.redisTemplate = redisTemplate;
     }
 
     // [S3-F1] Search Orders by Status and Date Range
@@ -67,8 +64,6 @@ public class OrderService {
         }
         order.setRestaurantId(restaurantId);
         order.setStatus(OrderStatusEnum.CONFIRMED);
-
-        redisTemplate.delete("order:" + orderId);
 
         return orderRepository.save(order);
 
