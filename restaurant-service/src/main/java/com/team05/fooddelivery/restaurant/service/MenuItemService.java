@@ -4,15 +4,17 @@ import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
-import com.team05.fooddelivery.restaurant.util.CacheInvalidationUtil;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-import java.util.List;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -20,25 +22,20 @@ public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
-    private final CacheInvalidationUtil cacheInvalidationUtil;
 
     public MenuItemService(MenuItemRepository menuItemRepository,
-                           RestaurantRepository restaurantRepository,
-                           CacheInvalidationUtil cacheInvalidationUtil) {
+                           RestaurantRepository restaurantRepository) {
         this.menuItemRepository = menuItemRepository;
         this.restaurantRepository = restaurantRepository;
-        this.cacheInvalidationUtil = cacheInvalidationUtil;
     }
 
-    // No cache to evict on create — new item has no cached detail yet
+    // Create — evict S2-F9 since it lists restaurants with unavailable items
+    @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
     public MenuItem create(Long restaurantId, MenuItem menuItem) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         menuItem.setRestaurant(restaurant);
-        MenuItem saved = menuItemRepository.save(menuItem);
-        // Invalidate S2-F9 since it lists restaurants with unavailable items
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F9::*");
-        return saved;
+        return menuItemRepository.save(menuItem);
     }
 
     // Cached 15 min — Section 4.4.2
@@ -53,6 +50,11 @@ public class MenuItemService {
         return menuItemRepository.findAll();
     }
 
+    // Update — evict detail + S2-F9
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::menu-item", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public MenuItem update(Long id, MenuItem updated) {
         MenuItem existing = getById(id);
         if (updated.getName() != null)
@@ -67,21 +69,27 @@ public class MenuItemService {
             existing.setAvailable(updated.getAvailable());
         if (updated.getMetadata() != null)
             existing.setMetadata(updated.getMetadata());
-        MenuItem saved = menuItemRepository.save(existing);
-        invalidateMenuItemCaches(id);
-        return saved;
+        return menuItemRepository.save(existing);
     }
 
+    // Delete — evict detail + S2-F9
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::menu-item", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void delete(Long id) {
         if (!menuItemRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "MenuItem not found");
         }
         menuItemRepository.deleteById(id);
-        invalidateMenuItemCaches(id);
     }
 
-    // [S2-F8] Write — invalidates caches 
+    // [S2-F8] Write — invalidates caches
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::menu-item", key = "#menuItemId"),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public Restaurant toggleAvailability(Long restaurantId, Long menuItemId, Long toggledBy) {
         Restaurant rest = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
@@ -110,14 +118,6 @@ public class MenuItemService {
         metadata.put("toggledBy", toggledBy);
         menuItem.setMetadata(metadata);
         menuItemRepository.save(menuItem);
-        invalidateMenuItemCaches(menuItemId);
         return restaurantRepository.findById(restaurantId).get();
-    }
-
-    // Clears all menu-item-related caches when data changes
-    // Spec ref: Section 4.4.4 + 4.4.6
-    private void invalidateMenuItemCaches(Long id) {
-        cacheInvalidationUtil.evict("restaurant-service::menu-item::" + id);
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F9::*");
     }
 }

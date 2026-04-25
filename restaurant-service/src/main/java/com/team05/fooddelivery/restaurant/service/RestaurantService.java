@@ -1,47 +1,49 @@
 package com.team05.fooddelivery.restaurant.service;
 
+import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
+import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
-import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
-import com.team05.fooddelivery.restaurant.util.CacheInvalidationUtil;
+import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.team05.fooddelivery.restaurant.model.MenuItem;
 
-import java.util.ArrayList;
-import java.util.Map;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
-    private final CacheInvalidationUtil cacheInvalidationUtil;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
-                             MenuItemRepository menuItemRepository,
-                             CacheInvalidationUtil cacheInvalidationUtil) {
+                             MenuItemRepository menuItemRepository) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
-        this.cacheInvalidationUtil = cacheInvalidationUtil;
     }
 
+    // CRUD create — evict search caches since new restaurant affects results
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public Restaurant create(Restaurant restaurant) {
         if (restaurant.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant must not have an id");
         }
-        Restaurant saved = restaurantRepository.save(restaurant);
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F1::*");
-        return saved;
+        return restaurantRepository.save(restaurant);
     }
 
     // Cached 15 min — spec Section 4.4.2
@@ -56,6 +58,15 @@ public class RestaurantService {
         return restaurantRepository.findAll();
     }
 
+    // CRUD update — evict detail + all feature caches
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public Restaurant update(Long id, Restaurant updated) {
         Restaurant existing = getById(id);
         if (updated.getName() != null)
@@ -70,17 +81,23 @@ public class RestaurantService {
             existing.setStatus(updated.getStatus());
         if (updated.getDetails() != null)
             existing.setDetails(updated.getDetails());
-        Restaurant saved = restaurantRepository.save(existing);
-        invalidateRestaurantCaches(id);
-        return saved;
+        return restaurantRepository.save(existing);
     }
 
+    // CRUD delete — evict detail + all feature caches
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void delete(Long id) {
         if (!restaurantRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         restaurantRepository.deleteById(id);
-        invalidateRestaurantCaches(id);
     }
 
     // [S2-F1] Cached 5 min — Section 4.4.1
@@ -93,6 +110,14 @@ public class RestaurantService {
     }
 
     // [S2-F2] Write — invalidates caches — Section 4.4.4
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
         Restaurant existing = getById(id);
         Map<String, Object> currentDetails = existing.getDetails();
@@ -102,9 +127,7 @@ public class RestaurantService {
             currentDetails.putAll(newDetails);
             existing.setDetails(currentDetails);
         }
-        Restaurant saved = restaurantRepository.save(existing);
-        invalidateRestaurantCaches(id);
-        return saved;
+        return restaurantRepository.save(existing);
     }
 
     // [S2-F3] Cached 10 min — Section 4.4.1
@@ -122,6 +145,14 @@ public class RestaurantService {
 
     // [S2-F4] Write — invalidates caches — Section 4.4.4
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void updateRestaurantStatus(Long id, String newStatus) {
         if (newStatus == null || newStatus.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
@@ -141,7 +172,6 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
-        invalidateRestaurantCaches(id);
     }
 
     // [S2-F5] Cached 5 min — Section 4.4.1
@@ -167,6 +197,14 @@ public class RestaurantService {
 
     // [S2-F7] Write — invalidates caches — Section 4.4.4
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#restaurantId"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
         if (rating == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must not be null");
@@ -194,10 +232,9 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
-        invalidateRestaurantCaches(restaurantId);
     }
 
-    // [S2-F9] Cached 10 min — Section 4.4.1 
+    // [S2-F9] Cached 10 min — Section 4.4.1
     @Cacheable(value = "restaurant-service::S2-F9", key = "'all'")
     public List<RestaurantMenuAlertDTO> getRestaurantsWithUnavailableItems() {
         List<Restaurant> restaurants = restaurantRepository.findRestaurantsWithUnavailableItems();
@@ -212,16 +249,5 @@ public class RestaurantService {
                     unavailableItems.size()));
         }
         return dtos;
-    }
-
-    // Clears all restaurant-related caches when data changes
-    // Section 4.4.4 + 4.4.6
-    private void invalidateRestaurantCaches(Long id) {
-        cacheInvalidationUtil.evict("restaurant-service::restaurant::" + id);
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F1::*");
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F3::*");
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F5::*");
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F6::*");
-        cacheInvalidationUtil.evictByPattern("restaurant-service::S2-F9::*");
     }
 }
