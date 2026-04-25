@@ -6,6 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:8085/api/payments/user/1/summary
+  headers:
+    - name: Authorization
+      value: ""
   auth: inherit
 
 settings:
@@ -13,4 +16,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
