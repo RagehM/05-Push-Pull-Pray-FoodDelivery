@@ -5,11 +5,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 
 @SpringBootApplication
-@EnableCaching 
-public class R {
+@EnableCaching
+public class RestaurantServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(R.class, args);
+        SpringApplication.run(RestaurantServiceApplication.class, args);
     }
 
 }
