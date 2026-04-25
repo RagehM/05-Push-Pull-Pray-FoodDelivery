@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8083/api/orders?Authorization=Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzExNjYxNiwiZXhwIjoxNzc3MjAzMDE2fQ.n5Ji__-3uJZqV3T-9Sw5-dR8Ziu1NOMwJLUiZjteP3A
+  url: http://localhost:8083/api/orders
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzA1NzgyNywiZXhwIjoxNzc3MTQ0MjI3fQ.XiatO4zL04RmMPvYWUlJGovX9JcB9bpS-rsY4_XXUiU
@@ -13,6 +13,7 @@ http:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzExNjYxNiwiZXhwIjoxNzc3MjAzMDE2fQ.n5Ji__-3uJZqV3T-9Sw5-dR8Ziu1NOMwJLUiZjteP3A
       type: query
+      disabled: true
   auth: inherit
 
 settings:

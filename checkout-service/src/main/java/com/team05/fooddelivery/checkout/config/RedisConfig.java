@@ -37,6 +37,9 @@ public class RedisConfig {
 
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
+        cacheConfigs.put("checkout-service::payment",  defaultConfig.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigs.put("checkout-service::S5-F6", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigs)
