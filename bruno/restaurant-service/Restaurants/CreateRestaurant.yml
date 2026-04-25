@@ -6,18 +6,19 @@ info:
 http:
   method: POST
   url: http://localhost:8082/api/restaurants
+  headers:
+    - name: Au
+      value: ""
   body:
     type: json
     data: |-
       {
         "name": "Burger House",
-        "cuisineType": "American",
+        "cuisineType": "ITALIAN",
         "rating": 4.5,
-        "status": "ACTIVE",
-        "details": {
-          "address": "123 Main St",
-          "phone": "+1234567890"
-        }
+        "status": "OPEN",
+        "address": "123 Main St",
+        "phone": "+1234567890"
       }
   auth: inherit
 
@@ -26,4 +27,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

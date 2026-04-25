@@ -6,6 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:8085/api/payments/user/1/summary
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6Mywicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3MDU5NTkzLCJleHAiOjE3NzcxNDU5OTN9.nzeS6Hq-29UXJbwU8_XCf9nPZ8GV2HKvG_qa6KWjKIg
   auth: inherit
 
 settings:
@@ -13,4 +16,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
