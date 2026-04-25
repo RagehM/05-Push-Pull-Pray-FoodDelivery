@@ -54,7 +54,8 @@ public class Restaurant {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL)
     private List<MenuItem> menuItems = new ArrayList<>();
 
     @PrePersist

@@ -197,7 +197,7 @@ public class RestaurantService {
         invalidateRestaurantCaches(restaurantId);
     }
 
-    // [S2-F9] Cached 10 min — Section 4.4.1 
+    // [S2-F9] Cached 10 min — Section 4.4.1
     @Cacheable(value = "restaurant-service::S2-F9", key = "'all'")
     public List<RestaurantMenuAlertDTO> getRestaurantsWithUnavailableItems() {
         List<Restaurant> restaurants = restaurantRepository.findRestaurantsWithUnavailableItems();
