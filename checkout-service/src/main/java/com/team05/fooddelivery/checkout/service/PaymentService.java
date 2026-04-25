@@ -11,6 +11,7 @@ import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -132,6 +133,7 @@ public class PaymentService {
 
     // [S5-F4] Process Payment for Order (Transactional)
     @Transactional
+    @CachePut(value="checkout-service::S5-F4", key="#orderId")
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto) {
 
         // Guard 1: order must exist
@@ -303,6 +305,7 @@ public class PaymentService {
     }
 
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)
+    @Cacheable(value = "checkout-service::S5-F8",key = "#paymentId")
     public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
         // Fetch payment with offers eagerly loaded via JOIN FETCH
         Payment payment = paymentRepository.findByIdWithOffers(paymentId)
