@@ -81,7 +81,7 @@ public class PaymentOfferService {
         paymentOfferRepository.deleteById(paymentOfferId);
     }
 
-    // S5-F9: Get Most Used Offers Report
+    // [S5-F9] Get Most Used Offers Report (Join Entity + Aggregation)
     public List<OfferUsageDTO> getMostUsedOffers(int limit) {
         List<Object[]> rows = offerRepository.findMostUsedOffers(PageRequest.of(0, limit));
 
