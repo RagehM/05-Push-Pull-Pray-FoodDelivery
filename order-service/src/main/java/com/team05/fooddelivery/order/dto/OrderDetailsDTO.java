@@ -105,4 +105,79 @@ public class OrderDetailsDTO {
     public void setPreparedItems(Integer preparedItems) {
         this.preparedItems = preparedItems;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long orderId;
+        private Long userId;
+        private Long restaurantId;
+        private OrderStatusEnum status;
+        private Double totalAmount;
+        private Map<String, Object> metadata;
+        private List<OrderItemDetailsDTO> items;
+        private Integer totalItems;
+        private Integer preparedItems;
+
+        public Builder orderId(Long orderId) {
+            this.orderId = orderId;
+            return this;
+        }
+
+        public Builder userId(Long userId) {
+            this.userId = userId;
+            return this;
+        }
+
+        public Builder restaurantId(Long restaurantId) {
+            this.restaurantId = restaurantId;
+            return this;
+        }
+
+        public Builder status(OrderStatusEnum status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder totalAmount(Double totalAmount) {
+            this.totalAmount = totalAmount;
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public Builder items(List<OrderItemDetailsDTO> items) {
+            this.items = items;
+            return this;
+        }
+
+        public Builder totalItems(Integer totalItems) {
+            this.totalItems = totalItems;
+            return this;
+        }
+
+        public Builder preparedItems(Integer preparedItems) {
+            this.preparedItems = preparedItems;
+            return this;
+        }
+
+        public OrderDetailsDTO build() {
+            return new OrderDetailsDTO(
+                    orderId,
+                    userId,
+                    restaurantId,
+                    status,
+                    totalAmount,
+                    metadata,
+                    items,
+                    totalItems,
+                    preparedItems
+            );
+        }
+    }
 }

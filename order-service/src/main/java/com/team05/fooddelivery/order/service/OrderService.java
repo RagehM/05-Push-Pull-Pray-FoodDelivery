@@ -11,6 +11,8 @@ import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
+import com.team05.fooddelivery.order.observer.EntityObserver;
+import com.team05.fooddelivery.order.observer.MongoEventLogger;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,10 +31,12 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final RedisTemplate<String, Order> redisTemplate;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
     public OrderService(OrderRepository orderRepository, RedisTemplate<String, Order> redisTemplate) {
         this.orderRepository = orderRepository;
         this.redisTemplate = redisTemplate;
+        this.observers.add(new MongoEventLogger());
     }
 
     // [S3-F1] Search Orders by Status and Date Range
@@ -70,7 +74,9 @@ public class OrderService {
 
         redisTemplate.delete("order:" + orderId);
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        notifyObservers("ORDER_CONFIRMED", savedOrder);
+        return savedOrder;
 
     }
     // [S3-F3] Order Cost Estimation (Report DTO)
@@ -99,13 +105,13 @@ public class OrderService {
         long activeOrders = orderRepository.countActiveOrdersByRestaurantId(request.restaurantId());
         double surgeMultiplier = activeOrders > 10 ? (activeOrders > 20 ? 1.5: 1.2) : 1.0;
         double total = (foodCost+deliveryFee + serviceFee) * surgeMultiplier;
-        return new OrderCostEstimateDTO(
-                foodCost,
-                deliveryFee,
-                serviceFee,
-                total,
-                surgeMultiplier
-        );
+        return OrderCostEstimateDTO.builder()
+                .estimatedFoodCost(foodCost)
+                .deliveryFee(deliveryFee)
+                .serviceFee(serviceFee)
+                .estimatedTotal(total)
+                .surgeMultiplier(surgeMultiplier)
+                .build();
     }
     // [S3-F4] Deliver Order
     @Transactional
@@ -125,7 +131,9 @@ public class OrderService {
         }
         // Create payment record with status PENDING. Save order. Return the order after the update.
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
-        return orderRepository.save(foundOrder);
+        Order savedOrder = orderRepository.save(foundOrder);
+        notifyObservers("ORDER_DELIVERED", savedOrder);
+        return savedOrder;
 
 
     }
@@ -157,7 +165,7 @@ public class OrderService {
         }
         //Update status to CANCELLED
         order.setStatus(OrderStatusEnum.CANCELLED);
-        orderRepository.save(order);
+        notifyObservers("ORDER_CANCELLED", order);
         //Update status of all order items to cancelled through repository
         // // // try {
         // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
@@ -192,6 +200,7 @@ public class OrderService {
         orderRepository.save(existingOrder);
 
         Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
+        notifyObservers("ORDER_ITEMS_ADDED", returnObject);
 
         return returnObject;
     }
@@ -208,15 +217,16 @@ public class OrderService {
         orderItems.sort(Comparator.comparing(OrderItem::getLineNumber));
 
         List<OrderItemDetailsDTO> items = orderItems.stream()
-                .map(item -> new OrderItemDetailsDTO(
-                        item.getId(),
-                        item.getLineNumber(),
-                        item.getItemName(),
-                        item.getQuantity(),
-                        item.getUnitPrice(),
-                        item.getStatus(),
-                        item.getMetadata()
-                ))
+                .map(item -> OrderItemDetailsDTO.builder()
+                        .id(item.getId())
+                        .lineNumber(item.getLineNumber())
+                        .itemName(item.getItemName())
+                        .quantity(item.getQuantity())
+                        .unitPrice(item.getUnitPrice())
+                        .status(item.getStatus())
+                        .metadata(item.getMetadata())
+                        .build()
+                )
                 .toList();
 
         int totalItems = items.size();
@@ -225,17 +235,17 @@ public class OrderService {
                 .filter(item -> item.getStatus() == OrderItemStatusEnum.PREPARED)
                 .count();
 
-        return new OrderDetailsDTO(
-                order.getId(),
-                order.getUserId(),
-                order.getRestaurantId(),
-                order.getStatus(),
-                order.getTotalAmount(),
-                order.getMetadata(),
-                items,
-                totalItems,
-                preparedItems
-        );
+        return OrderDetailsDTO.builder()
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .restaurantId(order.getRestaurantId())
+                .status(order.getStatus())
+                .totalAmount(order.getTotalAmount())
+                .metadata(order.getMetadata())
+                .items(items)
+                .totalItems(totalItems)
+                .preparedItems(preparedItems)
+                .build();
     }
     // [CRUD]
     //// Get order by ID
@@ -264,7 +274,9 @@ public class OrderService {
         }
 
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        notifyObservers("ORDER_CREATED", savedOrder);
+        return savedOrder;
     }
     //// Update order
     @Transactional
@@ -299,12 +311,29 @@ public class OrderService {
         if (updatedOrder.getDeliveredAt() != null) {
             existingOrder.setDeliveredAt(updatedOrder.getDeliveredAt());
         }
-        return orderRepository.save(existingOrder);
+        Order savedOrder = orderRepository.save(existingOrder);
+        notifyObservers("ORDER_UPDATED", savedOrder);
+        return savedOrder;
     }
     //// Delete order
     @Transactional
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
+        notifyObservers("ORDER_DELETED", existingOrder);
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 }
