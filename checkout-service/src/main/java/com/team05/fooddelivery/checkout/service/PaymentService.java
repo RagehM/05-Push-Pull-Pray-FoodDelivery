@@ -76,6 +76,7 @@ public class PaymentService {
     }
 
     // [S5-F1] Get Payments by Status and Date Range
+    @Cacheable(value = "checkout-service::S5-F1", key = "#id")
     public List<Payment> getPaymentsByStatusAndDateRange(
             PaymentStatus status,
             LocalDateTime startDate,
@@ -265,6 +266,7 @@ public class PaymentService {
 
     // [S5-F7] Retry Failed Payment (Transactional)
     @Transactional
+    @Cacheable(value = "checkout-service::S5-F7", key = "#id")
     public Payment retryFailedPayment(Long id) {
         // Find payment – 404 if not found
         Payment payment = paymentRepository.findById(id)
