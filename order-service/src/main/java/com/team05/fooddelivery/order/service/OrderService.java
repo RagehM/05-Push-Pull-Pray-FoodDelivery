@@ -9,37 +9,46 @@ import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
+import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
+import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
+
 import org.springframework.stereotype.Service;
-import com.team05.fooddelivery.order.observer.EntityObserver;
-import com.team05.fooddelivery.order.observer.MongoEventLogger;
-import com.team05.fooddelivery.order.model.mongo.MongoEvent.EventType;
+
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
+import com.team05.shared.model.mongo.MongoEvent.EventType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.team05.fooddelivery.order.factory.EventFactory;
 
 @Service
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final RedisTemplate<String, Order> redisTemplate;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final MongoOrderEventRepository mongoOrderEventRepository;
+    private final EventFactory eventFactory = new EventFactory();
 
-    public OrderService(OrderRepository orderRepository, RedisTemplate<String, Order> redisTemplate) {
+    public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
         this.orderRepository = orderRepository;
-        this.redisTemplate = redisTemplate;
-        this.observers.add(new MongoEventLogger());
+        this.mongoOrderEventRepository = mongoOrderEventRepository;
+        this.observers.add(
+            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER, eventFactory)
+        );
     }
 
     // [S3-F1] Search Orders by Status and Date Range
@@ -47,11 +56,14 @@ public class OrderService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
 
-        return orderRepository.searchByStatusAndDateRange(
+        List<Order> orders = orderRepository.searchByStatusAndDateRange(
                 status,
                 startDateTime,
                 endDateTimeExclusive
         );
+
+        return orders;
+
     }
     // [S3-F2] Confirm Order and Assign Restaurant (Transactional)
     @Transactional
@@ -75,15 +87,14 @@ public class OrderService {
         order.setRestaurantId(restaurantId);
         order.setStatus(OrderStatusEnum.CONFIRMED);
 
-        redisTemplate.delete("order:" + orderId);
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_CONFIRMED");
         params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("orderId", savedOrder.getId());
         details.put("userId", savedOrder.getUserId());
         details.put("restaurantId", savedOrder.getRestaurantId());
         details.put("status", savedOrder.getStatus().name());
@@ -151,9 +162,9 @@ public class OrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_DELIVERED");
         params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("orderId", savedOrder.getId());
         details.put("userId", savedOrder.getUserId());
         details.put("restaurantId", savedOrder.getRestaurantId());
         details.put("status", savedOrder.getStatus().name());
@@ -198,9 +209,9 @@ public class OrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_CANCELLED");
         params.put("order", order);
+        params.put("orderId", order.getId());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("orderId", order.getId());
         details.put("userId", order.getUserId());
         details.put("restaurantId", order.getRestaurantId());
         details.put("status", order.getStatus().name());
@@ -245,9 +256,9 @@ public class OrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_ITEMS_ADDED");
         params.put("order", returnObject);
+        params.put("orderId", returnObject.getId());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("orderId", returnObject.getId());
         details.put("userId", returnObject.getUserId());
         details.put("restaurantId", returnObject.getRestaurantId());
         details.put("status", returnObject.getStatus().name());
@@ -334,6 +345,7 @@ public class OrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_CREATED");
         params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
 
         Map<String, Object> details = new HashMap<>();
         details.put("orderId", savedOrder.getId());
@@ -385,9 +397,9 @@ public class OrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_UPDATED");
         params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("orderId", savedOrder.getId());
         details.put("userId", savedOrder.getUserId());
         details.put("restaurantId", savedOrder.getRestaurantId());
         details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
@@ -406,9 +418,9 @@ public class OrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("action", "ORDER_DELETED");
         params.put("order", existingOrder);
+        params.put("orderId", existingOrder.getId());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("orderId", existingOrder.getId());
         details.put("userId", existingOrder.getUserId());
         details.put("restaurantId", existingOrder.getRestaurantId());
         details.put("statusBeforeDelete",
