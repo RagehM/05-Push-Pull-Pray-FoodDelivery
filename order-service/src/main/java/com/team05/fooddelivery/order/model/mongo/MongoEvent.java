@@ -8,4 +8,12 @@ public interface MongoEvent {
     LocalDateTime getTimestamp();
     String getAction();
     Map<String, Object> getDetails();
+
+    public static enum EventType {
+        AUTH,
+        RESTAURANT,
+        ORDER,
+        DELIVERY,
+        PAYMENT_AUDIT
+    }
 }

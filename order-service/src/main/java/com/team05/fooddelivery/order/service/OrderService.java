@@ -13,6 +13,7 @@ import com.team05.fooddelivery.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import com.team05.fooddelivery.order.observer.EntityObserver;
 import com.team05.fooddelivery.order.observer.MongoEventLogger;
+import com.team05.fooddelivery.order.model.mongo.MongoEvent.EventType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,6 +21,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -75,7 +78,20 @@ public class OrderService {
         redisTemplate.delete("order:" + orderId);
 
         Order savedOrder = orderRepository.save(order);
-        notifyObservers("ORDER_CONFIRMED", savedOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_CONFIRMED");
+        params.put("order", savedOrder);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", savedOrder.getId());
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus().name());
+        details.put("assignedRestaurantId", restaurantId);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_CONFIRMED", params);
         return savedOrder;
 
     }
@@ -132,7 +148,21 @@ public class OrderService {
         // Create payment record with status PENDING. Save order. Return the order after the update.
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
         Order savedOrder = orderRepository.save(foundOrder);
-        notifyObservers("ORDER_DELIVERED", savedOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_DELIVERED");
+        params.put("order", savedOrder);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", savedOrder.getId());
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus().name());
+        details.put("deliveredAt", savedOrder.getDeliveredAt());
+        details.put("totalAmount", savedOrder.getTotalAmount());
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_DELIVERED", params);
         return savedOrder;
 
 
@@ -165,7 +195,19 @@ public class OrderService {
         }
         //Update status to CANCELLED
         order.setStatus(OrderStatusEnum.CANCELLED);
-        notifyObservers("ORDER_CANCELLED", order);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_CANCELLED");
+        params.put("order", order);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", order.getId());
+        details.put("userId", order.getUserId());
+        details.put("restaurantId", order.getRestaurantId());
+        details.put("status", order.getStatus().name());
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_CANCELLED", params);
         //Update status of all order items to cancelled through repository
         // // // try {
         // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
@@ -200,7 +242,21 @@ public class OrderService {
         orderRepository.save(existingOrder);
 
         Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
-        notifyObservers("ORDER_ITEMS_ADDED", returnObject);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_ITEMS_ADDED");
+        params.put("order", returnObject);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", returnObject.getId());
+        details.put("userId", returnObject.getUserId());
+        details.put("restaurantId", returnObject.getRestaurantId());
+        details.put("status", returnObject.getStatus().name());
+        details.put("totalItemsAfterAdd",
+                returnObject.getOrderItems() != null ? returnObject.getOrderItems().size() : 0);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_ITEMS_ADDED", params);
 
         return returnObject;
     }
@@ -275,7 +331,20 @@ public class OrderService {
 
 
         Order savedOrder = orderRepository.save(order);
-        notifyObservers("ORDER_CREATED", savedOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_CREATED");
+        params.put("order", savedOrder);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", savedOrder.getId());
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
+        details.put("totalAmount", savedOrder.getTotalAmount());
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_CREATED", params);
         return savedOrder;
     }
     //// Update order
@@ -311,8 +380,22 @@ public class OrderService {
         if (updatedOrder.getDeliveredAt() != null) {
             existingOrder.setDeliveredAt(updatedOrder.getDeliveredAt());
         }
+
         Order savedOrder = orderRepository.save(existingOrder);
-        notifyObservers("ORDER_UPDATED", savedOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_UPDATED");
+        params.put("order", savedOrder);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", savedOrder.getId());
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
+        details.put("updatedFields", updatedOrder);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_UPDATED", params);
         return savedOrder;
     }
     //// Delete order
@@ -320,7 +403,20 @@ public class OrderService {
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
-        notifyObservers("ORDER_DELETED", existingOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_DELETED");
+        params.put("order", existingOrder);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", existingOrder.getId());
+        details.put("userId", existingOrder.getUserId());
+        details.put("restaurantId", existingOrder.getRestaurantId());
+        details.put("statusBeforeDelete",
+                existingOrder.getStatus() != null ? existingOrder.getStatus().name() : null);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_DELETED", params);
     }
 
     public void registerObserver(EntityObserver observer) {
