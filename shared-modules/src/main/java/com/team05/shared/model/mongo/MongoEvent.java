@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.order.model.mongo;
+package com.team05.shared.model.mongo;
 
 import java.time.LocalDateTime;
 import java.util.Map;

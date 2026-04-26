@@ -140,6 +140,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-neo4j</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.team05.fooddelivery</groupId>
+            <artifactId>shared-modules</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>
