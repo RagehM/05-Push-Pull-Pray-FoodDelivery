@@ -29,8 +29,6 @@ public class MenuItemService {
         this.restaurantRepository = restaurantRepository;
     }
 
-    // Create — evict S2-F9 since it lists restaurants with unavailable items
-    @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
     public MenuItem create(Long restaurantId, MenuItem menuItem) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));

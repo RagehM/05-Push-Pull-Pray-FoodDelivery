@@ -33,12 +33,6 @@ public class RestaurantService {
         this.menuItemRepository = menuItemRepository;
     }
 
-    // CRUD create — evict search caches since new restaurant affects results
-    @Caching(evict = {
-            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
-    })
     public Restaurant create(Restaurant restaurant) {
         if (restaurant.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant must not have an id");
