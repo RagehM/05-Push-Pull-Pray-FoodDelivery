@@ -65,7 +65,8 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
             }
     )
     public Payment updatePayment(Long id, Payment updatedPayment) {
@@ -84,7 +85,8 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-            @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+            @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+            @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
     })
     public void deletePaymentById(Long id) {
         if (!paymentRepository.existsById(id)) {

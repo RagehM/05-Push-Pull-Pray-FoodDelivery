@@ -33,10 +33,6 @@ public class PaymentOfferService {
         this.offerRepository = offerRepository;
     }
 
-    @Caching(
-            put = @CachePut(value = "checkout-service::payment-offer", key = "#result.id", unless = "#result == null"),
-            evict = @CacheEvict(value = "checkout-service::S5-F9", allEntries = true)
-    )
     public PaymentOffer createPaymentOffer(PaymentOfferDTO dto) {
         PaymentOffer paymentOffer = new PaymentOffer();
 
