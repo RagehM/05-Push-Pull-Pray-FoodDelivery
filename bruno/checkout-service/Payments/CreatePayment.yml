@@ -8,7 +8,7 @@ http:
   url: http://localhost:8085/api/payments
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDJAbXNhaWwuY29tIiwidWlkIjoyLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NzY4NzUyODYsImV4cCI6MTc3Njg3ODg4Nn0.KFAK4HqtABGRGCKLc-YXJdxORqhw7g3SRZuA2-dp0zY
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzEzNTgzMCwiZXhwIjoxNzc3MjIyMjMwfQ.abXUW9pjUuTyhih_hpdoR1y-EfdwEaHrDZC7aGgB5mQ
   body:
     type: json
     data: |-
@@ -17,7 +17,7 @@ http:
         "userId": 1,
         "amount": 150,
         "method": "CASH_ON_DELIVERY",
-        "status": "PENDING",
+        "status": "COMPLETED",
         "createdAt": "2026-03-25T10:00:00Z",
         "transactionDetails": {},
         "paymentOffers": []

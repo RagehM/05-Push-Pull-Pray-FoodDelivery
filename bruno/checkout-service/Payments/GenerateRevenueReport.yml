@@ -6,6 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:8085/api/payments/reports/revenue?startDate=2026-01-01&endDate=2026-03-31
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzEzNTgzMCwiZXhwIjoxNzc3MjIyMjMwfQ.abXUW9pjUuTyhih_hpdoR1y-EfdwEaHrDZC7aGgB5mQ
   params:
     - name: startDate
       value: 2026-01-01
@@ -20,4 +23,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

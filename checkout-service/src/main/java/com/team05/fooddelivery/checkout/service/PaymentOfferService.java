@@ -4,7 +4,10 @@ import com.team05.fooddelivery.checkout.dto.OfferUsageDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -55,10 +58,15 @@ public class PaymentOfferService {
         return paymentOfferRepository.findAll();
     }
 
+    @Cacheable(value = "checkout-service::payment-offer", key = "#paymentOfferId")
     public PaymentOffer getPaymentOfferById(Long paymentOfferId) {
         return paymentOfferRepository.findById(paymentOfferId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PaymentOffer not found"));
     }
 
+    @Caching(
+            put = @CachePut(value = "checkout-service::payment-offer", key = "#paymentOfferId"),
+            evict = @CacheEvict(value = "checkout-service::S5-F9", allEntries = true)
+    )
     public PaymentOffer updatePaymentOffer(Long paymentOfferId, PaymentOfferDTO dto) {
         return paymentOfferRepository.findById(paymentOfferId).map(paymentOffer -> {
             if (dto.discountApplied() != null)
@@ -78,6 +86,10 @@ public class PaymentOfferService {
         }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PaymentOffer not found"));
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "checkout-service::payment-offer", key = "#paymentOfferId"),
+            @CacheEvict(value = "checkout-service::S5-F9", allEntries = true)
+    })
     public void deletePaymentOfferById(Long paymentOfferId) {
         paymentOfferRepository.deleteById(paymentOfferId);
     }
