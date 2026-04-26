@@ -4,6 +4,7 @@ import com.team05.fooddelivery.checkout.dto.OfferUsageDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -82,6 +83,7 @@ public class PaymentOfferService {
     }
 
     // [S5-F9] Get Most Used Offers Report (Join Entity + Aggregation)
+    @Cacheable(value = "checkout-service::S5-F9",key = "#limit")
     public List<OfferUsageDTO> getMostUsedOffers(int limit) {
         List<Object[]> rows = offerRepository.findMostUsedOffers(PageRequest.of(0, limit));
 

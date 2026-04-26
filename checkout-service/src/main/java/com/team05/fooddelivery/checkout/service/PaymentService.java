@@ -11,6 +11,7 @@ import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -76,6 +77,7 @@ public class PaymentService {
     }
 
     // [S5-F1] Get Payments by Status and Date Range
+    @Cacheable(value = "checkout-service::S5-F1", key = "#id")
     public List<Payment> getPaymentsByStatusAndDateRange(
             PaymentStatus status,
             LocalDateTime startDate,
@@ -132,6 +134,7 @@ public class PaymentService {
 
     // [S5-F4] Process Payment for Order (Transactional)
     @Transactional
+    @CachePut(value="checkout-service::S5-F4", key="#orderId")
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto) {
 
         // Guard 1: order must exist
@@ -265,6 +268,7 @@ public class PaymentService {
 
     // [S5-F7] Retry Failed Payment (Transactional)
     @Transactional
+    @Cacheable(value = "checkout-service::S5-F7", key = "#id")
     public Payment retryFailedPayment(Long id) {
         // Find payment – 404 if not found
         Payment payment = paymentRepository.findById(id)
@@ -303,6 +307,7 @@ public class PaymentService {
     }
 
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)
+    @Cacheable(value = "checkout-service::S5-F8",key = "#paymentId")
     public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
         // Fetch payment with offers eagerly loaded via JOIN FETCH
         Payment payment = paymentRepository.findByIdWithOffers(paymentId)
