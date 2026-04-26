@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -44,6 +45,7 @@ public class Payment {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<PaymentOffer> paymentOffers = new ArrayList<>();
 
     @PrePersist void prePersist() {
