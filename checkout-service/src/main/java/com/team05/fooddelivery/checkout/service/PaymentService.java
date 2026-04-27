@@ -5,12 +5,17 @@ import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
+import com.team05.fooddelivery.checkout.factory.PaymentAuditEventFactory;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
+import com.team05.fooddelivery.checkout.repository.mongo.MongoPaymentAuditEventRepository;
+import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -22,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +38,18 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OfferRepository offerRepository;
     private final PaymentOfferRepository paymentOfferRepository;
+    private final MongoPaymentAuditEventRepository paymentAuditEventRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final PaymentAuditEventFactory paymentAuditEventFactory = new PaymentAuditEventFactory();
 
-    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository) {
+    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository) {
         this.paymentRepository =  paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
+        this.paymentAuditEventRepository = paymentAuditEventRepository;
+        this.observers.add(
+                new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT, paymentAuditEventFactory)
+        );
     }
 
     // Payment CRUD
@@ -95,6 +108,12 @@ public class PaymentService {
         paymentRepository.deleteById(id);
     }
 
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
+
     // [S5-F1] Get Payments by Status and Date Range
     @Cacheable(
             value = "checkout-service::S5-F1",
@@ -132,6 +151,23 @@ public class PaymentService {
         transactionDetails.put("refundReason", reason);
         transactionDetails.put("refundedAt", LocalDateTime.now().toString());
         payment.setStatus(PaymentStatus.REFUNDED);
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("action", "REFUNDED");
+        paymentAuditEventParams.put("method", payment.getMethod());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", payment.getUserId());
+        details.put("orderId", payment.getOrderId());
+        details.put("amount", payment.getAmount());
+        details.put("status", payment.getStatus().name());
+        details.put("refundReason", reason);
+
+        paymentAuditEventParams.put("details", details);
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
 
         return paymentRepository.save(payment);
     }

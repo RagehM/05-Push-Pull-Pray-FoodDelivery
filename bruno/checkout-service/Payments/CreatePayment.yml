@@ -8,7 +8,7 @@ http:
   url: http://localhost:8085/api/payments
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzEzNTgzMCwiZXhwIjoxNzc3MjIyMjMwfQ.abXUW9pjUuTyhih_hpdoR1y-EfdwEaHrDZC7aGgB5mQ
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzMwNjgyMiwiZXhwIjoxNzc3MzkzMjIyfQ.7B7RUZ93GTxghrs3gK6S0JdxLMtWMsa2gwhwKPS44KM
   body:
     type: json
     data: |-
