@@ -6,14 +6,17 @@ info:
 http:
   method: POST
   url: http://localhost:8083/api/orders
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzIxODI4MywiZXhwIjoxNzc3MzA0NjgzfQ.wDd-YJp9fGHngci93CTaykeMejgOwENwY7IXMzh2i-I
   body:
     type: json
     data: |-
       {
         "userId": 1,
-        "restaurantId": 1,
-        "status": "PENDING",
+        "status": "PLACED",
         "totalAmount": 50.0,
+        "deliveryAddress": "Matrouh",
         "metadata": {}
       }
   auth: inherit
@@ -23,4 +26,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

@@ -8,23 +8,32 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.team05.shared.model.mongo.MongoEvent;
+
+import com.mongodb.lang.NonNull;
+
 @Document("order_events")
 public class OrderEvent implements MongoEvent{
     @Id
     private String id;
     @Indexed
+    @NonNull
     private Long orderId;
+    @NonNull
     private String action;
+    @NonNull
     private LocalDateTime timestamp;
     private Map<String, Object> details = new HashMap<String, Object>();
 
     public OrderEvent() {
+        this.timestamp = LocalDateTime.now();
     }
 
-    public OrderEvent(Long orderId, String action, LocalDateTime timestamp) {
+    public OrderEvent(Long orderId, String action, Map<String, Object> details) {
         this.orderId = orderId;
         this.action = action;
-        this.timestamp = timestamp;
+        this.timestamp = LocalDateTime.now();
+        this.details = details;
     }
 
     public String getId() { return id; }

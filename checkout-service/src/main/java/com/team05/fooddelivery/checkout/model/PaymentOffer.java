@@ -74,6 +74,7 @@ public class PaymentOffer {
         this.id = id;
     }
 
+    @JsonIgnore
     public Long getPaymentId() {
         if(payment != null) {
             return payment.getId();
@@ -83,6 +84,7 @@ public class PaymentOffer {
         }
     }
 
+    @JsonIgnore
     public Long getOfferId() {
         if(offer != null) {
             return offer.getId();

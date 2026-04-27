@@ -11,11 +11,13 @@ import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
-import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,7 +25,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 @Service
 public class PaymentService {
@@ -53,10 +54,21 @@ public class PaymentService {
         return paymentRepository.findAll();
     }
 
+    @Cacheable(value = "checkout-service::payment", key = "#id")
     public Payment getPaymentById(Long id) {
-        return paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+        return paymentRepository.findByIdWithOffers(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
     }
 
+    @Caching(
+            put = @CachePut(value = "checkout-service::payment", key = "#id"),
+            evict = {
+                    @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
+            }
+    )
     public Payment updatePayment(Long id, Payment updatedPayment) {
         return paymentRepository.findById(id).map(payment -> {
             payment.setAmount(updatedPayment.getAmount());
@@ -68,6 +80,14 @@ public class PaymentService {
         }).orElseThrow(() -> new RuntimeException("Payment not found"));
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "checkout-service::payment", key = "#id"),
+            @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+            @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
+    })
     public void deletePaymentById(Long id) {
         if (!paymentRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
@@ -76,6 +96,10 @@ public class PaymentService {
     }
 
     // [S5-F1] Get Payments by Status and Date Range
+    @Cacheable(
+            value = "checkout-service::S5-F1",
+            key = "T(String).valueOf(#status) + ':' + T(String).valueOf(#startDate) + ':' + T(String).valueOf(#endDate)"
+    )
     public List<Payment> getPaymentsByStatusAndDateRange(
             PaymentStatus status,
             LocalDateTime startDate,
@@ -86,13 +110,24 @@ public class PaymentService {
 
     // [S5-F2] Process Refund (Transactional + JSONB Update)
     @Transactional
+    @Caching(
+            put = @CachePut(value = "checkout-service::payment", key = "#id"),
+            evict = {
+                    @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+            }
+    )
     public Payment refundPayment(Long id, String reason) {
-        Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
-        PaymentStatus status = payment.getStatus();
+        Payment payment = paymentRepository.findById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
+        PaymentStatus status = payment.getStatus();
         if (!status.equals(PaymentStatus.COMPLETED)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status not COMPLETED");
         }
+
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
         transactionDetails.put("refundReason", reason);
         transactionDetails.put("refundedAt", LocalDateTime.now().toString());
@@ -132,6 +167,12 @@ public class PaymentService {
 
     // [S5-F4] Process Payment for Order (Transactional)
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F8", allEntries = true)
+    })
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto) {
 
         // Guard 1: order must exist
@@ -178,6 +219,15 @@ public class PaymentService {
 
     // [S5-F5] Apply Offer to Payment (Transactional + Join Entity)
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "checkout-service::payment", key = "#paymentId"),
+            @CacheEvict(value = "checkout-service::offer", key = "#offerId"),
+            @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
+            @CacheEvict(value = "checkout-service::S5-F9", allEntries = true)
+    })
     public Payment applyOfferToPayment(Long paymentId, Long offerId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "cannot apply offer to a completed/cancelled payment"));
 
@@ -232,6 +282,7 @@ public class PaymentService {
     }
 
     // [S5-F6] Revenue Report by Date Range (Report DTO)
+    @Cacheable(value = "checkout-service::S5-F6", key = "#startDate.toString() + ':' + #endDate.toString()")
     public RevenueReportDTO generateRevenueReport(LocalDateTime startDate, LocalDateTime endDate) {
         if(endDate.isBefore(startDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
@@ -265,6 +316,15 @@ public class PaymentService {
 
     // [S5-F7] Retry Failed Payment (Transactional)
     @Transactional
+    @Caching(
+            put = @CachePut(value = "checkout-service::payment", key = "#id"),
+            evict = {
+                    @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+            }
+    )
     public Payment retryFailedPayment(Long id) {
         // Find payment – 404 if not found
         Payment payment = paymentRepository.findById(id)
@@ -303,6 +363,7 @@ public class PaymentService {
     }
 
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)
+    @Cacheable(value = "checkout-service::S5-F8",key = "#paymentId")
     public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
         // Fetch payment with offers eagerly loaded via JOIN FETCH
         Payment payment = paymentRepository.findByIdWithOffers(paymentId)

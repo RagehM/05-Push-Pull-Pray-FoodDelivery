@@ -48,7 +48,7 @@ public class TestService {
 
     public String testMongoCreation() {
 
-        OrderEvent event = new OrderEvent(123L, OrderEvent.OrderEventActions.ORDER_CREATED, LocalDateTime.now());
+        OrderEvent event = new OrderEvent(123L, OrderEvent.OrderEventActions.ORDER_CREATED, null);
         event.getDetails().put("customerName", "Alice");
         event.getDetails().put("totalAmount", 29.99);
 

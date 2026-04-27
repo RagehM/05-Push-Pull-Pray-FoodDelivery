@@ -18,12 +18,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  cassandra:
-    contact-points: cassandra
-    port: 9042
-    local-datacenter: datacenter1
-    keyspace-name: fooddeliveryks
-    schema-action: CREATE_IF_NOT_EXISTS
+#  cassandra:
+#    contact-points: cassandra
+#    port: 9042
+#    local-datacenter: datacenter1
+#    keyspace-name: fooddeliveryks
+#    schema-action: CREATE_IF_NOT_EXISTS
 
   data:
     redis:
