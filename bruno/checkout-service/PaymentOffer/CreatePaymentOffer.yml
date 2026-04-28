@@ -6,13 +6,16 @@ info:
 http:
   method: POST
   url: http://localhost:8085/api/payments/offers
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzIzMDY2MiwiZXhwIjoxNzc3MzE3MDYyfQ.uErKMwdTjtryEQSfMmAJ1cq8_97XVfflSPmhuVEu9mo
   body:
     type: json
     data: |-
       {
           "discountApplied": 15.0,
-          "paymentId": 36,
-          "offerId": 1,
+          "paymentId": 4,
+          "offerId": 2,
           "appliedAt": "2026-12-31T23:59:59"
       }
   auth: inherit

@@ -1,0 +1,18 @@
+info:
+  name: Create Test Document Mongo
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:8083/api/orders/mongo
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzExNjYxNiwiZXhwIjoxNzc3MjAzMDE2fQ.n5Ji__-3uJZqV3T-9Sw5-dR8Ziu1NOMwJLUiZjteP3A
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

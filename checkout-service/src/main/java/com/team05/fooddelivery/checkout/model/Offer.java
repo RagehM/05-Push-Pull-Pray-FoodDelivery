@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -45,6 +46,7 @@ public class Offer {
     private Map<String, Object> metadata = new HashMap<>();
 
     @OneToMany(mappedBy = "offer", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<PaymentOffer> paymentOffers = new ArrayList<>();
 
     public Long getId() {

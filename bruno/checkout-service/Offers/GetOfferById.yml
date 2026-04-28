@@ -6,6 +6,13 @@ info:
 http:
   method: GET
   url: http://localhost:8085/api/offers/1
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzEzNTgzMCwiZXhwIjoxNzc3MjIyMjMwfQ.abXUW9pjUuTyhih_hpdoR1y-EfdwEaHrDZC7aGgB5mQ
+  params:
+    - name: ""
+      value: ""
+      type: query
   auth: inherit
 
 settings:

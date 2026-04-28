@@ -5,7 +5,10 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8085/api/payments/1/refund
+  url: http://localhost:8085/api/payments/3/refund
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzEzNTgzMCwiZXhwIjoxNzc3MjIyMjMwfQ.abXUW9pjUuTyhih_hpdoR1y-EfdwEaHrDZC7aGgB5mQ
   body:
     type: json
     data: '"wrong order delivered"'
@@ -16,4 +19,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

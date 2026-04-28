@@ -82,4 +82,65 @@ public class OrderItemDetailsDTO {
     public void setMetadata(Map<String, Object> metadata) {
         this.metadata = metadata;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long id;
+        private Integer lineNumber;
+        private String itemName;
+        private Integer quantity;
+        private Double unitPrice;
+        private OrderItemStatusEnum status;
+        private Map<String, Object> metadata;
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder lineNumber(Integer lineNumber) {
+            this.lineNumber = lineNumber;
+            return this;
+        }
+
+        public Builder itemName(String itemName) {
+            this.itemName = itemName;
+            return this;
+        }
+
+        public Builder quantity(Integer quantity) {
+            this.quantity = quantity;
+            return this;
+        }
+
+        public Builder unitPrice(Double unitPrice) {
+            this.unitPrice = unitPrice;
+            return this;
+        }
+
+        public Builder status(OrderItemStatusEnum status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder metadata(Map<String, Object> metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public OrderItemDetailsDTO build() {
+            return new OrderItemDetailsDTO(
+                    id,
+                    lineNumber,
+                    itemName,
+                    quantity,
+                    unitPrice,
+                    status,
+                    metadata
+            );
+        }
+    }
 }

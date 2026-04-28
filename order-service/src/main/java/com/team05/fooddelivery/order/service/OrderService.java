@@ -9,41 +9,193 @@ import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
+import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
+import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
+
 import org.springframework.stereotype.Service;
+
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
+import com.team05.shared.model.mongo.MongoEvent.EventType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-
-
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.team05.fooddelivery.order.factory.EventFactory;
+
 @Service
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final MongoOrderEventRepository mongoOrderEventRepository;
+    private final EventFactory eventFactory = new EventFactory();
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
         this.orderRepository = orderRepository;
+        this.mongoOrderEventRepository = mongoOrderEventRepository;
+        this.observers.add(
+            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER, eventFactory)
+        );
     }
 
+    // [S3-F1] Search Orders by Status and Date Range
     public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
 
-        return orderRepository.searchByStatusAndDateRange(
+        List<Order> orders = orderRepository.searchByStatusAndDateRange(
                 status,
                 startDateTime,
                 endDateTimeExclusive
         );
+
+        return orders;
+
     }
+    // [S3-F2] Confirm Order and Assign Restaurant (Transactional)
+    @Transactional
+    public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
+        Order order = getOrderById(orderId);
+        if (order.getStatus() != OrderStatusEnum.PLACED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "only a newly placed order can be confirmed"
+            );
+        }
+        boolean restaurantExists = orderRepository.existsByRestaurantId(restaurantId);
+        if (!restaurantExists) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        boolean restaurantOpen = orderRepository.isRestaurantOpen(restaurantId);
+        if (!restaurantOpen) {
+            throw new ResponseStatusException( HttpStatus.BAD_REQUEST,  "Restaurant is not open"
+            );
+        }
+        order.setRestaurantId(restaurantId);
+        order.setStatus(OrderStatusEnum.CONFIRMED);
+
+
+        Order savedOrder = orderRepository.save(order);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_CONFIRMED");
+        params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus().name());
+        details.put("assignedRestaurantId", restaurantId);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_CONFIRMED", params);
+        return savedOrder;
+
+    }
+    // [S3-F3] Order Cost Estimation (Report DTO)
+    @Transactional(readOnly = true)
+    public OrderCostEstimateDTO estimateOrderCost(OrderEstimateRequest request) {
+        if(request == null || request.restaurantId() == null || request.itemCount() == null || request.deliveryDistance() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order estimate request");
+        }
+        if (request.itemCount() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemCount must be greater than 0");
+        }
+        if (request.deliveryDistance() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "deliveryDistance must be > 0");
+        }
+        boolean restaurantExists = orderRepository.existsByRestaurantId(request.restaurantId());
+        if (!restaurantExists) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        Double avgMenuPrice = orderRepository.findAverageMenuItemPriceByRestaurantId(request.restaurantId());
+        if (avgMenuPrice == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant has no menu items right now");
+        }
+        double foodCost = avgMenuPrice * request.itemCount();
+        double deliveryFee = 10.0 * request.deliveryDistance();
+        double serviceFee = foodCost * 0.05;
+        long activeOrders = orderRepository.countActiveOrdersByRestaurantId(request.restaurantId());
+        double surgeMultiplier = activeOrders > 10 ? (activeOrders > 20 ? 1.5: 1.2) : 1.0;
+        double total = (foodCost+deliveryFee + serviceFee) * surgeMultiplier;
+        return OrderCostEstimateDTO.builder()
+                .estimatedFoodCost(foodCost)
+                .deliveryFee(deliveryFee)
+                .serviceFee(serviceFee)
+                .estimatedTotal(total)
+                .surgeMultiplier(surgeMultiplier)
+                .build();
+    }
+    // [S3-F4] Deliver Order
+    @Transactional
+    public Order deliverOrder(Long id) {
+        Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
+
+        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
+        foundOrder.setDeliveredAt(LocalDateTime.now());
+
+        if (foundOrder.getTotalAmount() == null) {
+            List<OrderItem> orderItems = foundOrder.getOrderItems();
+            double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
+            foundOrder.setTotalAmount(total);
+        }
+        // Create payment record with status PENDING. Save order. Return the order after the update.
+        orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
+        Order savedOrder = orderRepository.save(foundOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_DELIVERED");
+        params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus().name());
+        details.put("deliveredAt", savedOrder.getDeliveredAt());
+        details.put("totalAmount", savedOrder.getTotalAmount());
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_DELIVERED", params);
+        return savedOrder;
+
+
+    }
+    // [S3-F5] Filter Orders by Metadata
+    @Transactional(readOnly = true)
+    public List<Order> searchOrdersByMetadata(String key, String value) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Metadata key must not be empty");
+        }
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Metadata value must not be empty");
+        }
+
+        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+    }
+    // [S3-F6] - Order Analytics by Time Period (Report DTO)
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
+        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+    }
+    // [S3-F7] Cancel Order
     @Transactional
     public void cancelOrder(Long orderId) {
         //Get order through JPA default method findById, if order not found, throw HTTP 404 Not Found
@@ -54,7 +206,19 @@ public class OrderService {
         }
         //Update status to CANCELLED
         order.setStatus(OrderStatusEnum.CANCELLED);
-        orderRepository.save(order);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_CANCELLED");
+        params.put("order", order);
+        params.put("orderId", order.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", order.getUserId());
+        details.put("restaurantId", order.getRestaurantId());
+        details.put("status", order.getStatus().name());
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_CANCELLED", params);
         //Update status of all order items to cancelled through repository
         // // // try {
         // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
@@ -68,6 +232,87 @@ public class OrderService {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.LOCKED, "Failed to cancel delivery: " + e.getMessage());
         }
+    }
+    // [S3-F8] Add items to existing order
+    @Transactional
+    public Order addItemsToOrder(Long orderId, List<OrderItem> orderItems) {
+        Order existingOrder = getOrderById(orderId);
+        int line_item_count = existingOrder.getOrderItems() != null ? existingOrder.getOrderItems().size() : 0;
+        if (!(existingOrder.getStatus() == OrderStatusEnum.PLACED || existingOrder.getStatus() == OrderStatusEnum.CONFIRMED)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only add items to orders that are in PLACED or CONFIRMED status");
+        }
+        for (OrderItem orderItem : orderItems) {
+            if (orderItem.getQuantity() == null || orderItem.getItemName() == null || orderItem.getUnitPrice() == null || orderItem.getMenuItemId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order item must have quantity, item name, unit price and menu item id");
+            }
+            orderItem.setLineNumber(++line_item_count);
+            orderItem.setStatus(OrderItemStatusEnum.PENDING);
+            orderItem.setOrder(existingOrder);
+        }
+        existingOrder.getOrderItems().addAll(orderItems);
+        orderRepository.save(existingOrder);
+
+        Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_ITEMS_ADDED");
+        params.put("order", returnObject);
+        params.put("orderId", returnObject.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", returnObject.getUserId());
+        details.put("restaurantId", returnObject.getRestaurantId());
+        details.put("status", returnObject.getStatus().name());
+        details.put("totalItemsAfterAdd",
+                returnObject.getOrderItems() != null ? returnObject.getOrderItems().size() : 0);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_ITEMS_ADDED", params);
+
+        return returnObject;
+    }
+    // [S3-F9] Get Order Details with items (Report DTO)
+    @Transactional(readOnly = true)
+    public OrderDetailsDTO getOrderDetails(Long orderId) {
+        Order order = orderRepository.findByIdWithItems(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        List<OrderItem> orderItems = order.getOrderItems() != null
+                ? new ArrayList<>(order.getOrderItems())
+                : new ArrayList<>();
+
+        orderItems.sort(Comparator.comparing(OrderItem::getLineNumber));
+
+        List<OrderItemDetailsDTO> items = orderItems.stream()
+                .map(item -> OrderItemDetailsDTO.builder()
+                        .id(item.getId())
+                        .lineNumber(item.getLineNumber())
+                        .itemName(item.getItemName())
+                        .quantity(item.getQuantity())
+                        .unitPrice(item.getUnitPrice())
+                        .status(item.getStatus())
+                        .metadata(item.getMetadata())
+                        .build()
+                )
+                .toList();
+
+        int totalItems = items.size();
+
+        int preparedItems = (int) orderItems.stream()
+                .filter(item -> item.getStatus() == OrderItemStatusEnum.PREPARED)
+                .count();
+
+        return OrderDetailsDTO.builder()
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .restaurantId(order.getRestaurantId())
+                .status(order.getStatus())
+                .totalAmount(order.getTotalAmount())
+                .metadata(order.getMetadata())
+                .items(items)
+                .totalItems(totalItems)
+                .preparedItems(preparedItems)
+                .build();
     }
     // [CRUD]
     //// Get order by ID
@@ -96,7 +341,23 @@ public class OrderService {
         }
 
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_CREATED");
+        params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", savedOrder.getId());
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
+        details.put("totalAmount", savedOrder.getTotalAmount());
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_CREATED", params);
+        return savedOrder;
     }
     //// Update order
     @Transactional
@@ -132,179 +393,55 @@ public class OrderService {
             existingOrder.setDeliveredAt(updatedOrder.getDeliveredAt());
         }
 
-        return orderRepository.save(existingOrder);
+        Order savedOrder = orderRepository.save(existingOrder);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_UPDATED");
+        params.put("order", savedOrder);
+        params.put("orderId", savedOrder.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", savedOrder.getUserId());
+        details.put("restaurantId", savedOrder.getRestaurantId());
+        details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
+        details.put("updatedFields", updatedOrder);
+
+        params.put("details", details);
+
+        notifyObservers("ORDER_UPDATED", params);
+        return savedOrder;
     }
     //// Delete order
     @Transactional
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
-    }
-    //// Confirm Order and Assign Restaurant (Transactional)
-    @Transactional
-    public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
-        Order order = getOrderById(orderId);
-        if (order.getStatus() != OrderStatusEnum.PLACED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "only a newly placed order can be confirmed"
-            );
-        }
-        boolean restaurantExists = orderRepository.existsByRestaurantId(restaurantId);
-        if (!restaurantExists) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
-        }
-        boolean restaurantOpen = orderRepository.isRestaurantOpen(restaurantId);
-        if (!restaurantOpen) {
-            throw new ResponseStatusException( HttpStatus.BAD_REQUEST,  "Restaurant is not open"
-            );
-        }
-        order.setRestaurantId(restaurantId);
-        order.setStatus(OrderStatusEnum.CONFIRMED);
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", "ORDER_DELETED");
+        params.put("order", existingOrder);
+        params.put("orderId", existingOrder.getId());
 
-        return orderRepository.save(order);
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", existingOrder.getUserId());
+        details.put("restaurantId", existingOrder.getRestaurantId());
+        details.put("statusBeforeDelete",
+                existingOrder.getStatus() != null ? existingOrder.getStatus().name() : null);
 
-    }
-    @Transactional
-    public Order deliverOrder(Long id) {
-        Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        params.put("details", details);
 
-        if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
-
-        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
-        foundOrder.setDeliveredAt(LocalDateTime.now());
-
-        if (foundOrder.getTotalAmount() == null) {
-            List<OrderItem> orderItems = foundOrder.getOrderItems();
-            double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
-            foundOrder.setTotalAmount(total);
-        }
-        // Create payment record with status PENDING. Save order. Return the order after the update.
-        orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
-        return orderRepository.save(foundOrder);
-
-
+        notifyObservers("ORDER_DELETED", params);
     }
 
-    // [S3-F6] - Order Analytics by Time Period (Report DTO)
-    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
-        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
     }
 
-
-    @Transactional
-    // [S3-F8] Add items to existing order
-    public Order addItemsToOrder(Long orderId, List<OrderItem> orderItems) {
-        Order existingOrder = getOrderById(orderId);
-        int line_item_count = existingOrder.getOrderItems() != null ? existingOrder.getOrderItems().size() : 0;
-        if (!(existingOrder.getStatus() == OrderStatusEnum.PLACED || existingOrder.getStatus() == OrderStatusEnum.CONFIRMED)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Can only add items to orders that are in PLACED or CONFIRMED status");
-        }
-        for (OrderItem orderItem : orderItems) {
-            if (orderItem.getQuantity() == null || orderItem.getItemName() == null || orderItem.getUnitPrice() == null || orderItem.getMenuItemId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order item must have quantity, item name, unit price and menu item id");
-            }
-            orderItem.setLineNumber(++line_item_count);
-            orderItem.setStatus(OrderItemStatusEnum.PENDING);
-            orderItem.setOrder(existingOrder);
-        }
-        existingOrder.getOrderItems().addAll(orderItems);
-        orderRepository.save(existingOrder);
-
-        Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
-
-        return returnObject;
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
     }
 
-    @Transactional(readOnly = true)
-    public List<Order> searchOrdersByMetadata(String key, String value) {
-        if (key == null || key.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Metadata key must not be empty");
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
         }
-
-        if (value == null || value.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Metadata value must not be empty");
-        }
-
-        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
-    }
-    ////Get Order Cost Estimate Service
-    public OrderCostEstimateDTO estimateOrderCost(OrderEstimateRequest request) {
-        if(request == null || request.restaurantId() == null || request.itemCount() == null || request.deliveryDistance() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order estimate request");
-        }
-        if (request.itemCount() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemCount must be greater than 0");
-        }
-        if (request.deliveryDistance() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "deliveryDistance must be > 0");
-        }
-        boolean restaurantExists = orderRepository.existsByRestaurantId(request.restaurantId());
-        if (!restaurantExists) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
-        }
-        Double avgMenuPrice = orderRepository.findAverageMenuItemPriceByRestaurantId(request.restaurantId());
-        if (avgMenuPrice == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant has no menu items right now");
-        }
-        double foodCost = avgMenuPrice * request.itemCount();
-        double deliveryFee = 10.0 * request.deliveryDistance();
-        double serviceFee = foodCost * 0.05;
-        long activeOrders = orderRepository.countActiveOrdersByRestaurantId(request.restaurantId());
-        double surgeMultiplier = activeOrders > 10 ? (activeOrders > 20 ? 1.5: 1.2) : 1.0;
-        double total = (foodCost+deliveryFee + serviceFee) * surgeMultiplier;
-        return new OrderCostEstimateDTO(
-                foodCost,
-                deliveryFee,
-                serviceFee,
-                total,
-                surgeMultiplier
-        );
-
-    }
-
-
-    // [S3-F9]
-    @Transactional(readOnly = true)
-    public OrderDetailsDTO getOrderDetails(Long orderId) {
-        Order order = orderRepository.findByIdWithItems(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-
-        List<OrderItem> orderItems = order.getOrderItems() != null
-                ? new ArrayList<>(order.getOrderItems())
-                : new ArrayList<>();
-
-        orderItems.sort(Comparator.comparing(OrderItem::getLineNumber));
-
-        List<OrderItemDetailsDTO> items = orderItems.stream()
-                .map(item -> new OrderItemDetailsDTO(
-                        item.getId(),
-                        item.getLineNumber(),
-                        item.getItemName(),
-                        item.getQuantity(),
-                        item.getUnitPrice(),
-                        item.getStatus(),
-                        item.getMetadata()
-                ))
-                .toList();
-
-        int totalItems = items.size();
-
-        int preparedItems = (int) orderItems.stream()
-                .filter(item -> item.getStatus() == OrderItemStatusEnum.PREPARED)
-                .count();
-
-        return new OrderDetailsDTO(
-                order.getId(),
-                order.getUserId(),
-                order.getRestaurantId(),
-                order.getStatus(),
-                order.getTotalAmount(),
-                order.getMetadata(),
-                items,
-                totalItems,
-                preparedItems
-        );
     }
 }
