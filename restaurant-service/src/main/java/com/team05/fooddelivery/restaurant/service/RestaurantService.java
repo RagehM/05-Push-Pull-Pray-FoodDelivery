@@ -1,43 +1,38 @@
 package com.team05.fooddelivery.restaurant.service;
 
+import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
+import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
-import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
+import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.team05.fooddelivery.restaurant.model.MenuItem;
-import java.util.ArrayList;
-import java.util.Map;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class RestaurantService {
 
-    // The RestaurantService class is annotated with @Service, indicating that it's
-    // a service component in the Spring framework.
-    // It contains business logic related to restaurant operations and interacts
-    // with the RestaurantRepository to perform database operations.
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
 
-    // Constructor injection of the RestaurantRepository dependency
-    // allows the service to interact with the database through the repository
-    // layer.
-    public RestaurantService(RestaurantRepository restaurantRepository, MenuItemRepository menuItemRepository) {
+    public RestaurantService(RestaurantRepository restaurantRepository,
+                             MenuItemRepository menuItemRepository) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
-
     }
 
-    // The create method takes a Restaurant object as input and saves it to the
-    // database using the restaurantRepository's save method.
     public Restaurant create(Restaurant restaurant) {
         if (restaurant.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant must not have an id");
@@ -45,19 +40,27 @@ public class RestaurantService {
         return restaurantRepository.save(restaurant);
     }
 
-    // The getById method retrieves a Restaurant by its ID. If the restaurant is not
-    // found, it throws a ResponseStatusException.
+    // Cached 15 min — spec Section 4.4.2
+    @Cacheable(value = "restaurant-service::restaurant", key = "#id")
     public Restaurant getById(Long id) {
         return restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
     }
 
-    // The getAll method retrieves all restaurants from the database.
+    // NOT cached — list endpoints never cached, spec Section 4.4.2
     public List<Restaurant> getAll() {
         return restaurantRepository.findAll();
     }
 
-    // The update method updates an existing restaurant's details.
+    // CRUD update — evict detail + all feature caches
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public Restaurant update(Long id, Restaurant updated) {
         Restaurant existing = getById(id);
         if (updated.getName() != null)
@@ -75,7 +78,15 @@ public class RestaurantService {
         return restaurantRepository.save(existing);
     }
 
-    // The delete method removes a restaurant from the database by its ID.
+    // CRUD delete — evict detail + all feature caches
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void delete(Long id) {
         if (!restaurantRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
@@ -83,9 +94,8 @@ public class RestaurantService {
         restaurantRepository.deleteById(id);
     }
 
-    // [S2-F1] Search Restaurants by Cuisine and Rating Range
-    // Validates the rating range and delegates to the repository to filter and sort
-    // results.
+    // [S2-F1] Cached 5 min — Section 4.4.1
+    @Cacheable(value = "restaurant-service::S2-F1", key = "#cuisineType + ':' + #minRating + ':' + #maxRating")
     public List<Restaurant> searchByCuisineAndRating(String cuisineType, Double minRating, Double maxRating) {
         if (minRating > maxRating) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minRating cannot be greater than maxRating");
@@ -93,9 +103,15 @@ public class RestaurantService {
         return restaurantRepository.searchByCuisineAndRating(cuisineType, minRating, maxRating);
     }
 
-    // [S2-F2] Update Restaurant Details (JSONB Partial Update)
-    // Merges new detail fields into the existing details map, preserving fields not
-    // included in the request.
+    // [S2-F2] Write — invalidates caches — Section 4.4.4
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
         Restaurant existing = getById(id);
         Map<String, Object> currentDetails = existing.getDetails();
@@ -108,9 +124,8 @@ public class RestaurantService {
         return restaurantRepository.save(existing);
     }
 
-    // [S2-F3] Get Restaurant Order Revenue Summary
-    // Queries delivered orders in the given date range and maps aggregate results
-    // into a revenue DTO.
+    // [S2-F3] Cached 10 min — Section 4.4.1
+    @Cacheable(value = "restaurant-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
         List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
@@ -122,18 +137,22 @@ public class RestaurantService {
                 averageOrderAmount);
     }
 
-    // [S2-F4] Update Restaurant Status (Transactional)
-    // Prevents suspending a restaurant that still has active orders; otherwise
-    // updates and saves the new status.
+    // [S2-F4] Write — invalidates caches — Section 4.4.4
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void updateRestaurantStatus(Long id, String newStatus) {
         if (newStatus == null || newStatus.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
         }
-
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-
         if ("SUSPENDED".equals(newStatus)) {
             int activeOrders = restaurantRepository.countActiveOrders(id);
             if (activeOrders > 0) {
@@ -141,7 +160,6 @@ public class RestaurantService {
                         "Cannot suspend restaurant with active orders");
             }
         }
-
         try {
             restaurant.setStatus(RestaurantStatusEnum.valueOf(newStatus));
         } catch (IllegalArgumentException e) {
@@ -150,19 +168,17 @@ public class RestaurantService {
         restaurantRepository.save(restaurant);
     }
 
-    // [S2-F5] Filter Restaurants by Detail Attribute (JSONB)
-    // Delegates JSONB key-value filtering with optional status to the repository.
+    // [S2-F5] Cached 5 min — Section 4.4.1
+    @Cacheable(value = "restaurant-service::S2-F5", key = "#key + ':' + #value + ':' + #status")
     public List<Restaurant> filterByDetail(String key, String value, String status) {
         return restaurantRepository.findByDetailAttribute(key, value, status);
     }
 
-    // [S2-F6] Top Rated Restaurants Report
-    // Fetches the top N restaurants by rating from the repository and maps raw
-    // query results into TopRestaurantDTOs.
+    // [S2-F6] Cached 10 min — Section 4.4.1
+    @Cacheable(value = "restaurant-service::S2-F6", key = "#limit")
     public List<TopRestaurantDTO> getTopRated(int limit) {
         List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
         List<TopRestaurantDTO> dtos = new ArrayList<>();
-
         for (Object[] row : results) {
             Long id = ((Number) row[0]).longValue();
             String name = (String) row[1];
@@ -170,14 +186,19 @@ public class RestaurantService {
             Long totalOrders = ((Number) row[3]).longValue();
             dtos.add(new TopRestaurantDTO(id, name, rating, totalOrders));
         }
-
         return dtos;
     }
 
-    // [S2-F7] Rate a Restaurant After Order (Transactional)
-    // Validates the rating, order ownership, and delivery status, then recalculates
-    // the restaurant's running average rating.
+    // [S2-F7] Write — invalidates caches — Section 4.4.4
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "restaurant-service::restaurant", key = "#restaurantId"),
+            @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+    })
     public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
         if (rating == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must not be null");
@@ -187,7 +208,6 @@ public class RestaurantService {
         }
         Restaurant rest = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-        // get order details
         List<Object[]> orderResults = restaurantRepository.findOrderDetailsById(orderId);
         if (orderResults.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -195,26 +215,21 @@ public class RestaurantService {
         Object[] order = orderResults.get(0);
         Long orderRestaurantId = ((Number) order[0]).longValue();
         String orderStatus = (String) order[1];
-        // check order does belong ot this restaurant
         if (!orderRestaurantId.equals(restaurantId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order does not belong to this restaurant");
         }
-        // check that the order was delieverd
         if (!"DELIVERED".equals(orderStatus)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is not delivered");
         }
-        // calcul. rating
         int newTRating = rest.getTotalRatings() + 1;
         double newRating = ((rest.getRating() * rest.getTotalRatings()) + rating) / newTRating;
-        // update the rating
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
     }
 
-    // [S2-F9] Get Restaurants with Unavailable Menu Items
-    // Finds restaurants with at least one unavailable item and builds alert DTOs
-    // containing those items and their count.
+    // [S2-F9] Cached 10 min — Section 4.4.1
+    @Cacheable(value = "restaurant-service::S2-F9", key = "'all'")
     public List<RestaurantMenuAlertDTO> getRestaurantsWithUnavailableItems() {
         List<Restaurant> restaurants = restaurantRepository.findRestaurantsWithUnavailableItems();
         List<RestaurantMenuAlertDTO> dtos = new ArrayList<>();
