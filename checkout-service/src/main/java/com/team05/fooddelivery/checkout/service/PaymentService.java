@@ -155,7 +155,7 @@ public class PaymentService {
         Map<String, Object> paymentAuditEventParams = new HashMap<>();
         paymentAuditEventParams.put("paymentId", payment.getId());
         paymentAuditEventParams.put("action", "REFUNDED");
-        paymentAuditEventParams.put("method", payment.getMethod());
+        paymentAuditEventParams.put("method", payment.getMethod().name());
         paymentAuditEventParams.put("amount", payment.getAmount());
 
         Map<String, Object> details = new HashMap<>();
@@ -209,7 +209,7 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", allEntries = true)
     })
-    public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto) {
+    public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto, boolean simulateFailure) {
 
         // Guard 1: order must exist
         if (!paymentRepository.orderExists(orderId)) {
@@ -233,22 +233,35 @@ public class PaymentService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "No pending payment found for order: " + orderId));
 
-        // Update payment method
-        payment.setMethod(dto.method());
-
-        // Mark as COMPLETED
-        payment.setStatus(PaymentStatus.COMPLETED);
-
-        // Populate JSONB transactionDetails
-        Map<String, Object> details = payment.getTransactionDetails();
-        if (details == null) {
-            details = new HashMap<>();
+        Map<String, Object> transactionDetails = payment.getTransactionDetails();
+        if (transactionDetails == null) {
+            transactionDetails = new HashMap<>();
         }
-        details.put("gatewayResponse", "approved");
-        if (dto.cardLastFour() != null) {
-            details.put("cardLastFour", dto.cardLastFour());
+        if (dto != null && dto.cardLastFour() != null) {
+            transactionDetails.put("cardLastFour", dto.cardLastFour());
         }
-        payment.setTransactionDetails(details);
+        if (dto != null && dto.method() != null) {
+            payment.setMethod(dto.method());
+        }
+        payment.setTransactionDetails(transactionDetails);
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+        paymentAuditEventParams.put("method", payment.getMethod() != null ? payment.getMethod().name() : null);
+        paymentAuditEventParams.put("details", transactionDetails);
+
+        if (simulateFailure) {
+            payment.setStatus(PaymentStatus.FAILED);
+            transactionDetails.put("gatewayResponse", "declined");
+            paymentAuditEventParams.put("action", "FAILED");
+        } else {
+            payment.setStatus(PaymentStatus.COMPLETED);
+            transactionDetails.put("gatewayResponse", "approved");
+            paymentAuditEventParams.put("action", "COMPLETED");
+        }
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
 
         return paymentRepository.save(payment);
     }

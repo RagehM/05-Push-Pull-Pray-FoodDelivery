@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-
+import com.mongodb.lang.NonNull;
 @Document(collection = "payment_audit_trail")
 public class PaymentAuditEvent implements MongoEvent {
 

@@ -5,7 +5,10 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8085/api/payments/order/1
+  url: http://localhost:8085/api/payments/order/4
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzM2ODU0MywiZXhwIjoxNzc3NDU0OTQzfQ.tNyb9Hy4UyBFCdK069p-flP_AU6MDAWIQy5XisYw_98
   body:
     type: json
     data: |-
@@ -20,4 +23,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
