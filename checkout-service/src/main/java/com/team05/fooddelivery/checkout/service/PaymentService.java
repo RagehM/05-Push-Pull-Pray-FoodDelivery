@@ -261,6 +261,15 @@ public class PaymentService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "No pending payment found for order: " + orderId));
 
+        Map<String, Object> createdPaymentAuditEventParams = new HashMap<>();
+        createdPaymentAuditEventParams.put("paymentId", payment.getId());
+        createdPaymentAuditEventParams.put("amount", payment.getAmount());
+        createdPaymentAuditEventParams.put("action", "CREATED");
+        createdPaymentAuditEventParams.put("method", payment.getMethod().name());
+        createdPaymentAuditEventParams.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", createdPaymentAuditEventParams);
+
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
         if (transactionDetails == null) {
             transactionDetails = new HashMap<>();
