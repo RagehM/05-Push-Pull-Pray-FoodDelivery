@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.restaurant.service;
 
+import com.team05.fooddelivery.restaurant.adapter.RestaurantRevenueAdapter;
+import com.team05.fooddelivery.restaurant.adapter.TopRestaurantAdapter;
 import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
@@ -181,17 +183,7 @@ public class RestaurantService {
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
         List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
-        Object[] result = results.get(0);
-        Long totalOrders = ((Number) result[0]).longValue();
-        Double totalRevenue = ((Number) result[1]).doubleValue();
-        Double averageOrderAmount = ((Number) result[2]).doubleValue();
-        return RestaurantRevenueDTO.builder()
-                .restaurantId(restaurant.getId())
-                .name(restaurant.getName())
-                .totalOrders(totalOrders)
-                .totalRevenue(totalRevenue)
-                .averageOrderAmount(averageOrderAmount)
-                .build();
+        return new RestaurantRevenueAdapter(results.get(0), restaurant).toDTO();
     }
 
     // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
@@ -245,16 +237,7 @@ public class RestaurantService {
         List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
         List<TopRestaurantDTO> dtos = new ArrayList<>();
         for (Object[] row : results) {
-            Long id = ((Number) row[0]).longValue();
-            String name = (String) row[1];
-            Double rating = ((Number) row[2]).doubleValue();
-            Long totalOrders = ((Number) row[3]).longValue();
-            dtos.add(TopRestaurantDTO.builder()
-                    .restaurantId(id)
-                    .name(name)
-                    .rating(rating)
-                    .totalOrders(totalOrders)
-                    .build());
+            dtos.add(new TopRestaurantAdapter(row).toDTO());
         }
         return dtos;
     }
