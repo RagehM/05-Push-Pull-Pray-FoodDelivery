@@ -4,10 +4,16 @@ import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
+import com.team05.fooddelivery.restaurant.factory.EventFactory;
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
+import com.team05.fooddelivery.restaurant.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
+import com.team05.fooddelivery.restaurant.repository.mongo.MongoRestaurantEventRepository;
+import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -18,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,18 +33,39 @@ public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final EventFactory eventFactory = new EventFactory();
 
     public RestaurantService(RestaurantRepository restaurantRepository,
-                             MenuItemRepository menuItemRepository) {
+                             MenuItemRepository menuItemRepository,
+                             MongoRestaurantEventRepository mongoRestaurantEventRepository) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
+        // Register the MongoEventLogger observer — bound to RESTAURANT event type
+        // Section 3.3 + 4.5
+        this.observers.add(
+            new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory)
+        );
     }
 
+    // CRUD create — no cache eviction (spec Section 4.4.4)
     public Restaurant create(Restaurant restaurant) {
         if (restaurant.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant must not have an id");
         }
-        return restaurantRepository.save(restaurant);
+        Restaurant saved = restaurantRepository.save(restaurant);
+
+        // Notify observers — Section 4.5
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.RESTAURANT_CREATED);
+        params.put("restaurantId", saved.getId());
+        Map<String, Object> details = new HashMap<>();
+        details.put("name", saved.getName());
+        details.put("cuisineType", saved.getCuisineType());
+        params.put("details", details);
+        notifyObservers(RestaurantEventActions.RESTAURANT_CREATED, params);
+
+        return saved;
     }
 
     // Cached 15 min — spec Section 4.4.2
@@ -52,7 +80,7 @@ public class RestaurantService {
         return restaurantRepository.findAll();
     }
 
-    // CRUD update — evict detail + all feature caches
+    // CRUD update — evict caches + notify observers
     @Caching(evict = {
             @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
             @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
@@ -63,22 +91,27 @@ public class RestaurantService {
     })
     public Restaurant update(Long id, Restaurant updated) {
         Restaurant existing = getById(id);
-        if (updated.getName() != null)
-            existing.setName(updated.getName());
-        if (updated.getEmail() != null)
-            existing.setEmail(updated.getEmail());
-        if (updated.getPhone() != null)
-            existing.setPhone(updated.getPhone());
-        if (updated.getCuisineType() != null)
-            existing.setCuisineType(updated.getCuisineType());
-        if (updated.getStatus() != null)
-            existing.setStatus(updated.getStatus());
-        if (updated.getDetails() != null)
-            existing.setDetails(updated.getDetails());
-        return restaurantRepository.save(existing);
+        if (updated.getName() != null) existing.setName(updated.getName());
+        if (updated.getEmail() != null) existing.setEmail(updated.getEmail());
+        if (updated.getPhone() != null) existing.setPhone(updated.getPhone());
+        if (updated.getCuisineType() != null) existing.setCuisineType(updated.getCuisineType());
+        if (updated.getStatus() != null) existing.setStatus(updated.getStatus());
+        if (updated.getDetails() != null) existing.setDetails(updated.getDetails());
+        Restaurant saved = restaurantRepository.save(existing);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.UPDATED);
+        params.put("restaurantId", saved.getId());
+        Map<String, Object> details = new HashMap<>();
+        details.put("name", saved.getName());
+        details.put("status", saved.getStatus());
+        params.put("details", details);
+        notifyObservers(RestaurantEventActions.UPDATED, params);
+
+        return saved;
     }
 
-    // CRUD delete — evict detail + all feature caches
+    // CRUD delete — evict caches + notify observers
     @Caching(evict = {
             @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
             @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
@@ -92,6 +125,12 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         restaurantRepository.deleteById(id);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.RESTAURANT_DELETED);
+        params.put("restaurantId", id);
+        params.put("details", new HashMap<>());
+        notifyObservers(RestaurantEventActions.RESTAURANT_DELETED, params);
     }
 
     // [S2-F1] Cached 5 min — Section 4.4.1
@@ -103,7 +142,7 @@ public class RestaurantService {
         return restaurantRepository.searchByCuisineAndRating(cuisineType, minRating, maxRating);
     }
 
-    // [S2-F2] Write — invalidates caches — Section 4.4.4
+    // [S2-F2] Write — invalidates caches + notify observers — Section 4.4.4
     @Caching(evict = {
             @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
             @CacheEvict(value = "restaurant-service::S2-F1", allEntries = true),
@@ -121,7 +160,15 @@ public class RestaurantService {
             currentDetails.putAll(newDetails);
             existing.setDetails(currentDetails);
         }
-        return restaurantRepository.save(existing);
+        Restaurant saved = restaurantRepository.save(existing);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.DETAILS_UPDATED);
+        params.put("restaurantId", saved.getId());
+        params.put("details", newDetails);
+        notifyObservers(RestaurantEventActions.DETAILS_UPDATED, params);
+
+        return saved;
     }
 
     // [S2-F3] Cached 10 min — Section 4.4.1
@@ -137,7 +184,7 @@ public class RestaurantService {
                 averageOrderAmount);
     }
 
-    // [S2-F4] Write — invalidates caches — Section 4.4.4
+    // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "restaurant-service::restaurant", key = "#id"),
@@ -166,6 +213,14 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.STATUS_CHANGED);
+        params.put("restaurantId", id);
+        Map<String, Object> details = new HashMap<>();
+        details.put("newStatus", newStatus);
+        params.put("details", details);
+        notifyObservers(RestaurantEventActions.STATUS_CHANGED, params);
     }
 
     // [S2-F5] Cached 5 min — Section 4.4.1
@@ -189,7 +244,7 @@ public class RestaurantService {
         return dtos;
     }
 
-    // [S2-F7] Write — invalidates caches — Section 4.4.4
+    // [S2-F7] Write — invalidates caches + notify observers — Section 4.4.4
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "restaurant-service::restaurant", key = "#restaurantId"),
@@ -226,6 +281,15 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.REVIEW_ADDED);
+        params.put("restaurantId", restaurantId);
+        Map<String, Object> details = new HashMap<>();
+        details.put("rating", rating);
+        details.put("orderId", orderId);
+        params.put("details", details);
+        notifyObservers(RestaurantEventActions.REVIEW_ADDED, params);
     }
 
     // [S2-F9] Cached 10 min — Section 4.4.1
@@ -243,5 +307,19 @@ public class RestaurantService {
                     unavailableItems.size()));
         }
         return dtos;
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 }
