@@ -2,11 +2,43 @@ package com.team05.fooddelivery.restaurant.dto;
 
 // [S2-F6] Response DTO for the top-rated restaurants report endpoint.
 // Contains the restaurant's ID, name, rating, and total order count.
-public record TopRestaurantDTO
+// Converted from record to class with Builder — Section 3.5
+public class TopRestaurantDTO {
 
-(Long restaurantId,
-        String name,
-        Double rating,
-        Long totalOrders) {
+    private Long restaurantId;
+    private String name;
+    private Double rating;
+    private Long totalOrders;
 
+    private TopRestaurantDTO() {}
+
+    public Long getRestaurantId() { return restaurantId; }
+    public String getName() { return name; }
+    public Double getRating() { return rating; }
+    public Long getTotalOrders() { return totalOrders; }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private Long restaurantId;
+        private String name;
+        private Double rating;
+        private Long totalOrders;
+
+        public Builder restaurantId(Long restaurantId) { this.restaurantId = restaurantId; return this; }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder rating(Double rating) { this.rating = rating; return this; }
+        public Builder totalOrders(Long totalOrders) { this.totalOrders = totalOrders; return this; }
+
+        public TopRestaurantDTO build() {
+            TopRestaurantDTO dto = new TopRestaurantDTO();
+            dto.restaurantId = this.restaurantId;
+            dto.name = this.name;
+            dto.rating = this.rating;
+            dto.totalOrders = this.totalOrders;
+            return dto;
+        }
+    }
 }

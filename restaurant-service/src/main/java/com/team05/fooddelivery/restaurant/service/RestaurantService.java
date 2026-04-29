@@ -37,15 +37,14 @@ public class RestaurantService {
     private final EventFactory eventFactory = new EventFactory();
 
     public RestaurantService(RestaurantRepository restaurantRepository,
-                             MenuItemRepository menuItemRepository,
-                             MongoRestaurantEventRepository mongoRestaurantEventRepository) {
+            MenuItemRepository menuItemRepository,
+            MongoRestaurantEventRepository mongoRestaurantEventRepository) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
-            new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory)
-        );
+                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory));
     }
 
     // CRUD create — no cache eviction (spec Section 4.4.4)
@@ -91,12 +90,18 @@ public class RestaurantService {
     })
     public Restaurant update(Long id, Restaurant updated) {
         Restaurant existing = getById(id);
-        if (updated.getName() != null) existing.setName(updated.getName());
-        if (updated.getEmail() != null) existing.setEmail(updated.getEmail());
-        if (updated.getPhone() != null) existing.setPhone(updated.getPhone());
-        if (updated.getCuisineType() != null) existing.setCuisineType(updated.getCuisineType());
-        if (updated.getStatus() != null) existing.setStatus(updated.getStatus());
-        if (updated.getDetails() != null) existing.setDetails(updated.getDetails());
+        if (updated.getName() != null)
+            existing.setName(updated.getName());
+        if (updated.getEmail() != null)
+            existing.setEmail(updated.getEmail());
+        if (updated.getPhone() != null)
+            existing.setPhone(updated.getPhone());
+        if (updated.getCuisineType() != null)
+            existing.setCuisineType(updated.getCuisineType());
+        if (updated.getStatus() != null)
+            existing.setStatus(updated.getStatus());
+        if (updated.getDetails() != null)
+            existing.setDetails(updated.getDetails());
         Restaurant saved = restaurantRepository.save(existing);
 
         Map<String, Object> params = new HashMap<>();
@@ -180,8 +185,13 @@ public class RestaurantService {
         Long totalOrders = ((Number) result[0]).longValue();
         Double totalRevenue = ((Number) result[1]).doubleValue();
         Double averageOrderAmount = ((Number) result[2]).doubleValue();
-        return new RestaurantRevenueDTO(restaurant.getId(), restaurant.getName(), totalOrders, totalRevenue,
-                averageOrderAmount);
+        return RestaurantRevenueDTO.builder()
+                .restaurantId(restaurant.getId())
+                .name(restaurant.getName())
+                .totalOrders(totalOrders)
+                .totalRevenue(totalRevenue)
+                .averageOrderAmount(averageOrderAmount)
+                .build();
     }
 
     // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
@@ -239,7 +249,12 @@ public class RestaurantService {
             String name = (String) row[1];
             Double rating = ((Number) row[2]).doubleValue();
             Long totalOrders = ((Number) row[3]).longValue();
-            dtos.add(new TopRestaurantDTO(id, name, rating, totalOrders));
+            dtos.add(TopRestaurantDTO.builder()
+                    .restaurantId(id)
+                    .name(name)
+                    .rating(rating)
+                    .totalOrders(totalOrders)
+                    .build());
         }
         return dtos;
     }
@@ -299,12 +314,13 @@ public class RestaurantService {
         List<RestaurantMenuAlertDTO> dtos = new ArrayList<>();
         for (Restaurant r : restaurants) {
             List<MenuItem> unavailableItems = menuItemRepository.findByRestaurantIdAndAvailable(r.getId(), false);
-            dtos.add(new RestaurantMenuAlertDTO(
-                    r.getId(),
-                    r.getName(),
-                    r.getStatus().toString(),
-                    unavailableItems,
-                    unavailableItems.size()));
+            dtos.add(RestaurantMenuAlertDTO.builder()
+                    .restaurantId(r.getId())
+                    .restaurantName(r.getName())
+                    .restaurantStatus(r.getStatus().toString())
+                    .unavailableItems(unavailableItems)
+                    .unavailableCount(unavailableItems.size())
+                    .build());
         }
         return dtos;
     }
