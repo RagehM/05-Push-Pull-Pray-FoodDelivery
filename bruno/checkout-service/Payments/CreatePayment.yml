@@ -13,11 +13,11 @@ http:
     type: json
     data: |-
       {
-        "orderId": 4,
+        "orderId": 8,
         "userId": 1,
         "amount": 150,
         "method": "CASH_ON_DELIVERY",
-        "status": "COMPLETED",
+        "status": "PENDING",
         "createdAt": "2026-03-25T10:00:00Z",
         "transactionDetails": {},
         "paymentOffers": []

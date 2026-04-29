@@ -36,23 +36,16 @@ public class PaymentAuditEvent implements MongoEvent {
         this.timestamp = LocalDateTime.now();
     }
 
-    public PaymentAuditEvent(Long paymentId, String action, LocalDateTime timestamp, String method, Double amount, Map<String, Object> details) {
+    public PaymentAuditEvent(Long paymentId, String action, String method, Double amount, Map<String, Object> details) {
         if(paymentId == null){
-            throw new IllegalArgumentException("Invalid paymentId: " + paymentId);
+            throw new IllegalArgumentException("paymentId must not be null");
         }
         if (action == null || !PaymentAction.isValidAction(action)) {
             throw new IllegalArgumentException("Invalid action: " + action);
         }
-        if(method == null){
-            throw new IllegalArgumentException("Invalid method: " + method);
-        }
-        if(timestamp == null){
-            throw new IllegalArgumentException("Invalid timestamp: " + timestamp);
-        }
-        this.action = action;
         this.paymentId = paymentId;
         this.action = action;
-        this.timestamp = timestamp;
+        this.timestamp = LocalDateTime.now();
         this.method = method;
         this.amount = amount;
         this.details = details;

@@ -5,7 +5,10 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8085/api/payments/1/retry
+  url: http://localhost:8085/api/payments/8/retry
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzQxNDgwNSwiZXhwIjoxNzc3NTAxMjA1fQ.gjucmtGhkGLJ5CMSVghPoea26EDTP-Xj58ExbvL5Fa0
   auth: inherit
 
 settings:
@@ -13,4 +16,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

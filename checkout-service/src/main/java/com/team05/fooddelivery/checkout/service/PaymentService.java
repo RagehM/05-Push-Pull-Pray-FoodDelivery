@@ -61,16 +61,18 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("action", "PAYMENT_CREATED");
-        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+        Payment savedPayment = paymentRepository.save(payment);
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", savedPayment.getId());
+        paymentAuditEvent.put("amount", savedPayment.getAmount());
+        paymentAuditEvent.put("method", savedPayment.getMethod().name());
+        paymentAuditEvent.put("action", "PAYMENT_CREATED");
+        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        return paymentRepository.save(payment);
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+
+        return savedPayment;
     }
 
     public List<Payment> getPayments() {
@@ -95,22 +97,24 @@ public class PaymentService {
     public Payment updatePayment(Long id, Payment updatedPayment) {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("action", "PAYMENT_UPDATED");
-        paymentAuditEventParams.put("details", payment.getTransactionDetails());
-
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
-
         payment.setAmount(updatedPayment.getAmount());
         payment.setMethod(updatedPayment.getMethod());
         payment.setStatus(updatedPayment.getStatus());
         payment.setTransactionDetails(updatedPayment.getTransactionDetails());
         payment.setPaymentOffers(updatedPayment.getPaymentOffers());
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", savedPayment.getId());
+        paymentAuditEvent.put("action", "PAYMENT_UPDATED");
+        paymentAuditEvent.put("method", savedPayment.getMethod().name());
+        paymentAuditEvent.put("amount", savedPayment.getAmount());
+        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+
+        return savedPayment;
     }
 
     @Caching(evict = {
@@ -124,16 +128,16 @@ public class PaymentService {
     public void deletePaymentById(Long id) {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("action", "PAYMENT_DELETED");
-        paymentAuditEventParams.put("details", payment.getTransactionDetails());
-
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
-
         paymentRepository.deleteById(id);
+
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", payment.getId());
+        paymentAuditEvent.put("amount", payment.getAmount());
+        paymentAuditEvent.put("method", payment.getMethod().name());
+        paymentAuditEvent.put("action", "PAYMENT_DELETED");
+        paymentAuditEvent.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -167,37 +171,36 @@ public class PaymentService {
             }
     )
     public Payment refundPayment(Long id, String reason) {
-        Payment payment = paymentRepository.findById(id).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
-        PaymentStatus status = payment.getStatus();
-        if (!status.equals(PaymentStatus.COMPLETED)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status not COMPLETED");
+        if (payment.getStatus() != PaymentStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only COMPLETED payments can be refunded");
         }
 
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
+        if (transactionDetails == null) {
+            transactionDetails = new HashMap<>();
+        }
+
         transactionDetails.put("refundReason", reason);
         transactionDetails.put("refundedAt", LocalDateTime.now().toString());
+
+        payment.setTransactionDetails(transactionDetails);
         payment.setStatus(PaymentStatus.REFUNDED);
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("action", "REFUNDED");
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("amount", payment.getAmount());
+        Payment savedPayment = paymentRepository.save(payment);
 
-        Map<String, Object> details = new HashMap<>();
-        details.put("userId", payment.getUserId());
-        details.put("orderId", payment.getOrderId());
-        details.put("amount", payment.getAmount());
-        details.put("status", payment.getStatus().name());
-        details.put("refundReason", reason);
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", savedPayment.getId());
+        paymentAuditEvent.put("action", "REFUNDED");
+        paymentAuditEvent.put("method", savedPayment.getMethod().name());
+        paymentAuditEvent.put("amount", savedPayment.getAmount());
+        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        paymentAuditEventParams.put("details", details);
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
-
-        return paymentRepository.save(payment);
+        return savedPayment;
     }
 
     // [S5-F3] User Payment Summary (DTO)
@@ -247,60 +250,72 @@ public class PaymentService {
         // Guard 2: order must be DELIVERED
         String orderStatus = paymentRepository.findOrderStatusById(orderId);
         if (!"DELIVERED".equals(orderStatus)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Order is not DELIVERED. Current status: " + orderStatus);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Order is not DELIVERED. Current status: " + orderStatus
+            );
         }
 
-        // Guard 3: no COMPLETED payment should exist for this order
+        // Guard 3: no COMPLETED payment should exist
         if (paymentRepository.completedPaymentExistsForOrder(orderId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "already paid");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order already paid");
         }
 
-        // Guard 4: a PENDING payment must exist (created at delivery time)
+        // Guard 4: must have a PENDING payment
         Payment payment = paymentRepository.findPendingPaymentByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No pending payment found for order: " + orderId));
+                        HttpStatus.NOT_FOUND,
+                        "No pending payment found for order: " + orderId
+                ));
 
-        Map<String, Object> createdPaymentAuditEventParams = new HashMap<>();
-        createdPaymentAuditEventParams.put("paymentId", payment.getId());
-        createdPaymentAuditEventParams.put("amount", payment.getAmount());
-        createdPaymentAuditEventParams.put("action", "CREATED");
-        createdPaymentAuditEventParams.put("method", payment.getMethod().name());
-        createdPaymentAuditEventParams.put("details", payment.getTransactionDetails());
+        Map<String, Object> createdPaymentAuditEvent = new HashMap<>();
+        createdPaymentAuditEvent.put("paymentId", payment.getId());
+        createdPaymentAuditEvent.put("amount", payment.getAmount());
+        createdPaymentAuditEvent.put("method", payment.getMethod().name());
+        createdPaymentAuditEvent.put("action", "CREATED");
+        createdPaymentAuditEvent.put("details", payment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", createdPaymentAuditEventParams);
+        notifyObservers("PAYMENT_AUDIT", createdPaymentAuditEvent);
 
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
         if (transactionDetails == null) {
             transactionDetails = new HashMap<>();
         }
-        if (dto != null && dto.cardLastFour() != null) {
-            transactionDetails.put("cardLastFour", dto.cardLastFour());
-        }
-        if (dto != null && dto.method() != null) {
-            payment.setMethod(dto.method());
-        }
-        payment.setTransactionDetails(transactionDetails);
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("details", transactionDetails);
+        if (dto != null) {
+            if (dto.cardLastFour() != null) {
+                transactionDetails.put("cardLastFour", dto.cardLastFour());
+            }
+            if (dto.method() != null) {
+                payment.setMethod(dto.method());
+            }
+        }
 
+        String action;
         if (simulateFailure) {
             payment.setStatus(PaymentStatus.FAILED);
             transactionDetails.put("gatewayResponse", "declined");
-            paymentAuditEventParams.put("action", "FAILED");
+            action = "FAILED";
         } else {
             payment.setStatus(PaymentStatus.COMPLETED);
             transactionDetails.put("gatewayResponse", "approved");
-            paymentAuditEventParams.put("action", "COMPLETED");
+            action = "COMPLETED";
         }
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
+        payment.setTransactionDetails(transactionDetails);
 
-        return paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", savedPayment.getId());
+        paymentAuditEvent.put("amount", savedPayment.getAmount());
+        paymentAuditEvent.put("method", savedPayment.getMethod().name());
+        paymentAuditEvent.put("action", action);
+        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+
+        return savedPayment;
     }
 
     // [S5-F5] Apply Offer to Payment (Transactional + Join Entity)
@@ -359,20 +374,20 @@ public class PaymentService {
 
         offer.setCurrentUses(offer.getCurrentUses() + 1);
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("action", "OFFER_APPLIED");
-        paymentAuditEventParams.put("details", payment.getTransactionDetails());
-
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
-
         paymentOfferRepository.save(newPaymentOffer);
         offerRepository.save(offer);
-        paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
 
-        return payment;
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", savedPayment.getId());
+        paymentAuditEvent.put("amount", savedPayment.getAmount());
+        paymentAuditEvent.put("method", savedPayment.getMethod().name());
+        paymentAuditEvent.put("action", "OFFER_APPLIED");
+        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+
+        return savedPayment;
     }
 
     // [S5-F6] Revenue Report by Date Range (Report DTO)
@@ -453,16 +468,18 @@ public class PaymentService {
 
         payment.setTransactionDetails(details);
 
-        Map<String, Object> paymentAuditEventParams = new HashMap<>();
-        paymentAuditEventParams.put("paymentId", payment.getId());
-        paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod().name());
-        paymentAuditEventParams.put("action", "RETRY_ATTEMPTED");
-        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+        Payment savedPayment = paymentRepository.save(payment);
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
+        Map<String, Object> paymentAuditEvent = new HashMap<>();
+        paymentAuditEvent.put("paymentId", savedPayment.getId());
+        paymentAuditEvent.put("amount", savedPayment.getAmount());
+        paymentAuditEvent.put("method", savedPayment.getMethod().name());
+        paymentAuditEvent.put("action", "RETRY_ATTEMPTED");
+        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        return paymentRepository.save(payment);
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+
+        return savedPayment;
     }
 
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)

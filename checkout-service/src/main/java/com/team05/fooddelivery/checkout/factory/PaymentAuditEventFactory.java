@@ -24,13 +24,11 @@ public class PaymentAuditEventFactory implements EventFactoryBase {
             case DELIVERY:
                 throw new UnsupportedOperationException("DELIVERY events are not supported in Checkout Service");
             case PAYMENT_AUDIT:
-                PaymentAuditEvent paymentAuditEvent = new PaymentAuditEvent();
-                paymentAuditEvent.setPaymentId(((Long)params.get("paymentId")));
-                paymentAuditEvent.setAction((String)params.get("action"));
-                paymentAuditEvent.setMethod((String)params.get("method"));
-                paymentAuditEvent.setAmount((Double)params.get("amount"));
-                paymentAuditEvent.setDetails(details);
-                return paymentAuditEvent;
+                Long paymentId = (Long)params.get("paymentId");
+                String action = (String)params.get("action");
+                String method = (String)params.get("method");
+                Double amount = (Double)params.get("amount");
+                return new PaymentAuditEvent(paymentId, action, method, amount, details);
             default:
                 throw new IllegalArgumentException("Unknown event type: " + eventType);
         }
