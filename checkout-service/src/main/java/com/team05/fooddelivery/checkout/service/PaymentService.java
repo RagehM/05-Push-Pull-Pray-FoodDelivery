@@ -60,6 +60,16 @@ public class PaymentService {
         if(paymentRepository.orderExists(payment.getOrderId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+        paymentAuditEventParams.put("method", payment.getMethod().name());
+        paymentAuditEventParams.put("action", "PAYMENT_CREATED");
+        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
+
         return paymentRepository.save(payment);
     }
 
@@ -83,14 +93,24 @@ public class PaymentService {
             }
     )
     public Payment updatePayment(Long id, Payment updatedPayment) {
-        return paymentRepository.findById(id).map(payment -> {
-            payment.setAmount(updatedPayment.getAmount());
-            payment.setMethod(updatedPayment.getMethod());
-            payment.setStatus(updatedPayment.getStatus());
-            payment.setTransactionDetails(updatedPayment.getTransactionDetails());
-            payment.setPaymentOffers(updatedPayment.getPaymentOffers());
-            return paymentRepository.save(payment);
-        }).orElseThrow(() -> new RuntimeException("Payment not found"));
+        Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+        paymentAuditEventParams.put("method", payment.getMethod().name());
+        paymentAuditEventParams.put("action", "PAYMENT_UPDATED");
+        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
+
+        payment.setAmount(updatedPayment.getAmount());
+        payment.setMethod(updatedPayment.getMethod());
+        payment.setStatus(updatedPayment.getStatus());
+        payment.setTransactionDetails(updatedPayment.getTransactionDetails());
+        payment.setPaymentOffers(updatedPayment.getPaymentOffers());
+
+        return paymentRepository.save(payment);
     }
 
     @Caching(evict = {
@@ -102,9 +122,17 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
     })
     public void deletePaymentById(Long id) {
-        if (!paymentRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
-        }
+        Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+        paymentAuditEventParams.put("method", payment.getMethod().name());
+        paymentAuditEventParams.put("action", "PAYMENT_DELETED");
+        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
+
         paymentRepository.deleteById(id);
     }
 
@@ -248,7 +276,7 @@ public class PaymentService {
         Map<String, Object> paymentAuditEventParams = new HashMap<>();
         paymentAuditEventParams.put("paymentId", payment.getId());
         paymentAuditEventParams.put("amount", payment.getAmount());
-        paymentAuditEventParams.put("method", payment.getMethod() != null ? payment.getMethod().name() : null);
+        paymentAuditEventParams.put("method", payment.getMethod().name());
         paymentAuditEventParams.put("details", transactionDetails);
 
         if (simulateFailure) {
@@ -320,8 +348,16 @@ public class PaymentService {
         newPaymentOffer.setPayment(payment);
         newPaymentOffer.setOffer(offer);
 
-
         offer.setCurrentUses(offer.getCurrentUses() + 1);
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+        paymentAuditEventParams.put("method", payment.getMethod().name());
+        paymentAuditEventParams.put("action", "OFFER_APPLIED");
+        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
 
         paymentOfferRepository.save(newPaymentOffer);
         offerRepository.save(offer);
@@ -407,6 +443,15 @@ public class PaymentService {
         details.put("gatewayResponse", "approved");
 
         payment.setTransactionDetails(details);
+
+        Map<String, Object> paymentAuditEventParams = new HashMap<>();
+        paymentAuditEventParams.put("paymentId", payment.getId());
+        paymentAuditEventParams.put("amount", payment.getAmount());
+        paymentAuditEventParams.put("method", payment.getMethod().name());
+        paymentAuditEventParams.put("action", "RETRY_ATTEMPTED");
+        paymentAuditEventParams.put("details", payment.getTransactionDetails());
+
+        notifyObservers("PAYMENT_AUDIT", paymentAuditEventParams);
 
         return paymentRepository.save(payment);
     }

@@ -6,7 +6,12 @@ public enum PaymentAction {
     FAILED,
     REFUNDED,
     REFUND_DENIED,
-    ANALYTICS_VIEWED;
+    ANALYTICS_VIEWED,
+    PAYMENT_CREATED,
+    PAYMENT_UPDATED,
+    PAYMENT_DELETED,
+    OFFER_APPLIED,
+    RETRY_ATTEMPTED;
 
     public static boolean isValidAction(String action) {
         for (PaymentAction paymentAction : PaymentAction.values()) {
