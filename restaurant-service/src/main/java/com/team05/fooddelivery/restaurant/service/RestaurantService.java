@@ -54,16 +54,25 @@ public class RestaurantService {
         if (restaurant.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant must not have an id");
         }
+
+        // Section 7.2 — ensure details.description key exists with default empty string
+        Map<String, Object> details = restaurant.getDetails();
+        if (details == null) {
+            details = new HashMap<>();
+        }
+        details.putIfAbsent("description", "");
+        restaurant.setDetails(details);
+
         Restaurant saved = restaurantRepository.save(restaurant);
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
         params.put("action", RestaurantEventActions.RESTAURANT_CREATED);
         params.put("restaurantId", saved.getId());
-        Map<String, Object> details = new HashMap<>();
-        details.put("name", saved.getName());
-        details.put("cuisineType", saved.getCuisineType());
-        params.put("details", details);
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("name", saved.getName());
+        eventDetails.put("cuisineType", saved.getCuisineType());
+        params.put("details", eventDetails);
         notifyObservers(RestaurantEventActions.RESTAURANT_CREATED, params);
 
         return saved;
