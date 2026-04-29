@@ -20,11 +20,10 @@ public class EventFactory implements EventFactoryBase {
 
         switch (eventType) {
             case RESTAURANT:
-                RestaurantEvent event = new RestaurantEvent();
-                event.setRestaurantId((Long) params.get("restaurantId"));
-                event.setAction((String) params.get("action"));
-                event.setDetails(details);
-                return event;
+                return new RestaurantEvent(
+                        (Long) params.get("restaurantId"),
+                        (String) params.get("action"),
+                        details);
             case AUTH:
                 throw new UnsupportedOperationException("AUTH events not supported in Restaurant Service");
             case ORDER:
