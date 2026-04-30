@@ -6,6 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:8082/api/restaurants
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzUwODc0NCwiZXhwIjoxNzc3NTk1MTQ0fQ.2oCOqfAFC5kTpAiZtuUIaxinNNT6tdLi5B5BauEMDoY
   auth: inherit
 
 settings:
@@ -13,4 +16,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
