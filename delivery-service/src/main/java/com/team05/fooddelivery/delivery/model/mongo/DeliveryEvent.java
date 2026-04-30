@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
@@ -19,6 +20,7 @@ public class DeliveryEvent implements MongoEvent {
     @Id
     private String id;
 
+    @Indexed
     private Long deliveryId;
 
     private String action;
@@ -32,6 +34,16 @@ public class DeliveryEvent implements MongoEvent {
     }
 
     public DeliveryEvent(Long deliveryId, String action, LocalDateTime timestamp, Map<String, Object> details) {
+        if (deliveryId == null){
+            throw new IllegalArgumentException("deliveryId must not be null");
+        }
+        if (action == null || action.isBlank()) {
+            throw new IllegalArgumentException("action must not be null or empty");
+        }
+        if (timestamp == null) {
+            throw new IllegalArgumentException("timestamp must not be null");
+        }
+
         this.deliveryId = deliveryId;
         this.action = action;
         this.timestamp = timestamp;
