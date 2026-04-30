@@ -95,28 +95,34 @@ public class PaymentOfferService {
     }
 
     // [S5-F9] Get Most Used Offers Report (Join Entity + Aggregation)
-    @Cacheable(value = "checkout-service::S5-F9",key = "#limit")
+    @Cacheable(value = "checkout-service::S5-F9", key = "#limit")
     public List<OfferUsageDTO> getMostUsedOffers(int limit) {
         List<Object[]> rows = offerRepository.findMostUsedOffers(PageRequest.of(0, limit));
 
         return rows.stream().map(row -> {
-            Long offerId              = ((Number) row[0]).longValue();
-            String code               = (String) row[1];
+            Long offerId = ((Number) row[0]).longValue();
+            String code = (String) row[1];
             OfferDiscountType discountType = OfferDiscountType.valueOf((String) row[2]);
-            Double discountValue      = ((Number) row[3]).doubleValue();
-            Integer timesUsed         = ((Number) row[4]).intValue();
+            Double discountValue = ((Number) row[3]).doubleValue();
+            Integer timesUsed = ((Number) row[4]).intValue();
             Double totalDiscountGiven = ((Number) row[5]).doubleValue();
-            Boolean active            = (Boolean) row[6];
-            // Hibernate 7 returns TIMESTAMP as LocalDateTime directly; older drivers as Timestamp
+            Boolean active = (Boolean) row[6];
             Object rawDate = row[7];
             LocalDateTime expiryDate = rawDate instanceof java.sql.Timestamp ts
                     ? ts.toLocalDateTime()
                     : (LocalDateTime) rawDate;
-            Boolean expired           = expiryDate.isBefore(LocalDateTime.now());
+            Boolean expired = expiryDate.isBefore(LocalDateTime.now());
 
-            return new OfferUsageDTO(
-                    offerId, code, discountType, discountValue,
-                    timesUsed, totalDiscountGiven, active, expired);
+            return OfferUsageDTO.builder()
+                    .offerId(offerId)
+                    .code(code)
+                    .discountType(discountType)
+                    .discountValue(discountValue)
+                    .timesUsed(timesUsed)
+                    .totalDiscountGiven(totalDiscountGiven)
+                    .active(active)
+                    .expired(expired)
+                    .build();
         }).toList();
     }
 }
