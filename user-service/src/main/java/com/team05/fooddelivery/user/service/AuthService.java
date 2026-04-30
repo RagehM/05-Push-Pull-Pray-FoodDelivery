@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AuthService {
@@ -56,6 +58,13 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
+
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "LOGGED_IN");
+
+        notifyObservers("AUTH", authEvent);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
