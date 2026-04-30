@@ -154,6 +154,13 @@ services:
       HEAP_NEWSIZE: 128M
     volumes:
       - cassandra-data:/var/lib/cassandra
+    command: >
+      bash -c "
+        docker-entrypoint.sh cassandra -f &
+        until cqlsh -e 'DESCRIBE KEYSPACES' 2>/dev/null; do sleep 5; done;
+        cqlsh -e \"CREATE KEYSPACE IF NOT EXISTS $${CASSANDRA_KEYSPACE} WITH replication = {'class':'SimpleStrategy','replication_factor':1};\";
+        wait
+      "
     healthcheck:
       test: [ "CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES'" ]
       interval: 15s
