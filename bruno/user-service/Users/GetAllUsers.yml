@@ -8,7 +8,7 @@ http:
   url: http://localhost:8081/api/users
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzA1Nzk1OSwiZXhwIjoxNzc3MTQ0MzU5fQ.U-HKXtPEx75yTxxm9u4F_FA1c-6U4tG21loK9fzf22U
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzM2ODU0MywiZXhwIjoxNzc3NDU0OTQzfQ.tNyb9Hy4UyBFCdK069p-flP_AU6MDAWIQy5XisYw_98
   auth: inherit
 
 settings:
