@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
-import com.team05.fooddelivery.user.config.JwtConfig;
+import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.dto.AuthResponse;
 import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
@@ -17,13 +17,13 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final JwtConfig jwtConfig;
+    private final JwtConfigurationManager jwtConfig;
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, JwtConfig jwtConfig) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.jwtConfig = jwtConfig;
+        this.jwtConfig = JwtConfigurationManager.getInstance();
     }
 
 
