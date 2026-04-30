@@ -4,8 +4,7 @@ import com.team05.fooddelivery.restaurant.model.MenuItem;
 import java.util.List;
 
 // [S2-F9] Response DTO for the unavailable menu items alert endpoint.
-// Groups a restaurant's basic info with its list of unavailable items and the count of those items.
-// Builder pattern added — Section 3.5
+// Builder pattern — Section 3.5
 public class RestaurantMenuAlertDTO {
 
     private Long restaurantId;
@@ -14,7 +13,13 @@ public class RestaurantMenuAlertDTO {
     private List<MenuItem> unavailableItems;
     private Integer unavailableCount;
 
-    private RestaurantMenuAlertDTO() {}
+    private RestaurantMenuAlertDTO(Builder builder) {
+        this.restaurantId = builder.restaurantId;
+        this.restaurantName = builder.restaurantName;
+        this.restaurantStatus = builder.restaurantStatus;
+        this.unavailableItems = builder.unavailableItems;
+        this.unavailableCount = builder.unavailableCount;
+    }
 
     public Long getRestaurantId() { return restaurantId; }
     public String getRestaurantName() { return restaurantName; }
@@ -22,9 +27,7 @@ public class RestaurantMenuAlertDTO {
     public List<MenuItem> getUnavailableItems() { return unavailableItems; }
     public Integer getUnavailableCount() { return unavailableCount; }
 
-    public static Builder builder() {
-        return new Builder();
-    }
+    public static Builder builder() { return new Builder(); }
 
     public static class Builder {
         private Long restaurantId;
@@ -40,13 +43,7 @@ public class RestaurantMenuAlertDTO {
         public Builder unavailableCount(Integer unavailableCount) { this.unavailableCount = unavailableCount; return this; }
 
         public RestaurantMenuAlertDTO build() {
-            RestaurantMenuAlertDTO dto = new RestaurantMenuAlertDTO();
-            dto.restaurantId = this.restaurantId;
-            dto.restaurantName = this.restaurantName;
-            dto.restaurantStatus = this.restaurantStatus;
-            dto.unavailableItems = this.unavailableItems;
-            dto.unavailableCount = this.unavailableCount;
-            return dto;
+            return new RestaurantMenuAlertDTO(this);
         }
     }
 }
