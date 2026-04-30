@@ -23,6 +23,14 @@ public class CreateKeyspaceConfiguration extends AbstractCassandraConfiguration 
     @Value("${spring.cassandra.replication-factor:1}")
     private int replicationFactor;
 
+    @Value("${spring.cassandra.contact-points:cassandra}")
+    private String contactPoints;
+
+    @Override
+    protected String getContactPoints() {
+        return contactPoints;
+    }
+
     @Override
     protected String getKeyspaceName() {
         return keyspaceName;
