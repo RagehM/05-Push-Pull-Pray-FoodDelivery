@@ -8,17 +8,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
-import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
-import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
+import com.team05.fooddelivery.delivery.dto.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
-import com.team05.fooddelivery.delivery.dto.DeliveryItemDTO;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
@@ -202,32 +199,41 @@ validateOrder(orderId);
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
     }
 
-    public List<NearbyDeliveryDTO> getNearbyDeliveries(Double lat, Double lon, Double radiusKm) {
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(
+            Double lat,
+            Double lon,
+            Double radiusKm
+    ) {
         return deliveryRepository.findNearbyDeliveries(lat, lon, radiusKm)
                 .stream()
-                .map(row -> new NearbyDeliveryDTO(
-                        ((Number) row[0]).longValue(),
-                        (String) row[1],
-                        ((Number) row[2]).longValue(),
-                        ((Number) row[3]).doubleValue(),
-                        ((Number) row[4]).doubleValue(),
-                        ((Number) row[5]).doubleValue()
-                ))
+                .map(row -> NearbyDeliveryDTO.builder()
+                        .deliveryId(((Number) row[0]).longValue())
+                        .driverName((String) row[1])
+                        .orderId(((Number) row[2]).longValue())
+                        .latitude(((Number) row[3]).doubleValue())
+                        .longitude(((Number) row[4]).doubleValue())
+                        .distanceKm(((Number) row[5]).doubleValue())
+                        .build()
+                )
                 .toList();
     }
 
-    public List<DelayedDeliveryDTO> getDelayedDeliveries(Double maxEstimatedArrival, int sinceMinutes) {
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(
+            Double maxEstimatedArrival,
+            int sinceMinutes
+    ) {
         return deliveryRepository.findDelayedDeliveries(maxEstimatedArrival, sinceMinutes)
                 .stream()
-                .map(row -> new DelayedDeliveryDTO(
-                        ((Number) row[0]).longValue(),
-                        (String) row[1],
-                        ((Number) row[2]).longValue(),
-                        ((Number) row[3]).doubleValue(),
-                        ((Number) row[4]).doubleValue(),
-                        ((Number) row[5]).doubleValue(),
-                        (LocalDateTime) row[6]
-                ))
+                .map(row -> DelayedDeliveryDTO.builder()
+                        .deliveryId(((Number) row[0]).longValue())
+                        .driverName((String) row[1])
+                        .orderId(((Number) row[2]).longValue())
+                        .latitude(((Number) row[3]).doubleValue())
+                        .longitude(((Number) row[4]).doubleValue())
+                        .estimatedArrival(((Number) row[5]).doubleValue())
+                        .updatedAt((LocalDateTime) row[6])
+                        .build()
+                )
                 .toList();
     }
 
@@ -249,27 +255,37 @@ validateOrder(orderId);
         response.put("deletedCount", deletedCount);
         return response;
     }
+
     @Transactional(readOnly = true)
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
-            String driverName, LocalDate startDate, LocalDate endDate) {
+            String driverName,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
-        List<Object[]> results = deliveryRepository.findPerformanceSummary(driverName, start, end);
-        if (results.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "No deliveries found for driver: " + driverName);
-        }
-        Object[] row = results.get(0);
+        List<Object[]> results =
+                deliveryRepository.findPerformanceSummary(driverName, start, end);
 
-        return new DeliveryPerformanceSummaryDTO(
-                (String) row[0],
-                ((Number) row[1]).longValue(),
-                row[2] != null ? ((Number) row[2]).doubleValue() : 0.0,
-                row[3] != null ? ((Number) row[3]).doubleValue() : 0.0,
-                (LocalDateTime) row[4],
-                (LocalDateTime) row[5]
-        );
+        if (results.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "No deliveries found for driver: " + driverName
+            );
+        }
+
+        Object[] row = results.getFirst();
+
+        return DeliveryPerformanceSummaryDTO.builder()
+                .driverName((String) row[0])
+                .totalDeliveries(((Number) row[1]).longValue())
+                .averageSpeed(row[2] != null ? ((Number) row[2]).doubleValue() : 0.0)
+                .maxSpeed(row[3] != null ? ((Number) row[3]).doubleValue() : 0.0)
+                .firstDelivery((LocalDateTime) row[4])
+                .lastDelivery((LocalDateTime) row[5])
+                .build();
     }
+
 }
 
