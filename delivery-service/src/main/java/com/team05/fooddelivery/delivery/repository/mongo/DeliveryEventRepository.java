@@ -3,7 +3,7 @@ package com.team05.fooddelivery.delivery.repository.mongo;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
+import com.team05.shared.repository.mongo.MongoEventRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -14,7 +14,7 @@ import com.team05.fooddelivery.delivery.model.mongo.DeliveryEvent;
  * Collection: delivery_events
  */
 @Repository
-public interface DeliveryEventRepository extends MongoRepository<DeliveryEvent, String> {
+public interface DeliveryEventRepository extends MongoEventRepository<DeliveryEvent, String> {
 
     /**
      * Find all events for a specific delivery.

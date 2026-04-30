@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import com.team05.shared.model.mongo.MongoEvent;
 
 /**
  * MongoDB document for delivery service event logging.
