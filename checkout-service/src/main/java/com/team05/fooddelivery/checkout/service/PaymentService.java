@@ -162,7 +162,12 @@ public class PaymentService {
             totalAmount += sum;
         }
 
-        return new UserPaymentSummaryDTO(userId, totalPayments, totalAmount, methodBreakdown);
+        return UserPaymentSummaryDTO.builder()
+                .userId(userId)
+                .totalPayments(totalPayments)
+                .totalAmount(totalAmount)
+                .methodBreakdown(methodBreakdown)
+                .build();
     }
 
     // [S5-F4] Process Payment for Order (Transactional)
@@ -303,15 +308,13 @@ public class PaymentService {
 
         Integer refundCount = refundedPayments.size();
 
-        RevenueReportDTO revenueReport = new RevenueReportDTO(
-                totalRevenue,
-                totalTransactions,
-                averagePayment,
-                refundedAmount,
-                refundCount
-        );
-
-        return revenueReport;
+        return RevenueReportDTO.builder()
+                .totalRevenue(totalRevenue)
+                .totalTransactions(totalTransactions)
+                .averagePayment(averagePayment)
+                .refundedAmount(refundedAmount)
+                .refundCount(refundCount)
+                .build();
     }
 
     // [S5-F7] Retry Failed Payment (Transactional)
@@ -387,17 +390,17 @@ public class PaymentService {
 
         Double finalAmount = Math.max(0.0, payment.getAmount() - totalDiscount);
 
-        return new PaymentDetailsDTO(
-                payment.getId(),
-                payment.getOrderId(),
-                payment.getUserId(),
-                payment.getAmount(),
-                payment.getMethod(),
-                payment.getStatus(),
-                payment.getTransactionDetails(),
-                appliedOffers,
-                totalDiscount,
-                finalAmount
-        );
+        return PaymentDetailsDTO.builder()
+                .paymentId(payment.getId())
+                .orderId(payment.getOrderId())
+                .userId(payment.getUserId())
+                .originalAmount(payment.getAmount())
+                .method(payment.getMethod())
+                .status(payment.getStatus())
+                .transactionDetails(payment.getTransactionDetails())
+                .appliedOffers(appliedOffers)
+                .totalDiscount(totalDiscount)
+                .finalAmount(finalAmount)
+                .build();
     }
 }
