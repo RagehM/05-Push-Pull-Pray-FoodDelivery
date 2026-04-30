@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.cassandra.config.AbstractCassandraConfiguration;
 import org.springframework.data.cassandra.core.cql.keyspace.CreateKeyspaceSpecification;
 import org.springframework.data.cassandra.core.cql.keyspace.KeyspaceOption;
+import org.jspecify.annotations.NonNull;
 
 
 /**
@@ -27,11 +28,13 @@ public class CreateKeyspaceConfiguration extends AbstractCassandraConfiguration 
     private String contactPoints;
 
     @Override
+    @NonNull
     protected String getContactPoints() {
         return contactPoints;
     }
 
     @Override
+    @NonNull
     protected String getKeyspaceName() {
         return keyspaceName;
     }
@@ -41,6 +44,7 @@ public class CreateKeyspaceConfiguration extends AbstractCassandraConfiguration 
      * SimpleStrategy is used for single-datacenter deployments (suitable for Docker).
      */
     @Override
+    @NonNull
     protected List<CreateKeyspaceSpecification> getKeyspaceCreations() {
         final CreateKeyspaceSpecification keyspaceSpecification = CreateKeyspaceSpecification.createKeyspace(keyspaceName)
                 .ifNotExists()
