@@ -143,12 +143,13 @@ services:
 
   cassandra:
     image: cassandra:latest
-    container_name: fooddelivery-cassandra-ui
+    container_name: fooddelivery-cassandra
     ports:
       - "9042:9042"
     environment:
       CASSANDRA_CLUSTER_NAME: fooddeliverycluster
       CASSANDRA_DC: datacenter1
+      CASSANDRA_KEYSPACE: fooddeliveryks
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 128M
     volumes:
