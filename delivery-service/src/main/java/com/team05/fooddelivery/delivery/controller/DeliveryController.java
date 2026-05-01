@@ -46,7 +46,7 @@ public class DeliveryController {
     }
 
     @PostMapping("/{id}/tracking")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<Void> recordDeliveryTracking(@PathVariable Long id,
                                                        @RequestBody DeliveryTrackingRequestDTO request) {
         deliveryService.recordDeliveryTracking(id, request);
