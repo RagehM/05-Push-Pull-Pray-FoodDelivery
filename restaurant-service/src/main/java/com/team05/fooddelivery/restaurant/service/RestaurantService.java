@@ -197,7 +197,7 @@ public class RestaurantService {
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
         List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
-        return new RestaurantRevenueAdapter(results.get(0), restaurant).toDTO();
+        return new RestaurantRevenueAdapter(results.get(0), restaurant).adapt(results.get(0));
     }
 
     // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
@@ -252,7 +252,7 @@ public class RestaurantService {
         List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
         List<TopRestaurantDTO> dtos = new ArrayList<>();
         for (Object[] row : results) {
-            dtos.add(new TopRestaurantAdapter(row).toDTO());
+            dtos.add(new TopRestaurantAdapter(row).adapt(row));
         }
         return dtos;
     }
