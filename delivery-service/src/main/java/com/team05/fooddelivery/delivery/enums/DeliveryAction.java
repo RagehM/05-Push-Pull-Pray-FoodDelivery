@@ -1,0 +1,32 @@
+package com.team05.fooddelivery.delivery.enums;
+
+import java.util.Arrays;
+import java.util.Locale;
+
+/**
+ * Delivery action constants used for validation of delivery events.
+ * Keep values in UPPER_SNAKE_CASE to match project conventions.
+ */
+public enum DeliveryAction {
+    TRACKING_RECORDED,
+    ANALYTICS_VIEWED,
+    DELIVERY_CREATED,
+    BATCH_STATUS_UPDATED,
+    OLD_DATA_PURGED,
+    DELIVERY_DELETED;
+
+    /**
+     * Case-insensitive validation helper. Accepts both exact enum names and common variations.
+     */
+    public static boolean isValidAction(String action) {
+        if (action == null) return false;
+        for (DeliveryAction a : DeliveryAction.values()) {
+            if (a.name().equals(action)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+

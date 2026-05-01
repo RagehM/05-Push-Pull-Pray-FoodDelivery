@@ -9,44 +9,35 @@ public class UserPaymentSummaryDTO {
     private Double totalAmount;
     private Map<String, Double> methodBreakdown;
 
-    public UserPaymentSummaryDTO() {}
-
-    public UserPaymentSummaryDTO(Long userId, Long totalPayments, Double totalAmount, Map<String, Double> methodBreakdown) {
-        this.userId = userId;
-        this.totalPayments = totalPayments;
-        this.totalAmount = totalAmount;
-        this.methodBreakdown = methodBreakdown;
+    private UserPaymentSummaryDTO(Builder builder) {
+        this.userId = builder.userId;
+        this.totalPayments = builder.totalPayments;
+        this.totalAmount = builder.totalAmount;
+        this.methodBreakdown = builder.methodBreakdown;
     }
 
-    public Long getUserId() {
-        return userId;
+    public Long getUserId() { return userId; }
+    public Long getTotalPayments() { return totalPayments; }
+    public Double getTotalAmount() { return totalAmount; }
+    public Map<String, Double> getMethodBreakdown() { return methodBreakdown; }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
+    public static class Builder {
+        private Long userId;
+        private Long totalPayments;
+        private Double totalAmount;
+        private Map<String, Double> methodBreakdown;
 
-    public Long getTotalPayments() {
-        return totalPayments;
-    }
+        public Builder userId(Long userId) { this.userId = userId; return this; }
+        public Builder totalPayments(Long totalPayments) { this.totalPayments = totalPayments; return this; }
+        public Builder totalAmount(Double totalAmount) { this.totalAmount = totalAmount; return this; }
+        public Builder methodBreakdown(Map<String, Double> methodBreakdown) { this.methodBreakdown = methodBreakdown; return this; }
 
-    public void setTotalPayments(Long totalPayments) {
-        this.totalPayments = totalPayments;
-    }
-
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public Map<String, Double> getMethodBreakdown() {
-        return methodBreakdown;
-    }
-
-    public void setMethodBreakdown(Map<String, Double> methodBreakdown) {
-        this.methodBreakdown = methodBreakdown;
+        public UserPaymentSummaryDTO build() {
+            return new UserPaymentSummaryDTO(this);
+        }
     }
 }

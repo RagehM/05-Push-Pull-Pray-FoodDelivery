@@ -4,12 +4,22 @@ import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.dto.AuthResponse;
 import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
+import com.team05.fooddelivery.user.factory.AuthEventFactory;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
+import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
+import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class AuthService {
@@ -24,6 +34,26 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtConfig = JwtConfigurationManager.getInstance();
+    private final JwtConfig jwtConfig;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final AuthEventRepository authEventRepository;
+    private final AuthEventFactory authEventFactory = new AuthEventFactory();
+
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, JwtConfig jwtConfig,AuthEventRepository authEventRepository) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.jwtConfig = jwtConfig;
+        this.authEventRepository = authEventRepository;
+        this.observers.add(
+                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
+        );
+    }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 
 
@@ -35,6 +65,13 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
+
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "LOGGED_IN");
+
+        notifyObservers("AUTH", authEvent);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
