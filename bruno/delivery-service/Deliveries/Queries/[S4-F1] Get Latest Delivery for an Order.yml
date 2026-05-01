@@ -6,9 +6,6 @@ info:
 http:
   method: GET
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/order/1/latest"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   auth: inherit
 
 runtime:

@@ -6,9 +6,6 @@ info:
 http:
   method: GET
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   params:
     - name: status
       value: PENDING
@@ -18,7 +15,7 @@ http:
 runtime:
   scripts:
     - type: tests
-      code: |
+      code: |-
         test("get all deliveries returns array", function () {
           expect(res.getStatus()).to.equal(200);
           const body = res.getBody();
@@ -30,4 +27,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

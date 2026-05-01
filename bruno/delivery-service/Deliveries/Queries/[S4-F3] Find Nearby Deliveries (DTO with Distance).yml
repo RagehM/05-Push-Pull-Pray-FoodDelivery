@@ -6,9 +6,6 @@ info:
 http:
   method: GET
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/nearby?lat=48.8566&lon=2.3522&radiusKm=5"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   params:
     - name: lat
       value: "48.8566"

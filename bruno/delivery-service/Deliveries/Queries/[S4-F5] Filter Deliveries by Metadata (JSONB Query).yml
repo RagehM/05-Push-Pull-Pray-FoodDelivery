@@ -6,9 +6,6 @@ info:
 http:
   method: GET
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/metadata/search?key=zone&operator=eq&value=north"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   params:
     - name: key
       value: zone

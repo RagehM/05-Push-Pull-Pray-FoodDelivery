@@ -6,15 +6,12 @@ info:
 http:
   method: DELETE
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/1"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   auth: inherit
 
 runtime:
   scripts:
     - type: tests
-      code: |
+      code: |-
         test("delete delivery returns 200/204 or 404 if not found", function () {
           const status = res.getStatus();
           expect([200, 204, 404]).to.include(status);
@@ -25,4 +22,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

@@ -6,9 +6,6 @@ info:
 http:
   method: POST
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/order/{{orderId}}"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   body:
     type: json
     data: |-

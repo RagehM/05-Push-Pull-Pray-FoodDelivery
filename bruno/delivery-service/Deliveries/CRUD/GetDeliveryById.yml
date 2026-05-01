@@ -6,15 +6,12 @@ info:
 http:
   method: GET
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/1"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   auth: inherit
 
 runtime:
   scripts:
     - type: tests
-      code: |
+      code: |-
         test("get delivery by id returns 200 and has id", function () {
           expect(res.getStatus()).to.equal(200);
           const body = res.getBody();
@@ -26,4 +23,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

@@ -6,9 +6,6 @@ info:
 http:
   method: DELETE
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/purge?olderThanDays=90"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   params:
     - name: olderThanDays
       value: "90"

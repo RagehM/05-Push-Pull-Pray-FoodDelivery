@@ -6,9 +6,6 @@ info:
 http:
   method: PUT
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/1"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   body:
     type: json
     data: |-
@@ -23,7 +20,7 @@ http:
 runtime:
   scripts:
     - type: tests
-      code: |
+      code: |-
         test("update delivery returns 200 and has id", function () {
           const status = res.getStatus();
           expect(status).to.not.equal(500);
@@ -38,4 +35,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

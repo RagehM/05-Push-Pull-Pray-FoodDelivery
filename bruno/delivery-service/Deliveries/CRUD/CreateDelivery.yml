@@ -6,9 +6,6 @@ info:
 http:
   method: POST
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
-  headers:
-    - name: Authorization
-      value: Bearer {{authToken}}
   body:
     type: json
     data: |-
@@ -24,7 +21,7 @@ http:
 runtime:
   scripts:
     - type: tests
-      code: |
+      code: |-
         test("create delivery returns 200 and has id", function () {
           expect(res.getStatus()).to.equal(200);
           const body = res.getBody();
@@ -37,4 +34,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
