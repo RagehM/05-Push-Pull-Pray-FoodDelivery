@@ -6,11 +6,12 @@ info:
 http:
   method: GET
   url: http://localhost:8084/api/deliveries/1
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY0MTAyNCwiZXhwIjoxNzc3NzI3NDI0fQ.Idvdm_63MxYSzXoEnPrVXQivdinILgen4xIIITtgu4Q
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

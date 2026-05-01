@@ -1,8 +1,5 @@
 package com.team05.fooddelivery.checkout.service;
-import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
-import com.team05.fooddelivery.checkout.dto.AppliedOfferDTO;
-import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
-import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
+import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.factory.PaymentAuditEventFactory;
@@ -13,16 +10,22 @@ import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
 import com.team05.fooddelivery.checkout.repository.mongo.MongoPaymentAuditEventRepository;
+import com.team05.fooddelivery.checkout.dto.RefundResult;
+import com.team05.fooddelivery.checkout.strategy.NoRefundStrategy;
+import com.team05.fooddelivery.checkout.strategy.RefundStrategy;
+import com.team05.fooddelivery.checkout.strategy.RefundStrategySelector;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -41,12 +44,16 @@ public class PaymentService {
     private final MongoPaymentAuditEventRepository paymentAuditEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final PaymentAuditEventFactory paymentAuditEventFactory = new PaymentAuditEventFactory();
+    private final RefundStrategySelector refundStrategySelector;
+    private final CacheManager cacheManager;
 
-    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository) {
-        this.paymentRepository =  paymentRepository;
+    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager) {
+        this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
+        this.refundStrategySelector = refundStrategySelector;
+        this.cacheManager = cacheManager;
         this.observers.add(
                 new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT, paymentAuditEventFactory)
         );
@@ -54,10 +61,10 @@ public class PaymentService {
 
     // Payment CRUD
     public Payment createPayment(Payment payment) {
-        if(paymentRepository.userExists(payment.getUserId()) == false) {
+        if (paymentRepository.userExists(payment.getUserId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        if(paymentRepository.orderExists(payment.getOrderId()) == false) {
+        if (paymentRepository.orderExists(payment.getOrderId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
 
@@ -347,19 +354,19 @@ public class PaymentService {
     public Payment applyOfferToPayment(Long paymentId, Long offerId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "cannot apply offer to a completed/cancelled payment"));
 
-        if(payment.getStatus().equals(PaymentStatus.COMPLETED) ||  payment.getStatus().equals(PaymentStatus.REFUNDED)) {
+        if (payment.getStatus().equals(PaymentStatus.COMPLETED) || payment.getStatus().equals(PaymentStatus.REFUNDED)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status cant be COMPLETED or REFUNDED");
         }
 
         Offer offer = offerRepository.findById(offerId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "offer not found"));
 
-        if(offer.getActive() == false) {
+        if (offer.getActive() == false) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offer not active");
         }
-        if(offer.getExpiryDate().isBefore(LocalDateTime.now()) ) {
+        if (offer.getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offer expired");
         }
-        if(offer.getCurrentUses() >= offer.getMaxUses()) {
+        if (offer.getCurrentUses() >= offer.getMaxUses()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offer usage limit reached");
         }
 
@@ -371,13 +378,13 @@ public class PaymentService {
 
         OfferDiscountType discountType = offer.getDiscountType();
         Double discount = 0.0;
-        if(discountType == OfferDiscountType.PERCENTAGE) {
+        if (discountType == OfferDiscountType.PERCENTAGE) {
             discount = payment.getAmount() * (offer.getDiscountValue() / 100);
         }
-        if(discountType == OfferDiscountType.FIXED) {
+        if (discountType == OfferDiscountType.FIXED) {
             discount = offer.getDiscountValue();
         }
-        if(discount > payment.getAmount()) {
+        if (discount > payment.getAmount()) {
             discount = payment.getAmount();
         }
 
@@ -408,7 +415,7 @@ public class PaymentService {
     // [S5-F6] Revenue Report by Date Range (Report DTO)
     @Cacheable(value = "checkout-service::S5-F6", key = "#startDate.toString() + ':' + #endDate.toString()")
     public RevenueReportDTO generateRevenueReport(LocalDateTime startDate, LocalDateTime endDate) {
-        if(endDate.isBefore(startDate)) {
+        if (endDate.isBefore(startDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
         }
         List<Payment> paymentsList = paymentRepository.findByDateRange(startDate, endDate);
@@ -499,18 +506,20 @@ public class PaymentService {
         if (deliveryTypeFee != null) {
             try {
                 return Double.parseDouble(deliveryTypeFee);
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         if (restaurantFeeStr != null) {
             try {
                 return Double.parseDouble(restaurantFeeStr);
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return orderTotal != null ? orderTotal * 0.10 : 0.0;
     }
 
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)
-    @Cacheable(value = "checkout-service::S5-F8",key = "#paymentId")
+    @Cacheable(value = "checkout-service::S5-F8", key = "#paymentId")
     public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
         // Fetch payment with offers eagerly loaded via JOIN FETCH
         Payment payment = paymentRepository.findByIdWithOffers(paymentId)
@@ -546,5 +555,84 @@ public class PaymentService {
                 .totalDiscount(totalDiscount)
                 .finalAmount(finalAmount)
                 .build();
+    }
+
+    //[S5-F12] Process Order Refund with Delivery Fee Handling
+    @Transactional
+    @Caching(
+            put = @CachePut(value = "checkout-service::payment", key = "#paymentId"),
+            evict = {
+                    @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
+                    @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
+            }
+    )
+    public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(Long paymentId, RefundRequest refundRequest) {
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+
+        if (payment.getStatus() != PaymentStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only COMPLETED payments can be refunded");
+        }
+
+        RefundStrategy strategy = refundStrategySelector.select(refundRequest, payment.getCreatedAt());
+        String strategyName = strategy.getClass().getSimpleName();
+
+        if (strategy instanceof NoRefundStrategy) {
+            Map<String, Object> denialAuditEvent = new HashMap<>();
+
+            denialAuditEvent.put("paymentId", payment.getId());
+            denialAuditEvent.put("action", "REFUND_DENIED");
+            denialAuditEvent.put("method", payment.getMethod().name());
+            denialAuditEvent.put("amount", payment.getAmount());
+            Map<String, Object> details = payment.getTransactionDetails();
+            details.put("strategy", strategyName);
+            details.put("reason", "refund window expired");
+            denialAuditEvent.put("details", details);
+
+            notifyObservers("PAYMENT_AUDIT", denialAuditEvent);
+
+            Cache f10 = cacheManager.getCache("checkout-service::S5-F10");
+            Cache f11 = cacheManager.getCache("checkout-service::S5-F11");
+            if (f10 != null) f10.clear();
+            if (f11 != null) f11.clear();
+
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refund window expired");
+        }
+
+        RefundResult refundResult = strategy.calculateRefund(payment, refundRequest);
+
+        Map<String, Object> transactionDetails = payment.getTransactionDetails();
+        if (transactionDetails == null) {
+            transactionDetails = new HashMap<>();
+        }
+        transactionDetails.put("refundAmount", refundResult.amount());
+        transactionDetails.put("refundDeliveryFeeIncluded", refundRequest.refundDeliveryFee());
+        transactionDetails.put("refundReason", refundResult.reasonCode());
+        transactionDetails.put("refundedAt", LocalDateTime.now().toString());
+
+        payment.setTransactionDetails(transactionDetails);
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        Map<String, Object> refundedAuditEvent = new HashMap<>();
+        refundedAuditEvent.put("paymentId", savedPayment.getId());
+        refundedAuditEvent.put("action", "REFUNDED");
+        refundedAuditEvent.put("method", savedPayment.getMethod().name());
+        Map<String, Object> details = payment.getTransactionDetails();
+        details.put("strategy", strategyName);
+        details.put("originalAmount", savedPayment.getAmount());
+        details.put("refundAmount", refundResult.amount());
+        details.put("refundDeliveryFeeIncluded", refundRequest.refundDeliveryFee());
+        details.put("reason", refundResult.reasonCode());
+        refundedAuditEvent.put("details", details);
+
+        notifyObservers("PAYMENT_AUDIT", refundedAuditEvent);
+
+        return ResponseEntity.ok(savedPayment);
     }
 }
