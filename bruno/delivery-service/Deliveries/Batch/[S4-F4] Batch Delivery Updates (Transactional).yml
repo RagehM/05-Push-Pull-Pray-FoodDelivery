@@ -1,11 +1,14 @@
 info:
-  name: BatchCreateDeliveries
+  name: "[S4-F4] Batch Delivery Updates (Transactional)"
   type: http
   seq: 11
 
 http:
   method: POST
-  url: http://localhost:8084/api/deliveries/batch
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/batch"
+  headers:
+    - name: Authorization
+      value: Bearer {{authToken}}
   body:
     type: json
     data: |-
@@ -34,4 +37,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

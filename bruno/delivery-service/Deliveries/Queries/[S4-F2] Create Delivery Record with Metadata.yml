@@ -1,0 +1,41 @@
+info:
+  name: "[S4-F2] Create Delivery Record with Metadata"
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/order/{{orderId}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{authToken}}
+  body:
+    type: json
+    data: |-
+      {
+        "driverName": "John Doe",
+        "status": "PENDING",
+        "estimatedArrival": 30.0,
+        "metadata": {}
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: orderId
+      value: "1"
+  scripts:
+    - type: tests
+      code: |-
+        test("create order delivery returns 200 and has id", function () {
+          expect(res.getStatus()).to.equal(200);
+          const body = res.getBody();
+          expect(body).to.have.property('id');
+          bru.setVar('lastDeliveryId', body.id);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

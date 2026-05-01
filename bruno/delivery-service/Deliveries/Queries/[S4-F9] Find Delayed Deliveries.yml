@@ -1,11 +1,14 @@
 info:
-  name: GetDelayedDeliveries
+  name: "[S4-F9] Find Delayed Deliveries"
   type: http
-  seq: 12
+  seq: 8
 
 http:
   method: GET
-  url: http://localhost:8084/api/deliveries/delayed?maxEstimatedArrival=45.0&sinceMinutes=30
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/delayed?maxEstimatedArrival=45.0&sinceMinutes=30"
+  headers:
+    - name: Authorization
+      value: Bearer {{authToken}}
   params:
     - name: maxEstimatedArrival
       value: "45.0"
@@ -20,4 +23,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

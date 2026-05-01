@@ -124,7 +124,8 @@ public class DeliveryService {
     }
 
     /**
-     * [CRUD Read] Get Latest Delivery by Order
+     * [S4-F1] Get Latest Delivery for an Order
+     * Endpoint: GET /api/deliveries/order/{orderId}/latest
      */
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
@@ -134,7 +135,9 @@ public class DeliveryService {
     }
 
     /**
-     * [CRUD Read] Search Deliveries by Metadata
+     * [S4-F5] Filter Deliveries by Metadata (JSONB Query)
+     * Endpoint: GET /api/deliveries/metadata/search?key={k}&operator={op}&value={v}
+     * Operators: eq, gt, lt.
      */
     @Transactional(readOnly = true)
     public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
@@ -367,6 +370,9 @@ public class DeliveryService {
     }
 
     /**
+     * [S4-F9] Find Delayed Deliveries (DTO with Estimated Arrival)
+     * Endpoint: GET /api/deliveries/delayed?maxEstimatedArrival={t}&sinceMinutes={m}
+     * Find deliveries with estimated arrival time (calculated in query
      * [CRUD Read] Get Delayed Deliveries (Performance Query)
      * DTO-returning with Object[] Adapter pattern
      */
@@ -430,6 +436,8 @@ public class DeliveryService {
     }
 
     /**
+     * [S4-F8] Delivery Performance Summary (DTO)
+     * Endpoint: GET /api/deliveries/driver/{driverName}/summary?startDate={d}&endDate={d}
      * [CRUD Read] Get Delivery Performance Summary (Report DTO)
      * DTO-returning with Builder pattern
      */
