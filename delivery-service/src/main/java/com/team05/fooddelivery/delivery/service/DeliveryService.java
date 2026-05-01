@@ -19,17 +19,31 @@ import org.springframework.web.server.ResponseStatusException;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
+import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
+import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
+import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 
 @Service
 @Transactional
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
-    public DeliveryService(DeliveryRepository deliveryRepository) {
+    public DeliveryService(DeliveryRepository deliveryRepository, DeliveryEventRepository eventRepository) {
         this.deliveryRepository = deliveryRepository;
+        this.observers.add(
+                new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY, new DeliveryEventFactory())
+        );
     }
 
+    /**
+     * [S4-F2] Create Delivery Record with Metadata
+     * Endpoint: POST /api/deliveries/order/{orderId}
+     * Logs: DELIVERY_CREATED event with full delivery metadata
+     */
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -50,9 +64,32 @@ public class DeliveryService {
         if (delivery.getStatus() == null) {
             delivery.setStatus(DeliveryStatus.ASSIGNED);
         }
-        return deliveryRepository.save(delivery);
+        Delivery saved = deliveryRepository.save(delivery);
+
+        // [S4-F2] DELIVERY_CREATED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("orderId", orderId);
+        eventDetails.put("driverName", saved.getDriverName());
+        eventDetails.put("status", saved.getStatus());
+        eventDetails.put("coordinates", Map.of("latitude", saved.getLatitude(), "longitude", saved.getLongitude()));
+        if (saved.getMetadata() != null) {
+            eventDetails.put("metadata", saved.getMetadata());
+        }
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", saved.getId());
+        eventPayload.put("action", "DELIVERY_CREATED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("DELIVERY_CREATED", eventPayload);
+
+        return saved;
     }
 
+    /**
+     * Create Delivery (CRUD)
+     * Basic creation without order context
+     */
     public Delivery createDelivery(Delivery delivery) {
         if (delivery.getMetadata() == null) {
             delivery.setMetadata(new HashMap<>());
@@ -63,12 +100,19 @@ public class DeliveryService {
         return deliveryRepository.save(delivery);
     }
 
+    /**
+     * [CRUD Read] Get Delivery by ID
+     * Retrieve single delivery record
+     */
     @Transactional(readOnly = true)
     public Delivery getDeliveryById(Long id) {
         return deliveryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
     }
 
+    /**
+     * [CRUD Read] Get All Deliveries (optionally filtered by status)
+     */
     @Transactional(readOnly = true)
     public List<Delivery> getAllDeliveries(String status) {
         if (status == null || status.isBlank()) {
@@ -77,14 +121,19 @@ public class DeliveryService {
         return deliveryRepository.findByStatus(status);
     }
 
+    /**
+     * [CRUD Read] Get Latest Delivery by Order
+     */
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
-validateOrder(orderId);
-
+        validateOrder(orderId);
         return deliveryRepository.findLatestByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
     }
 
+    /**
+     * [CRUD Read] Search Deliveries by Metadata
+     */
     @Transactional(readOnly = true)
     public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
         if (operator == null) {
@@ -100,6 +149,10 @@ validateOrder(orderId);
         };
     }
 
+    /**
+     * [CRUD Update] Update Delivery
+     * Logs: DELIVERY_UPDATED event via Observer
+     */
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
 
@@ -122,16 +175,55 @@ validateOrder(orderId);
             existingDelivery.setMetadata(delivery.getMetadata());
         }
 
-        return deliveryRepository.save(existingDelivery);
+        Delivery saved = deliveryRepository.save(existingDelivery);
+
+        // [CRUD] DELIVERY_UPDATED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("deliveryId", id);
+        eventDetails.put("updatedFields", Map.of(
+                "driverName", saved.getDriverName(),
+                "status", saved.getStatus(),
+                "coordinates", Map.of("latitude", saved.getLatitude(), "longitude", saved.getLongitude())
+        ));
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", saved.getId());
+        eventPayload.put("action", "DELIVERY_UPDATED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("DELIVERY_UPDATED", eventPayload);
+
+        return saved;
     }
 
+    /**
+     * [CRUD Delete] Delete Delivery
+     * Logs: DELIVERY_DELETED event via Observer
+     */
     public void deleteDelivery(Long id) {
         if (!deliveryRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
+
+        // [CRUD] DELIVERY_DELETED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("deletedDeliveryId", id);
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", id);
+        eventPayload.put("action", "DELIVERY_DELETED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("DELIVERY_DELETED", eventPayload);
+
         deliveryRepository.deleteById(id);
     }
 
+    /**
+     * [S4-F4] Batch Delivery Updates (Transactional)
+     * Endpoint: POST /api/deliveries/batch
+     * Logs: BATCH_STATUS_UPDATED event with count and delivery IDs
+     */
     public int batchCreate(BatchDeliveryRequestDTO request) {
         if (!deliveryRepository.orderExists(request.getOrderId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -161,7 +253,32 @@ validateOrder(orderId);
         }
 
         deliveryRepository.saveAll(toSave);
-        return toSave.size();
+        int count = toSave.size();
+
+        // [S4-F4] BATCH_STATUS_UPDATED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("orderId", request.getOrderId());
+        eventDetails.put("batchSize", count);
+        eventDetails.put("deliveryIds", toSave.stream().map(Delivery::getId).collect(Collectors.toList()));
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", request.getOrderId());
+        eventPayload.put("action", "BATCH_STATUS_UPDATED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("BATCH_STATUS_UPDATED", eventPayload);
+
+        return count;
+    }
+
+    /**
+     * Observer notification helper
+     * Propagates events to all registered observers (MongoEventLogger)
+     */
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
     }
 
     private void validateOrder(Long orderId) {
@@ -170,6 +287,11 @@ validateOrder(orderId);
         }
     }
 
+    /**
+     * [S4-F6] Order Delivery History in Date Range
+     * Endpoint: GET /api/deliveries/order/{orderId}/history?startDate={d}&endDate={d}
+     * Verify order (throws 404 if not found). Create a date range query on updatedAt. Order by updatedAt ascending.
+     */
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
@@ -199,6 +321,13 @@ validateOrder(orderId);
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
     }
 
+    /**
+     * [S4-F3] Find Nearby Deliveries (DTO with Distance)
+     * Endpoint: GET /api/deliveries/nearby?lat={lat}&lon={lon}&radiusKm={r}
+     * Find active deliveries (status IN ASSIGNED, PICKED_UP, IN_TRANSIT).
+     * Calculate distance (euclidean distance * 111), filter by radius, sort ascending by distance.
+     * Response DTO: deliveryId, driverName, orderId, latitude, longitude, distanceKm.
+     */
     public List<NearbyDeliveryDTO> getNearbyDeliveries(
             Double lat,
             Double lon,
@@ -218,6 +347,10 @@ validateOrder(orderId);
                 .toList();
     }
 
+    /**
+     * [CRUD Read] Get Delayed Deliveries (Performance Query)
+     * DTO-returning with Object[] Adapter pattern
+     */
     public List<DelayedDeliveryDTO> getDelayedDeliveries(
             Double maxEstimatedArrival,
             int sinceMinutes
@@ -237,6 +370,11 @@ validateOrder(orderId);
                 .toList();
     }
 
+    /**
+     * [S4-F7] Purge Old Delivery Records (Transactional)
+     * Endpoint: DELETE /api/deliveries/purge?olderThanDays={n}
+     * Logs: OLD_DATA_PURGED event with deletion count and cutoff date
+     */
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
@@ -251,11 +389,31 @@ validateOrder(orderId);
             deletedCount = deliveryRepository.deleteOldByStatus(deliveredStatus, cutoff);
         }
 
+        // [S4-F7] OLD_DATA_PURGED: Notify observers to log event
+        if (deletedCount > 0) {
+            Map<String, Object> eventDetails = new HashMap<>();
+            eventDetails.put("olderThanDays", olderThanDays);
+            eventDetails.put("cutoffDate", cutoff);
+            eventDetails.put("status", deliveredStatus);
+            eventDetails.put("deletedCount", deletedCount);
+
+            Map<String, Object> eventPayload = new HashMap<>();
+            eventPayload.put("deliveryId", 0L); // System-wide purge; use 0 as placeholder
+            eventPayload.put("action", "OLD_DATA_PURGED");
+            eventPayload.put("details", eventDetails);
+
+            notifyObservers("OLD_DATA_PURGED", eventPayload);
+        }
+
         Map<String, Integer> response = new HashMap<>();
         response.put("deletedCount", deletedCount);
         return response;
     }
 
+    /**
+     * [CRUD Read] Get Delivery Performance Summary (Report DTO)
+     * DTO-returning with Builder pattern
+     */
     @Transactional(readOnly = true)
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             String driverName,
@@ -288,4 +446,3 @@ validateOrder(orderId);
     }
 
 }
-
