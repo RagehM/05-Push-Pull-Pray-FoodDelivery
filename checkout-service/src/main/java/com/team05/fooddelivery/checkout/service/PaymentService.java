@@ -1,4 +1,5 @@
 package com.team05.fooddelivery.checkout.service;
+import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.AppliedOfferDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
@@ -16,6 +17,7 @@ import com.team05.fooddelivery.checkout.repository.mongo.MongoPaymentAuditEventR
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -41,18 +43,24 @@ public class PaymentService {
     private final MongoPaymentAuditEventRepository paymentAuditEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final PaymentAuditEventFactory paymentAuditEventFactory = new PaymentAuditEventFactory();
+    private final CacheManager cacheManager;
 
-    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository) {
-        this.paymentRepository =  paymentRepository;
+    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, CacheManager cacheManager) {
+        this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
+        this.cacheManager = cacheManager;
         this.observers.add(
                 new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT, paymentAuditEventFactory)
         );
     }
 
     // Payment CRUD
+    @Caching(evict = {
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
+    })
     public Payment createPayment(Payment payment) {
         if(paymentRepository.userExists(payment.getUserId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
@@ -91,7 +99,9 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
-                    @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F9", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment updatePayment(Long id, Payment updatedPayment) {
@@ -123,7 +133,9 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
-            @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
+            @CacheEvict(value = "checkout-service::S5-F9", key = "#id"),
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public void deletePaymentById(Long id) {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
@@ -167,7 +179,9 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment refundPayment(Long id, String reason) {
@@ -243,7 +257,9 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-            @CacheEvict(value = "checkout-service::S5-F8", allEntries = true)
+            @CacheEvict(value = "checkout-service::S5-F8", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto, boolean simulateFailure) {
 
@@ -332,7 +348,9 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
-            @CacheEvict(value = "checkout-service::S5-F9", allEntries = true)
+            @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment applyOfferToPayment(Long paymentId, Long offerId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "cannot apply offer to a completed/cancelled payment"));
@@ -434,7 +452,9 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment retryFailedPayment(Long id) {
@@ -522,5 +542,47 @@ public class PaymentService {
                 .totalDiscount(totalDiscount)
                 .finalAmount(finalAmount)
                 .build();
+    }
+
+    // [S5-F10] Get Revenue by Cuisine with Delivery Fee Breakdown
+    public List<CuisineRevenueDTO> getRevenueByCuisine(LocalDateTime startDate, LocalDateTime endDate) {
+        Map<String, Object> queryDetails = new HashMap<>();
+        queryDetails.put("startDate", startDate != null ? startDate.toString() : null);
+        queryDetails.put("endDate", endDate != null ? endDate.toString() : null);
+        Map<String, Object> auditPayload = new HashMap<>();
+        auditPayload.put("action", "ANALYTICS_VIEWED");
+        auditPayload.put("details", queryDetails);
+        notifyObservers("PAYMENT_AUDIT", auditPayload);
+
+        String cacheKey = startDate.toString() + ':' + endDate.toString();
+        org.springframework.cache.Cache cache = cacheManager.getCache("checkout-service::S5-F10");
+        if (cache != null) {
+            List<CuisineRevenueDTO> cached = cache.get(cacheKey, List.class);
+            if (cached != null) return cached;
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
+        }
+        List<Object[]> rows = paymentRepository.findRevenueByCuisineAndDateRange(startDate, endDate);
+
+        List<CuisineRevenueDTO> result = rows.stream().map(row -> {
+            String cuisineType = (String) row[0];
+            Long orderCount = ((Number) row[1]).longValue();
+            Double totalRevenue = ((Number) row[2]).doubleValue();
+            Double deliveryFeeRevenue = ((Number) row[3]).doubleValue();
+            Double foodRevenue = totalRevenue - deliveryFeeRevenue;
+
+            return CuisineRevenueDTO.builder()
+                    .cuisineType(cuisineType)
+                    .foodRevenue(foodRevenue)
+                    .deliveryFeeRevenue(deliveryFeeRevenue)
+                    .totalRevenue(totalRevenue)
+                    .orderCount(orderCount)
+                    .build();
+        }).toList();
+
+        if (cache != null) cache.put(cacheKey, result);
+        return result;
     }
 }

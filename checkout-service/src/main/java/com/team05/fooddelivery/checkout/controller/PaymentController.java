@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
@@ -125,6 +126,19 @@ public class PaymentController {
     public ResponseEntity<PaymentDetailsDTO> getPaymentDetails(@PathVariable Long paymentId) {
         PaymentDetailsDTO details = paymentService.getPaymentDetails(paymentId);
         return ResponseEntity.ok(details);
+    }
+
+    // S5-F10: GET /api/payments/analytics/cuisine?startDate={d}&endDate={d}
+    @GetMapping("/analytics/cuisine")
+    public ResponseEntity<List<CuisineRevenueDTO>> getRevenueByCuisine(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        List<CuisineRevenueDTO> result = paymentService.getRevenueByCuisine(start, end);
+        return ResponseEntity.ok(result);
     }
 
 }

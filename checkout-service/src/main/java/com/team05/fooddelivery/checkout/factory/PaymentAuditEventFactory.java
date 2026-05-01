@@ -26,6 +26,12 @@ public class PaymentAuditEventFactory implements EventFactoryBase {
             case PAYMENT_AUDIT:
                 Long paymentId = (Long)params.get("paymentId");
                 String action = (String)params.get("action");
+                if ("ANALYTICS_VIEWED".equals(action)) {
+                    PaymentAuditEvent event = new PaymentAuditEvent();
+                    event.setAction(action);
+                    event.setDetails(details);
+                    return event;
+                }
                 String method = (String)params.get("method");
                 Double amount = (Double)params.get("amount");
                 return new PaymentAuditEvent(paymentId, action, method, amount, details);
