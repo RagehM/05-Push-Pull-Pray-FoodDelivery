@@ -206,6 +206,10 @@ public class DeliveryService {
         if (!deliveryRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
+        // delete first, then notify observers. The MongoEventLogger swallows exceptions, but
+        // ordering the DB change before the optional Mongo write is safer and avoids surprising
+        // interactions if the observer behavior changes in future.
+        deliveryRepository.deleteById(id);
 
         // [CRUD] DELIVERY_DELETED: Notify observers to log event
         Map<String, Object> eventDetails = new HashMap<>();
@@ -217,8 +221,6 @@ public class DeliveryService {
         eventPayload.put("details", eventDetails);
 
         notifyObservers("DELIVERY_DELETED", eventPayload);
-
-        deliveryRepository.deleteById(id);
     }
 
     /**
