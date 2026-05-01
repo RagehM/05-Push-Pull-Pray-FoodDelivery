@@ -368,4 +368,31 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
                 addressDtos,
                 addressDtos.size());
     }
+    @Caching(
+            put = {
+                    @CachePut(value = "user-service::user", key = "#id"),
+                    @CachePut(value = "user-service::S1-F8", key = "#id")
+            },
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+            }
+    )
+    public User updateUserRole(long id, UserRole role) {
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        UserRole oldRole=user.getUserRole();
+        user.setRole(role);
+        User updatedUser = userRepository.save(user);
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "ROLE_CHANGED");
+        authEvent.put("old Role", oldRole);
+        authEvent.put("new Role", role);
+        notifyObservers("ROLE_CHANGED", authEvent);
+
+        return updatedUser;
+
+    }
 }

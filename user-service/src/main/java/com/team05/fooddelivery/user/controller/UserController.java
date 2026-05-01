@@ -3,6 +3,7 @@ package com.team05.fooddelivery.user.controller;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.dto.UserProfileDTO;
+import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
@@ -11,6 +12,7 @@ import com.team05.fooddelivery.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -127,5 +129,12 @@ public class UserController {
     @GetMapping("/{id}/profile")
     public UserProfileDTO getUserProfile(@PathVariable long id) {
         return userService.getUserProfile(id);
+    }
+
+    @PutMapping("{id}/role}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public User updateUserRole(@PathVariable long id, @RequestParam UserRole role)
+    {
+        return userService.updateUserRole(id, role);
     }
 }
