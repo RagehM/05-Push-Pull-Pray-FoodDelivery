@@ -2,15 +2,19 @@ package com.team05.fooddelivery.checkout.service;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.AppliedOfferDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
+import com.team05.fooddelivery.checkout.dto.PaymentMethodDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
+import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
+import com.team05.fooddelivery.checkout.model.mongo.PaymentAuditEvent;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
+import com.team05.fooddelivery.checkout.repository.mongo.MongoPaymentAuditEventRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,10 +25,14 @@ import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PaymentService {
@@ -32,11 +40,16 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OfferRepository offerRepository;
     private final PaymentOfferRepository paymentOfferRepository;
+    private final MongoPaymentAuditEventRepository paymentAuditEventRepository;
 
-    public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository) {
-        this.paymentRepository =  paymentRepository;
+    public PaymentService(PaymentRepository paymentRepository,
+                          OfferRepository offerRepository,
+                          PaymentOfferRepository paymentOfferRepository,
+                          MongoPaymentAuditEventRepository paymentAuditEventRepository) {
+        this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
+        this.paymentAuditEventRepository = paymentAuditEventRepository;
     }
 
     // Payment CRUD
@@ -399,5 +412,86 @@ public class PaymentService {
                 totalDiscount,
                 finalAmount
         );
+    }
+
+    // [S5-F11] Get Payment Method Breakdown
+    //
+    // Reads the payment_audit_trail MongoDB collection, filtered by timestamp in
+    // the inclusive range [startDate T00:00:00, endDate T23:59:59.999] and by
+    // action ∈ {COMPLETED, FAILED}. Groups by `method`, computing per-method
+    // successCount / failureCount / successRate / totalAmount. Auth (USER role)
+    // is enforced at the controller / SecurityConfig level. Result is cached
+    // for 10 minutes under checkout-service::S5-F11::<startDate>:<endDate>.
+    @Cacheable(
+            value = "checkout-service::S5-F11",
+            key = "T(String).valueOf(#startDate) + ':' + T(String).valueOf(#endDate)"
+    )
+    public List<PaymentMethodDTO> getPaymentMethodBreakdown(LocalDate startDate, LocalDate endDate) {
+        // (b) Validate the date range — 400 if startDate is after endDate.
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "startDate and endDate are required");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "startDate must be on or before endDate");
+        }
+
+        // Expand to a fully-closed [00:00:00, 23:59:59.999] window matching
+        // server-time-zone PG TIMESTAMPS / Mongo timestamps.
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
+
+        // (c) Pull only COMPLETED + FAILED audit events in the window.
+        Set<String> actions = Set.of(
+                PaymentAuditEvent.Actions.COMPLETED,
+                PaymentAuditEvent.Actions.FAILED
+        );
+        List<PaymentAuditEvent> events =
+                paymentAuditEventRepository.findByActionInAndTimestampBetween(actions, start, end);
+
+        if (events == null || events.isEmpty()) {
+            // (f) Empty list when no data — do NOT 404.
+            return List.of();
+        }
+
+        // (d) Aggregate per method. EnumMap keeps the result deterministic and
+        // skips events whose `method` is missing or unrecognised — per the
+        // M2 spec, such events "silently vanish from the breakdown".
+        Map<PaymentMethod, long[]>   counts = new EnumMap<>(PaymentMethod.class); // [success, failure]
+        Map<PaymentMethod, Double>   totals = new EnumMap<>(PaymentMethod.class); // sum of COMPLETED amounts
+
+        for (PaymentAuditEvent ev : events) {
+            String rawMethod = ev.getMethod();
+            if (rawMethod == null || ev.getAmount() == null) {
+                continue;
+            }
+            PaymentMethod method;
+            try {
+                method = PaymentMethod.valueOf(rawMethod);
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+
+            long[] c = counts.computeIfAbsent(method, k -> new long[2]);
+            if (PaymentAuditEvent.Actions.COMPLETED.equals(ev.getAction())) {
+                c[0] += 1; // successCount
+                totals.merge(method, ev.getAmount(), Double::sum);
+            } else if (PaymentAuditEvent.Actions.FAILED.equals(ev.getAction())) {
+                c[1] += 1; // failureCount
+            }
+        }
+
+        List<PaymentMethodDTO> result = new ArrayList<>(counts.size());
+        for (Map.Entry<PaymentMethod, long[]> entry : counts.entrySet()) {
+            long success = entry.getValue()[0];
+            long failure = entry.getValue()[1];
+            long denom   = success + failure;
+            double rate  = denom == 0 ? 0.0 : (double) success / denom;
+            double total = totals.getOrDefault(entry.getKey(), 0.0);
+
+            result.add(new PaymentMethodDTO(entry.getKey(), success, failure, rate, total));
+        }
+        return result;
     }
 }
