@@ -99,6 +99,12 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
         userRepository.save(user);
 
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "REGISTERED");
+
+        notifyObservers("REGISTERED", authEvent);
+
         String token = jwtService.generateToken(user);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
