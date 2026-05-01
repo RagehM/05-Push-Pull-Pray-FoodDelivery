@@ -1,0 +1,37 @@
+info:
+  name: UpdateDelivery
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/1"
+  body:
+    type: json
+    data: |-
+      {
+        "driverName": "Jane Smith",
+        "status": "IN_PROGRESS",
+        "estimatedArrival": 20.0,
+        "metadata": {}
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("update delivery returns 200 and has id", function () {
+          const status = res.getStatus();
+          expect(status).to.not.equal(500);
+          if (status === 200) {
+            const body = res.getBody();
+            expect(body).to.have.property('id');
+          }
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

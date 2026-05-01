@@ -4,35 +4,57 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Optional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
-import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
-import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
+import com.team05.fooddelivery.delivery.dto.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
-import com.team05.fooddelivery.delivery.dto.DeliveryItemDTO;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
+import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
+import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
+import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 
 @Service
 @Transactional
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
 
-    public DeliveryService(DeliveryRepository deliveryRepository) {
+    public DeliveryService(DeliveryRepository deliveryRepository, DeliveryEventRepository eventRepository) {
         this.deliveryRepository = deliveryRepository;
+        this.observers.add(
+                new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY, new DeliveryEventFactory())
+        );
     }
 
+    /**
+     * [S4-F2] Create Delivery Record with Metadata
+     * Endpoint: POST /api/deliveries/order/{orderId}
+     * Logs: DELIVERY_CREATED event with full delivery metadata
+     */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -53,9 +75,32 @@ public class DeliveryService {
         if (delivery.getStatus() == null) {
             delivery.setStatus(DeliveryStatus.ASSIGNED);
         }
-        return deliveryRepository.save(delivery);
+        Delivery saved = deliveryRepository.save(delivery);
+
+        // [S4-F2] DELIVERY_CREATED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("orderId", orderId);
+        eventDetails.put("driverName", saved.getDriverName());
+        eventDetails.put("status", saved.getStatus());
+        eventDetails.put("coordinates", Map.of("latitude", saved.getLatitude(), "longitude", saved.getLongitude()));
+        if (saved.getMetadata() != null) {
+            eventDetails.put("metadata", saved.getMetadata());
+        }
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", saved.getId());
+        eventPayload.put("action", "DELIVERY_CREATED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("DELIVERY_CREATED", eventPayload);
+
+        return saved;
     }
 
+    /**
+     * Create Delivery (CRUD)
+     * Basic creation without order context
+     */
     public Delivery createDelivery(Delivery delivery) {
         if (delivery.getMetadata() == null) {
             delivery.setMetadata(new HashMap<>());
@@ -63,15 +108,43 @@ public class DeliveryService {
         if (delivery.getStatus() == null) {
             delivery.setStatus(DeliveryStatus.ASSIGNED);
         }
-        return deliveryRepository.save(delivery);
+
+        Delivery saved = deliveryRepository.save(delivery);
+
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("orderId", saved.getOrderId());
+        eventDetails.put("driverName", saved.getDriverName());
+        eventDetails.put("status", saved.getStatus());
+        eventDetails.put("coordinates", Map.of("latitude", saved.getLatitude(), "longitude", saved.getLongitude()));
+        if (saved.getMetadata() != null) {
+            eventDetails.put("metadata", saved.getMetadata());
+        }
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", saved.getId());
+        eventPayload.put("action", "DELIVERY_CREATED");
+        eventPayload.put("details", eventDetails);
+
+
+        notifyObservers("DELIVERY_CREATED", eventPayload);
+
+        return saved;
     }
 
+    /**
+     * [CRUD Read] Get Delivery by ID
+     * Retrieve single delivery record
+     */
+    @Cacheable(cacheNames = "delivery-service::delivery", key = "#id")
     @Transactional(readOnly = true)
     public Delivery getDeliveryById(Long id) {
         return deliveryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
     }
 
+    /**
+     * [CRUD Read] Get All Deliveries (optionally filtered by status)
+     */
     @Transactional(readOnly = true)
     public List<Delivery> getAllDeliveries(String status) {
         if (status == null || status.isBlank()) {
@@ -80,14 +153,24 @@ public class DeliveryService {
         return deliveryRepository.findByStatus(status);
     }
 
+    /**
+     * [S4-F1] Get Latest Delivery for an Order
+     * Endpoint: GET /api/deliveries/order/{orderId}/latest
+     */
+    @Cacheable(cacheNames = "delivery-service::S4-F1", key = "#orderId")
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
-validateOrder(orderId);
-
+        validateOrder(orderId);
         return deliveryRepository.findLatestByOrderId(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
     }
 
+    /**
+     * [S4-F5] Filter Deliveries by Metadata (JSONB Query)
+     * Endpoint: GET /api/deliveries/metadata/search?key={k}&operator={op}&value={v}
+     * Operators: eq, gt, lt.
+     */
+    @Cacheable(cacheNames = "delivery-service::S4-F5", key = "#key + ':' + #operator + ':' + #value")
     @Transactional(readOnly = true)
     public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
         if (operator == null) {
@@ -103,6 +186,19 @@ validateOrder(orderId);
         };
     }
 
+    /**
+     * [CRUD Update] Update Delivery
+     * Logs: DELIVERY_UPDATED event via Observer
+     */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", key = "#id"),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
 
@@ -125,16 +221,73 @@ validateOrder(orderId);
             existingDelivery.setMetadata(delivery.getMetadata());
         }
 
-        return deliveryRepository.save(existingDelivery);
+        Delivery saved = deliveryRepository.save(existingDelivery);
+
+        // [CRUD] DELIVERY_UPDATED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("deliveryId", id);
+        eventDetails.put("updatedFields", Map.of(
+                "driverName", saved.getDriverName(),
+                "status", saved.getStatus(),
+                "coordinates", Map.of("latitude", saved.getLatitude(), "longitude", saved.getLongitude())
+        ));
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", saved.getId());
+        eventPayload.put("action", "DELIVERY_UPDATED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("DELIVERY_UPDATED", eventPayload);
+
+        return saved;
     }
 
+    /**
+     * [CRUD Delete] Delete Delivery
+     * Logs: DELIVERY_DELETED event via Observer
+     */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", key = "#id"),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public void deleteDelivery(Long id) {
         if (!deliveryRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
         }
+        // delete first, then notify observers. The MongoEventLogger swallows exceptions, but
+        // ordering the DB change before the optional Mongo write is safer and avoids surprising
+        // interactions if the observer behavior changes in future.
         deliveryRepository.deleteById(id);
+
+        // [CRUD] DELIVERY_DELETED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("deletedDeliveryId", id);
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", id);
+        eventPayload.put("action", "DELIVERY_DELETED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("DELIVERY_DELETED", eventPayload);
     }
 
+    /**
+     * [S4-F4] Batch Delivery Updates (Transactional)
+     * Endpoint: POST /api/deliveries/batch
+     * Logs: BATCH_STATUS_UPDATED event with count and delivery IDs
+     */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public int batchCreate(BatchDeliveryRequestDTO request) {
         if (!deliveryRepository.orderExists(request.getOrderId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -164,7 +317,47 @@ validateOrder(orderId);
         }
 
         deliveryRepository.saveAll(toSave);
-        return toSave.size();
+        int count = toSave.size();
+
+        // [S4-F4] BATCH_STATUS_UPDATED: Notify observers to log event
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("orderId", request.getOrderId());
+        eventDetails.put("batchSize", count);
+        eventDetails.put("deliveryIds", toSave.stream().map(Delivery::getId).collect(Collectors.toList()));
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", request.getOrderId());
+        eventPayload.put("action", "BATCH_STATUS_UPDATED");
+        eventPayload.put("details", eventDetails);
+
+        notifyObservers("BATCH_STATUS_UPDATED", eventPayload);
+
+        return count;
+    }
+
+    /**
+     * Observer notification helper
+     * Propagates events to all registered observers (MongoEventLogger)
+     */
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
+
+    /**
+     * Register an observer for this service's events.
+     * Tests and other runtime components may use this to add/remove observers.
+     */
+    public void registerObserver(EntityObserver observer) {
+        this.observers.add(observer);
+    }
+
+    /**
+     * Unregister a previously registered observer.
+     */
+    public void unregisterObserver(EntityObserver observer) {
+        this.observers.remove(observer);
     }
 
     private void validateOrder(Long orderId) {
@@ -173,6 +366,12 @@ validateOrder(orderId);
         }
     }
 
+    /**
+     * [S4-F6] Order Delivery History in Date Range
+     * Endpoint: GET /api/deliveries/order/{orderId}/history?startDate={d}&endDate={d}
+     * Verify order (throws 404 if not found). Create a date range query on updatedAt. Order by updatedAt ascending.
+     */
+    @Cacheable(cacheNames = "delivery-service::S4-F6", key = "#orderId + ':' + #startDate + ':' + #endDate")
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
@@ -202,35 +401,74 @@ validateOrder(orderId);
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
     }
 
-    public List<NearbyDeliveryDTO> getNearbyDeliveries(Double lat, Double lon, Double radiusKm) {
+    /**
+     * [S4-F3] Find Nearby Deliveries (DTO with Distance)
+     * Endpoint: GET /api/deliveries/nearby?lat={lat}&lon={lon}&radiusKm={r}
+     * Find active deliveries (status IN ASSIGNED, PICKED_UP, IN_TRANSIT).
+     * Calculate distance (euclidean distance * 111), filter by radius, sort ascending by distance.
+     * Response DTO: deliveryId, driverName, orderId, latitude, longitude, distanceKm.
+     */
+    @Cacheable(cacheNames = "delivery-service::S4-F3", key = "#lat + ',' + #lon + ',' + #radiusKm")
+    public List<NearbyDeliveryDTO> getNearbyDeliveries(
+            Double lat,
+            Double lon,
+            Double radiusKm
+    ) {
         return deliveryRepository.findNearbyDeliveries(lat, lon, radiusKm)
                 .stream()
-                .map(row -> new NearbyDeliveryDTO(
-                        ((Number) row[0]).longValue(),
-                        (String) row[1],
-                        ((Number) row[2]).longValue(),
-                        ((Number) row[3]).doubleValue(),
-                        ((Number) row[4]).doubleValue(),
-                        ((Number) row[5]).doubleValue()
-                ))
+                .map(row -> NearbyDeliveryDTO.builder()
+                        .deliveryId(((Number) row[0]).longValue())
+                        .driverName((String) row[1])
+                        .orderId(((Number) row[2]).longValue())
+                        .latitude(((Number) row[3]).doubleValue())
+                        .longitude(((Number) row[4]).doubleValue())
+                        .distanceKm(((Number) row[5]).doubleValue())
+                        .build()
+                )
                 .toList();
     }
 
-    public List<DelayedDeliveryDTO> getDelayedDeliveries(Double maxEstimatedArrival, int sinceMinutes) {
+    /**
+     * [S4-F9] Find Delayed Deliveries (DTO with Estimated Arrival)
+     * Endpoint: GET /api/deliveries/delayed?maxEstimatedArrival={t}&sinceMinutes={m}
+     * Find deliveries with estimated arrival time (calculated in query
+     * [CRUD Read] Get Delayed Deliveries (Performance Query)
+     * DTO-returning with Object[] Adapter pattern
+     */
+    @Cacheable(cacheNames = "delivery-service::S4-F9", key = "#maxEstimatedArrival + ':' + #sinceMinutes")
+    public List<DelayedDeliveryDTO> getDelayedDeliveries(
+            Double maxEstimatedArrival,
+            int sinceMinutes
+    ) {
         return deliveryRepository.findDelayedDeliveries(maxEstimatedArrival, sinceMinutes)
                 .stream()
-                .map(row -> new DelayedDeliveryDTO(
-                        ((Number) row[0]).longValue(),
-                        (String) row[1],
-                        ((Number) row[2]).longValue(),
-                        ((Number) row[3]).doubleValue(),
-                        ((Number) row[4]).doubleValue(),
-                        ((Number) row[5]).doubleValue(),
-                        (LocalDateTime) row[6]
-                ))
+                .map(row -> DelayedDeliveryDTO.builder()
+                        .deliveryId(((Number) row[0]).longValue())
+                        .driverName((String) row[1])
+                        .orderId(((Number) row[2]).longValue())
+                        .latitude(((Number) row[3]).doubleValue())
+                        .longitude(((Number) row[4]).doubleValue())
+                        .estimatedArrival(((Number) row[5]).doubleValue())
+                        .updatedAt((LocalDateTime) row[6])
+                        .build()
+                )
                 .toList();
     }
 
+    /**
+     * [S4-F7] Purge Old Delivery Records (Transactional)
+     * Endpoint: DELETE /api/deliveries/purge?olderThanDays={n}
+     * Logs: OLD_DATA_PURGED event with deletion count and cutoff date
+     */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
@@ -245,31 +483,63 @@ validateOrder(orderId);
             deletedCount = deliveryRepository.deleteOldByStatus(deliveredStatus, cutoff);
         }
 
+        // [S4-F7] OLD_DATA_PURGED: Notify observers to log event
+        if (deletedCount > 0) {
+            Map<String, Object> eventDetails = new HashMap<>();
+            eventDetails.put("olderThanDays", olderThanDays);
+            eventDetails.put("cutoffDate", cutoff);
+            eventDetails.put("status", deliveredStatus);
+            eventDetails.put("deletedCount", deletedCount);
+
+            Map<String, Object> eventPayload = new HashMap<>();
+            eventPayload.put("deliveryId", 0L); // System-wide purge; use 0 as placeholder
+            eventPayload.put("action", "OLD_DATA_PURGED");
+            eventPayload.put("details", eventDetails);
+
+            notifyObservers("OLD_DATA_PURGED", eventPayload);
+        }
+
         Map<String, Integer> response = new HashMap<>();
         response.put("deletedCount", deletedCount);
         return response;
     }
+
+    /**
+     * [S4-F8] Delivery Performance Summary (DTO)
+     * Endpoint: GET /api/deliveries/driver/{driverName}/summary?startDate={d}&endDate={d}
+     * [CRUD Read] Get Delivery Performance Summary (Report DTO)
+     * DTO-returning with Builder pattern
+     */
+    @Cacheable(cacheNames = "delivery-service::S4-F8", key = "#driverName + ':' + #startDate + ':' + #endDate")
     @Transactional(readOnly = true)
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
-            String driverName, LocalDate startDate, LocalDate endDate) {
+            String driverName,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
-        List<Object[]> results = deliveryRepository.findPerformanceSummary(driverName, start, end);
+        List<Object[]> results =
+                deliveryRepository.findPerformanceSummary(driverName, start, end);
+
         if (results.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "No deliveries found for driver: " + driverName);
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "No deliveries found for driver: " + driverName
+            );
         }
-        Object[] row = results.get(0);
 
-        return new DeliveryPerformanceSummaryDTO(
-                (String) row[0],
-                ((Number) row[1]).longValue(),
-                row[2] != null ? ((Number) row[2]).doubleValue() : 0.0,
-                row[3] != null ? ((Number) row[3]).doubleValue() : 0.0,
-                (LocalDateTime) row[4],
-                (LocalDateTime) row[5]
-        );
+        Object[] row = results.getFirst();
+
+        return DeliveryPerformanceSummaryDTO.builder()
+                .driverName((String) row[0])
+                .totalDeliveries(((Number) row[1]).longValue())
+                .averageSpeed(row[2] != null ? ((Number) row[2]).doubleValue() : 0.0)
+                .maxSpeed(row[3] != null ? ((Number) row[3]).doubleValue() : 0.0)
+                .firstDelivery((LocalDateTime) row[4])
+                .lastDelivery((LocalDateTime) row[5])
+                .build();
     }
-}
 
+}

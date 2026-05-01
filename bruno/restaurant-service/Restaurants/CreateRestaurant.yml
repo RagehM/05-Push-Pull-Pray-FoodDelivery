@@ -6,18 +6,28 @@ info:
 http:
   method: POST
   url: http://localhost:8082/api/restaurants
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzUwODc0NCwiZXhwIjoxNzc3NTk1MTQ0fQ.2oCOqfAFC5kTpAiZtuUIaxinNNT6tdLi5B5BauEMDoY
   body:
     type: json
     data: |-
+      ###
+      POST http://localhost:8080/api/restaurants
+      Content-Type: application/json
+
       {
-        "name": "Burger House",
-        "cuisineType": "American",
-        "rating": 4.5,
-        "status": "ACTIVE",
-        "details": {
-          "address": "123 Main St",
-          "phone": "+1234567890"
-        }
+        "id": 0,
+        "name": "",
+        "email": "",
+        "phone": "",
+        "cuisineType": "EGYPTIAN",
+        "status": "OPEN",
+        "rating": 0,
+        "totalRatings": 0,
+        "details": "",
+        "createdAt": "",
+        "menuItems": []
       }
   auth: inherit
 
@@ -26,4 +36,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
