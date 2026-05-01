@@ -11,10 +11,15 @@ http:
     data: |-
       {
         "orderId": 1,
-        "driverName": "John Doe",
-        "status": "PENDING",
-        "estimatedArrival": 30.0,
-        "metadata": {}
+        "driverName": "Ahmed",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "status": "ASSIGNED",
+        "metadata": {
+          "estimatedArrival": 40,
+          "vehicleType": "bike",
+          "speed": 20
+        }
       }
   auth: inherit
 

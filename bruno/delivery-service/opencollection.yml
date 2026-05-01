@@ -17,7 +17,7 @@ config:
 request:
   auth:
     type: bearer
-    token: "{{authToken}}"
+    token: "{{jwt}}"
 bundled: false
 extensions:
   bruno:
