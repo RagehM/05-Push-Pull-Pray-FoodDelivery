@@ -388,8 +388,10 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
         authEvent.put("action", "ROLE_CHANGED");
-        authEvent.put("old Role", oldRole);
-        authEvent.put("new Role", role);
+        Map<String, Object> details = new HashMap<>();
+        details.put("old Role", oldRole);
+        details.put("new Role", role);
+        authEvent.put("details", details);
         notifyObservers("ROLE_CHANGED", authEvent);
 
         return updatedUser;

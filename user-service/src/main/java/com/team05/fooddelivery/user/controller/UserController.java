@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.controller;
 
+import com.team05.fooddelivery.user.dto.RoleUpdateRequest;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
 import com.team05.fooddelivery.user.dto.UserProfileDTO;
@@ -131,10 +132,9 @@ public class UserController {
         return userService.getUserProfile(id);
     }
 
-    @PutMapping("{id}/role}")
+    @PutMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public User updateUserRole(@PathVariable long id, @RequestParam UserRole role)
-    {
-        return userService.updateUserRole(id, role);
+    public User updateUserRole(@PathVariable long id, @RequestBody RoleUpdateRequest request) {
+        return userService.updateUserRole(id, request.role);
     }
 }
