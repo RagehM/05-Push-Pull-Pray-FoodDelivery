@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.team05.fooddelivery.delivery.dto.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,12 @@ public class DeliveryService {
      * Endpoint: POST /api/deliveries/order/{orderId}
      * Logs: DELIVERY_CREATED event with full delivery metadata
      */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -106,6 +115,7 @@ public class DeliveryService {
      * [CRUD Read] Get Delivery by ID
      * Retrieve single delivery record
      */
+    @Cacheable(cacheNames = "delivery-service::delivery", key = "#id")
     @Transactional(readOnly = true)
     public Delivery getDeliveryById(Long id) {
         return deliveryRepository.findById(id)
@@ -127,6 +137,7 @@ public class DeliveryService {
      * [S4-F1] Get Latest Delivery for an Order
      * Endpoint: GET /api/deliveries/order/{orderId}/latest
      */
+    @Cacheable(cacheNames = "delivery-service::S4-F1", key = "#orderId")
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
         validateOrder(orderId);
@@ -139,6 +150,7 @@ public class DeliveryService {
      * Endpoint: GET /api/deliveries/metadata/search?key={k}&operator={op}&value={v}
      * Operators: eq, gt, lt.
      */
+    @Cacheable(cacheNames = "delivery-service::S4-F5", key = "#key + ':' + #operator + ':' + #value")
     @Transactional(readOnly = true)
     public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
         if (operator == null) {
@@ -158,6 +170,15 @@ public class DeliveryService {
      * [CRUD Update] Update Delivery
      * Logs: DELIVERY_UPDATED event via Observer
      */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", key = "#id"),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
 
@@ -205,6 +226,15 @@ public class DeliveryService {
      * [CRUD Delete] Delete Delivery
      * Logs: DELIVERY_DELETED event via Observer
      */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", key = "#id"),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public void deleteDelivery(Long id) {
         if (!deliveryRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
@@ -231,6 +261,13 @@ public class DeliveryService {
      * Endpoint: POST /api/deliveries/batch
      * Logs: BATCH_STATUS_UPDATED event with count and delivery IDs
      */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public int batchCreate(BatchDeliveryRequestDTO request) {
         if (!deliveryRepository.orderExists(request.getOrderId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -314,6 +351,7 @@ public class DeliveryService {
      * Endpoint: GET /api/deliveries/order/{orderId}/history?startDate={d}&endDate={d}
      * Verify order (throws 404 if not found). Create a date range query on updatedAt. Order by updatedAt ascending.
      */
+    @Cacheable(cacheNames = "delivery-service::S4-F6", key = "#orderId + ':' + #startDate + ':' + #endDate")
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
@@ -350,6 +388,7 @@ public class DeliveryService {
      * Calculate distance (euclidean distance * 111), filter by radius, sort ascending by distance.
      * Response DTO: deliveryId, driverName, orderId, latitude, longitude, distanceKm.
      */
+    @Cacheable(cacheNames = "delivery-service::S4-F3", key = "#lat + ',' + #lon + ',' + #radiusKm")
     public List<NearbyDeliveryDTO> getNearbyDeliveries(
             Double lat,
             Double lon,
@@ -376,6 +415,7 @@ public class DeliveryService {
      * [CRUD Read] Get Delayed Deliveries (Performance Query)
      * DTO-returning with Object[] Adapter pattern
      */
+    @Cacheable(cacheNames = "delivery-service::S4-F9", key = "#maxEstimatedArrival + ':' + #sinceMinutes")
     public List<DelayedDeliveryDTO> getDelayedDeliveries(
             Double maxEstimatedArrival,
             int sinceMinutes
@@ -400,6 +440,15 @@ public class DeliveryService {
      * Endpoint: DELETE /api/deliveries/purge?olderThanDays={n}
      * Logs: OLD_DATA_PURGED event with deletion count and cutoff date
      */
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
@@ -441,6 +490,7 @@ public class DeliveryService {
      * [CRUD Read] Get Delivery Performance Summary (Report DTO)
      * DTO-returning with Builder pattern
      */
+    @Cacheable(cacheNames = "delivery-service::S4-F8", key = "#driverName + ':' + #startDate + ':' + #endDate")
     @Transactional(readOnly = true)
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             String driverName,
