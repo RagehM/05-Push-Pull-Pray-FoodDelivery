@@ -11,6 +11,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.team05.fooddelivery.delivery.dto.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,12 @@ public class DeliveryService {
         this.deliveryRepository = deliveryRepository;
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -63,6 +72,7 @@ public class DeliveryService {
         return deliveryRepository.save(delivery);
     }
 
+    @Cacheable(cacheNames = "delivery-service::delivery", key = "#id")
     @Transactional(readOnly = true)
     public Delivery getDeliveryById(Long id) {
         return deliveryRepository.findById(id)
@@ -77,6 +87,7 @@ public class DeliveryService {
         return deliveryRepository.findByStatus(status);
     }
 
+    @Cacheable(cacheNames = "delivery-service::S4-F1", key = "#orderId")
     @Transactional(readOnly = true)
     public Delivery getLatestDeliveryByOrderId(Long orderId) {
 validateOrder(orderId);
@@ -85,6 +96,7 @@ validateOrder(orderId);
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
     }
 
+    @Cacheable(cacheNames = "delivery-service::S4-F5", key = "#key + ':' + #operator + ':' + #value")
     @Transactional(readOnly = true)
     public List<Delivery> searchDeliveriesByMetadata(String key, String operator, String value) {
         if (operator == null) {
@@ -100,6 +112,15 @@ validateOrder(orderId);
         };
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", key = "#id"),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
 
@@ -125,6 +146,15 @@ validateOrder(orderId);
         return deliveryRepository.save(existingDelivery);
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", key = "#id"),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public void deleteDelivery(Long id) {
         if (!deliveryRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found");
@@ -132,6 +162,13 @@ validateOrder(orderId);
         deliveryRepository.deleteById(id);
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public int batchCreate(BatchDeliveryRequestDTO request) {
         if (!deliveryRepository.orderExists(request.getOrderId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -170,6 +207,7 @@ validateOrder(orderId);
         }
     }
 
+    @Cacheable(cacheNames = "delivery-service::S4-F6", key = "#orderId + ':' + #startDate + ':' + #endDate")
     public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
         validateOrder(orderId);
 
@@ -199,6 +237,7 @@ validateOrder(orderId);
                 .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
     }
 
+    @Cacheable(cacheNames = "delivery-service::S4-F3", key = "#lat + ',' + #lon + ',' + #radiusKm")
     public List<NearbyDeliveryDTO> getNearbyDeliveries(
             Double lat,
             Double lon,
@@ -218,6 +257,7 @@ validateOrder(orderId);
                 .toList();
     }
 
+    @Cacheable(cacheNames = "delivery-service::S4-F9", key = "#maxEstimatedArrival + ':' + #sinceMinutes")
     public List<DelayedDeliveryDTO> getDelayedDeliveries(
             Double maxEstimatedArrival,
             int sinceMinutes
@@ -237,6 +277,15 @@ validateOrder(orderId);
                 .toList();
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "delivery-service::delivery", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+    })
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "olderThanDays must be greater than 0");
@@ -256,6 +305,7 @@ validateOrder(orderId);
         return response;
     }
 
+    @Cacheable(cacheNames = "delivery-service::S4-F8", key = "#driverName + ':' + #startDate + ':' + #endDate")
     @Transactional(readOnly = true)
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             String driverName,
