@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Optional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -279,6 +281,21 @@ public class DeliveryService {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
         }
+    }
+
+    /**
+     * Register an observer for this service's events.
+     * Tests and other runtime components may use this to add/remove observers.
+     */
+    public void registerObserver(EntityObserver observer) {
+        this.observers.add(observer);
+    }
+
+    /**
+     * Unregister a previously registered observer.
+     */
+    public void unregisterObserver(EntityObserver observer) {
+        this.observers.remove(observer);
     }
 
     private void validateOrder(Long orderId) {
