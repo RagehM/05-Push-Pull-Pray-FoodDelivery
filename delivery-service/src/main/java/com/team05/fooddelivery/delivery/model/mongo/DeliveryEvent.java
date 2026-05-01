@@ -7,6 +7,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.fooddelivery.delivery.enums.DeliveryAction;
 
 /**
  * MongoDB document for delivery service event logging.
@@ -32,26 +33,29 @@ public class DeliveryEvent implements MongoEvent {
 
     // Constructors
     public DeliveryEvent() {
+        this.timestamp = LocalDateTime.now();
     }
 
     public DeliveryEvent(Long deliveryId, String action, LocalDateTime timestamp, Map<String, Object> details) {
-        if (deliveryId == null){
+        if (deliveryId == null) {
             throw new IllegalArgumentException("deliveryId must not be null");
         }
         if (action == null || action.isBlank()) {
             throw new IllegalArgumentException("action must not be null or empty");
         }
-        if (timestamp == null) {
-            throw new IllegalArgumentException("timestamp must not be null");
+
+        // Validate action string against known delivery actions
+        if (!DeliveryAction.isValidAction(action)) {
+            throw new IllegalArgumentException("Invalid action: " + action);
         }
 
         this.deliveryId = deliveryId;
         this.action = action;
-        this.timestamp = timestamp;
+
+        this.timestamp = (timestamp == null) ? LocalDateTime.now() : timestamp;
         this.details = details;
     }
 
-    // MongoEvent interface methods
     @Override
     public String getId() {
         return id;
@@ -62,6 +66,9 @@ public class DeliveryEvent implements MongoEvent {
         return timestamp;
     }
 
+    /**
+     * Returns the action name as String to satisfy existing MongoEvent API.
+     */
     @Override
     public String getAction() {
         return action;
@@ -86,6 +93,12 @@ public class DeliveryEvent implements MongoEvent {
     }
 
     public void setAction(String action) {
+        if (action == null || action.isBlank()) {
+            throw new IllegalArgumentException("action must not be null or empty");
+        }
+        if (!DeliveryAction.isValidAction(action)) {
+            throw new IllegalArgumentException("Invalid action: " + action);
+        }
         this.action = action;
     }
 
