@@ -1,11 +1,11 @@
 info:
-  name: PurgeOldDeliveries
+  name: "[S4-F7] Purge Old Delivery Records (Transactional)"
   type: http
-  seq: 13
+  seq: 6
 
 http:
   method: DELETE
-  url: http://localhost:8084/api/deliveries/purge?olderThanDays=90
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/purge?olderThanDays=90"
   params:
     - name: olderThanDays
       value: "90"
@@ -17,4 +17,3 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
