@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.security;
 
+import com.team05.fooddelivery.user.dto.AuthContext;
 import com.team05.fooddelivery.user.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -29,27 +30,32 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
-        if (header == null || !header.startsWith("Bearer ")) {
+
+        try
+        {
+            AuthHandler tokenExtractionHandler = new TokenExtractionHandler();
+            AuthHandler signatureValidationHandler = new SignatureValidationHandler(jwtService);
+            AuthHandler userLoaderHandler = new UserLoaderHandler(jwtService, userDetailsService);
+            AuthHandler roleAuthorizationHandler = new RoleAuthorizationHandler();
+
+
+            tokenExtractionHandler.setNext(signatureValidationHandler);
+            signatureValidationHandler.setNext(userLoaderHandler);
+            userLoaderHandler.setNext(roleAuthorizationHandler);
+
+            AuthContext ctx = new AuthContext(request,null,null,null);
+            ctx = tokenExtractionHandler.handle(ctx);
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    ctx.user(),
+                    null,
+                    ctx.user().getAuthorities());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
             chain.doFilter(request, response);
-            return;
+        }
+        catch (Exception e) {
         }
 
-        try {
-            String token = header.substring(7);
-            String username = jwtService.extractUsername(token);
 
-            if (username != null && jwtService.isTokenValid(token)) {
-                UserDetails details = userDetailsService.loadUserByUsername(username);
-
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-        } catch (Exception e) {
-            // Token invalid — continue without authentication; Spring Security will return 401.
-        }
-
-        chain.doFilter(request, response);
     }
 }
