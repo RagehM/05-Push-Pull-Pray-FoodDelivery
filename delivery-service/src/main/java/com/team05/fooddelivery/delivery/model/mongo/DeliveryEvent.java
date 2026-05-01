@@ -36,7 +36,7 @@ public class DeliveryEvent implements MongoEvent {
         this.timestamp = LocalDateTime.now();
     }
 
-    public DeliveryEvent(Long deliveryId, String action, LocalDateTime timestamp, Map<String, Object> details) {
+    public DeliveryEvent(Long deliveryId, String action,Map<String, Object> details) {
         if (deliveryId == null) {
             throw new IllegalArgumentException("deliveryId must not be null");
         }
@@ -52,7 +52,7 @@ public class DeliveryEvent implements MongoEvent {
         this.deliveryId = deliveryId;
         this.action = action;
 
-        this.timestamp = (timestamp == null) ? LocalDateTime.now() : timestamp;
+        this.timestamp = LocalDateTime.now();
         this.details = details;
     }
 
