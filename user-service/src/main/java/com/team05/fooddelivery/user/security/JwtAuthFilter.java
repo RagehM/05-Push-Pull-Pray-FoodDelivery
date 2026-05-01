@@ -30,21 +30,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
+        String header = request.getHeader("Authorization");
+        if (header == null
+                || !header.startsWith("Bearer ")) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         try
         {
-            AuthHandler tokenExtractionHandler = new TokenExtractionHandler();
-            AuthHandler signatureValidationHandler = new SignatureValidationHandler(jwtService);
-            AuthHandler userLoaderHandler = new UserLoaderHandler(jwtService, userDetailsService);
-            AuthHandler roleAuthorizationHandler = new RoleAuthorizationHandler();
-
-
-            tokenExtractionHandler.setNext(signatureValidationHandler);
-            signatureValidationHandler.setNext(userLoaderHandler);
-            userLoaderHandler.setNext(roleAuthorizationHandler);
-
-            AuthContext ctx = new AuthContext(request,null,null,null);
-            ctx = tokenExtractionHandler.handle(ctx);
+            AuthContext ctx = getAuthContext(request);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     ctx.user(),
                     null,
@@ -54,8 +49,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         }
         catch (Exception e) {
+            System.out.println(e);
         }
 
 
+    }
+
+    private AuthContext getAuthContext(HttpServletRequest request) {
+        AuthHandler tokenExtractionHandler = new TokenExtractionHandler();
+        AuthHandler signatureValidationHandler = new SignatureValidationHandler(jwtService);
+        AuthHandler userLoaderHandler = new UserLoaderHandler(jwtService, userDetailsService);
+        AuthHandler roleAuthorizationHandler = new RoleAuthorizationHandler();
+
+
+        tokenExtractionHandler.setNext(signatureValidationHandler);
+        signatureValidationHandler.setNext(userLoaderHandler);
+        userLoaderHandler.setNext(roleAuthorizationHandler);
+
+        AuthContext ctx = new AuthContext(request,null,null,null);
+        ctx = tokenExtractionHandler.handle(ctx);
+        return ctx;
     }
 }
