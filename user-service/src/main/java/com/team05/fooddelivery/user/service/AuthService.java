@@ -28,22 +28,15 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtConfigurationManager jwtConfig;
-
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-        this.jwtConfig = JwtConfigurationManager.getInstance();
-    private final JwtConfig jwtConfig;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
     private final AuthEventFactory authEventFactory = new AuthEventFactory();
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, JwtConfig jwtConfig,AuthEventRepository authEventRepository) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService,AuthEventRepository authEventRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.jwtConfig = jwtConfig;
+        this.jwtConfig = JwtConfigurationManager.getInstance();
         this.authEventRepository = authEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
