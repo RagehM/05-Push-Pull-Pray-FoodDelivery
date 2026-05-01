@@ -287,6 +287,16 @@ public class PaymentService {
             transactionDetails = new HashMap<>();
         }
 
+        // Compute delivery fee: order.metadata.deliveryType → restaurant.details.deliveryFee → 10% of subtotal
+        List<Object[]> deliveryRows = paymentRepository.findOrderDeliveryData(orderId);
+        if (!deliveryRows.isEmpty()) {
+            Object[] row = deliveryRows.get(0);
+            String deliveryTypeFee = (String) row[0];
+            Double orderTotal = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            String restaurantFeeStr = (String) row[2];
+            transactionDetails.put("deliveryFee", computeDeliveryFee(deliveryTypeFee, orderTotal, restaurantFeeStr));
+        }
+
         if (dto != null) {
             if (dto.cardLastFour() != null) {
                 transactionDetails.put("cardLastFour", dto.cardLastFour());
@@ -483,6 +493,20 @@ public class PaymentService {
         notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
 
         return savedPayment;
+    }
+
+    private double computeDeliveryFee(String deliveryTypeFee, Double orderTotal, String restaurantFeeStr) {
+        if (deliveryTypeFee != null) {
+            try {
+                return Double.parseDouble(deliveryTypeFee);
+            } catch (NumberFormatException ignored) {}
+        }
+        if (restaurantFeeStr != null) {
+            try {
+                return Double.parseDouble(restaurantFeeStr);
+            } catch (NumberFormatException ignored) {}
+        }
+        return orderTotal != null ? orderTotal * 0.10 : 0.0;
     }
 
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)

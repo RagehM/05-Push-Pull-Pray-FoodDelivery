@@ -1,0 +1,12 @@
+name: test
+variables:
+  - secret: true
+    name: DELIVERY_SERVICE_URL
+  - secret: true
+    name: USER_SERVICE_URL
+  - secret: true
+    name: ORDER_SERVICE_URL
+  - name: TEST_USER_EMAIL
+    value: bruno_test@example.com
+  - name: TEST_USER_PASSWORD
+    value: Password123!
