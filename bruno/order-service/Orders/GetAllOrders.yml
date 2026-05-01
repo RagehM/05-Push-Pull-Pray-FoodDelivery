@@ -8,7 +8,7 @@ http:
   url: http://localhost:8083/api/orders
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzIxODI4MywiZXhwIjoxNzc3MzA0NjgzfQ.wDd-YJp9fGHngci93CTaykeMejgOwENwY7IXMzh2i-I
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzcxMjc3NiwiZXhwIjoxNzc3Nzk5MTc2fQ.jyqcxbHIkFwedaoExZ4kxzdhu8kRDtYepg5KYTbXNt0
   auth: inherit
 
 settings:

@@ -1,6 +1,8 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.adapter.ObjectArrayToOrderAnalyticsDashboardDTOAdapter;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.dto.OrderAnalyticsDashboardDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
@@ -193,6 +195,9 @@ public class OrderService {
     }
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
     public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before endDate");
+        }
         return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
     }
     // [S3-F7] Cancel Order
@@ -313,6 +318,29 @@ public class OrderService {
                 .totalItems(totalItems)
                 .preparedItems(preparedItems)
                 .build();
+    }
+    // [S3-F10] Get Order Analytics Dashboard (Report DTO)
+    // Cached in redis for 10 minutes
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before endDate");
+        }
+        System.out.println("Fetching order analytics dashboard for period: " + startDate + " to " + endDate);
+        Object[] result = orderRepository.getOrderCountAndCompletionRateDetails(startDate, endDate)[0];
+
+        OrderAnalyticsDashboardDTO analyticsDTO = ObjectArrayToOrderAnalyticsDashboardDTOAdapter.adapt(result);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("orderId", -1L); // Aggregate logs with orderId -1
+        
+        Map<String, Object> details = new HashMap<>();
+        details.put("startDate", startDate);
+        details.put("endDate", endDate);
+        details.put("analyticsDashboard", analyticsDTO);
+
+        notifyObservers("ANALYTICS_VIEWED", params);
+
+        return analyticsDTO;
     }
     // [CRUD]
     //// Get order by ID
