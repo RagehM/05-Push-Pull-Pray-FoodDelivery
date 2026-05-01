@@ -211,6 +211,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    entrypoint: [ "sh", "-c", "sleep 90 && exec java -jar app.jar" ]
 
   user-service:
     build:
