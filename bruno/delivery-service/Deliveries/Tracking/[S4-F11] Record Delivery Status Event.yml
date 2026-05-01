@@ -71,6 +71,7 @@ runtime:
           );
           inTransitStatus = inTransitRes.status;
         } catch (e) {
+          console.error(e);
           inTransitStatus = null;
         }
 
@@ -78,56 +79,41 @@ runtime:
           expect(inTransitStatus).to.equal(201);
         });
 
-        // ─── Scenario (c): unknown delivery ID → 404 ─────────────────────────────────
+        // ─── Scenario (c): unknown delivery ID ───────────────────────────────────────
         let notFoundStatus;
         try {
           const notFoundRes = await axios.post(
             `${baseUrl}/api/deliveries/999/tracking`,
+            { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
             {
-              status: "PICKED_UP",
-              latitude: 30.0444,
-              longitude: 31.2357,
-              notes: "Should not be stored",
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`,
-              },
-              validateStatus: () => true,
+              headers: { "Authorization": `Bearer ${token}` },
+              validateStatus: (status) => status < 500 // Only throw on server errors
             }
           );
           notFoundStatus = notFoundRes.status;
         } catch (e) {
-          notFoundStatus = null;
+          // If Axios throws, the status is hidden inside e.response
+          notFoundStatus = e.response ? e.response.status : null;
         }
 
         test("[S4-F11c] Non-existent delivery ID returns 404", function () {
           expect(notFoundStatus).to.equal(404);
         });
 
-        // ─── Scenario (d): missing token → 401 ───────────────────────────────────────
+        // ─── Scenario (d): missing token ───────────────────────────────────────
         let unauthStatus;
         try {
           const unauthRes = await axios.post(
             `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
             {
-              status: "PICKED_UP",
-              latitude: 30.0444,
-              longitude: 31.2357,
-              notes: "Should be rejected",
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                // No Authorization header — simulates missing JWT
-              },
-              validateStatus: () => true,
+              headers: { "Content-Type": "application/json" }, // No token
+              validateStatus: (status) => status < 500
             }
           );
           unauthStatus = unauthRes.status;
         } catch (e) {
-          unauthStatus = null;
+          unauthStatus = e.response ? e.response.status : null;
         }
 
         test("[S4-F11d] Missing JWT returns 401", function () {
