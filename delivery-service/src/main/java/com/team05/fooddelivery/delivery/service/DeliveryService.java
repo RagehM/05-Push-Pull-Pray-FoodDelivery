@@ -108,7 +108,27 @@ public class DeliveryService {
         if (delivery.getStatus() == null) {
             delivery.setStatus(DeliveryStatus.ASSIGNED);
         }
-        return deliveryRepository.save(delivery);
+
+        Delivery saved = deliveryRepository.save(delivery);
+
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("orderId", saved.getOrderId());
+        eventDetails.put("driverName", saved.getDriverName());
+        eventDetails.put("status", saved.getStatus());
+        eventDetails.put("coordinates", Map.of("latitude", saved.getLatitude(), "longitude", saved.getLongitude()));
+        if (saved.getMetadata() != null) {
+            eventDetails.put("metadata", saved.getMetadata());
+        }
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", saved.getId());
+        eventPayload.put("action", "DELIVERY_CREATED");
+        eventPayload.put("details", eventDetails);
+
+
+        notifyObservers("DELIVERY_CREATED", eventPayload);
+
+        return saved;
     }
 
     /**
