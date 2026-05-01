@@ -1,12 +1,13 @@
 package com.team05.fooddelivery.delivery.controller;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
+import com.team05.fooddelivery.delivery.dto.DeliveryTrackingRequestDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,6 +43,14 @@ public class DeliveryController {
     @PostMapping("/order/{orderId}")
     public ResponseEntity<Delivery> createOrderDelivery(@PathVariable Long orderId, @RequestBody Delivery delivery) {
         return new ResponseEntity<>(deliveryService.createOrderDelivery(orderId, delivery), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/{id}/tracking")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> recordDeliveryTracking(@PathVariable Long id,
+                                                       @RequestBody DeliveryTrackingRequestDTO request) {
+        deliveryService.recordDeliveryTracking(id, request);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
