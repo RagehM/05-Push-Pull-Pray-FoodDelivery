@@ -4,10 +4,15 @@ import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
+import com.team05.fooddelivery.user.factory.AuthEventFactory;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
+import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
+import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.query.Param;
@@ -29,12 +34,26 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserRepository userRepository;
     private final DeliveryAddressRepository deliveryAddressRepository;
+    private final List<EntityObserver> observers = new ArrayList<>();
+    private final AuthEventRepository authEventRepository;
+    private final AuthEventFactory authEventFactory = new AuthEventFactory();
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository,AuthEventRepository authEventRepository) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
+        this.authEventRepository = authEventRepository;
+        this.observers.add(
+                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
+        );
     }
+
+    private void notifyObservers(String eventType, Object payload) {
+        for (EntityObserver observer : observers) {
+            observer.onEvent(eventType, payload);
+        }
+    }
+
 
     public List<User> findAll()
     {
@@ -65,7 +84,15 @@ public class UserService {
         {
             user.setCreatedAt(LocalDateTime.now());
         }
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", saved.getId());  // now ID exists
+        authEvent.put("action", "USER_CREATED");
+
+        notifyObservers("USER_CREATED", authEvent);
+
+        return saved;
     }
 
     public User updateUser(User user, Long id)
@@ -84,13 +111,25 @@ public class UserService {
         updatedUser.setDeliveryAddresses(user.getDeliveryAddresses() == null? updatedUser.getDeliveryAddresses(): user.getDeliveryAddresses());
         updatedUser.setPreferences(user.getPreferences() == null? updatedUser.getPreferences(): user.getPreferences());
         updatedUser.setStatus(user.getStatus() == null? updatedUser.getStatus(): user.getStatus());
-        return userRepository.save(updatedUser);
+
+        User updatedSaved = userRepository.save(updatedUser);
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", updatedUser.getId());
+        authEvent.put("action", "USER_UPDATED");
+
+        notifyObservers("USER_UPDATED", authEvent);
+        return updatedSaved;
     }
 
     public void deleteUser(Long id)
     {
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", deletedUser.getId());
+        authEvent.put("action", "USER_DELETED");
+        notifyObservers("USER_DELETED", authEvent);
     }
 
     public List<User> searchUsers(String name, String email, String role)
@@ -110,7 +149,14 @@ public class UserService {
         Map<String,Object> currentUserPreferences = updatedUser.getPreferences();
         currentUserPreferences.putAll(preferences);
         updatedUser.setPreferences(currentUserPreferences);
-        return userRepository.save(updatedUser);
+
+        User updatedSaved = userRepository.save(updatedUser);
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", updatedUser.getId());
+        authEvent.put("action", "USER_UPDATED");
+
+        notifyObservers("USER_UPDATED", authEvent);
+        return updatedSaved;
     }
   
     @Transactional
@@ -121,7 +167,14 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
         }
         user.setStatus(UserStatus.DEACTIVATED);
+
         userRepository.save(user);
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "USER_DEACTIVATED");
+
+        notifyObservers("USER_DEACTIVATED", authEvent);
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
 
@@ -218,6 +271,10 @@ public class UserService {
                 deliveryAddressRepository.save(addr);
             }
         });
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "DEFAULT_ADDRESS_SET");
+        notifyObservers("DEFAULT_ADDRESS_SET", authEvent);
 
         return user;
     }
