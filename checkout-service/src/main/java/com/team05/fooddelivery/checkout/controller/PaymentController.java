@@ -11,6 +11,7 @@ import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
@@ -127,9 +128,7 @@ public class PaymentController {
     }
 
     // S5-F11: GET /api/payments/analytics/methods?startDate={d}&endDate={d}
-    // Auth: any authenticated user (UserRole = CUSTOMER or ADMIN). 401 on
-    // missing/invalid token is handled by SecurityConfig's entry point;
-    // invalid date range -> 400 from the service layer.
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     @GetMapping("/analytics/methods")
     public ResponseEntity<List<PaymentMethodDTO>> getPaymentMethodBreakdown(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
