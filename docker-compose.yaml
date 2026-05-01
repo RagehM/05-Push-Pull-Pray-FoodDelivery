@@ -143,16 +143,24 @@ services:
 
   cassandra:
     image: cassandra:latest
-    container_name: fooddelivery-cassandra-ui
+    container_name: fooddelivery-cassandra
     ports:
       - "9042:9042"
     environment:
       CASSANDRA_CLUSTER_NAME: fooddeliverycluster
       CASSANDRA_DC: datacenter1
+      CASSANDRA_KEYSPACE: fooddeliveryks
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 128M
     volumes:
       - cassandra-data:/var/lib/cassandra
+    command: >
+      bash -c "
+        docker-entrypoint.sh cassandra -f &
+        until cqlsh -e 'DESCRIBE KEYSPACES' 2>/dev/null; do sleep 5; done;
+        cqlsh -e \"CREATE KEYSPACE IF NOT EXISTS $${CASSANDRA_KEYSPACE} WITH replication = {'class':'SimpleStrategy','replication_factor':1};\";
+        wait
+      "
     healthcheck:
       test: [ "CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES'" ]
       interval: 15s

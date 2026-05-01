@@ -1,31 +1,17 @@
 package com.team05.fooddelivery.checkout.model.mongo;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-
+import com.team05.fooddelivery.checkout.enums.PaymentAction;
+import com.team05.shared.model.mongo.MongoEvent;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-/**
- * MongoDB document for the payment_audit_trail collection.
- *
- * Schema (Section 7.1.6 of M2):
- *   id        : ObjectId (auto)
- *   paymentId : Long, references Payment in PG
- *   action    : CREATED | COMPLETED | FAILED | REFUNDED | REFUND_DENIED
- *               | ANALYTICS_VIEWED | OFFER_APPLIED | RETRY_ATTEMPTED | PAYMENT_DELETED
- *   timestamp : LocalDateTime
- *   method    : CREDIT_CARD | CASH_ON_DELIVERY | WALLET (required on payment-shaped actions)
- *   amount    : Double (required on payment-shaped actions)
- *   details   : Map<String,Object>
- *
- * S5-F11 reads documents whose {@code action} is COMPLETED or FAILED and whose
- * {@code method} and {@code amount} are populated, grouped by method.
- */
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
 @Document("payment_audit_trail")
-public class PaymentAuditEvent {
+public class PaymentAuditEvent implements MongoEvent {
 
     @Id
     private String id;
@@ -39,14 +25,8 @@ public class PaymentAuditEvent {
     @Indexed
     private LocalDateTime timestamp;
 
-    /**
-     * Required (not-null) when {@code action} is one of CREATED, COMPLETED, FAILED,
-     * REFUNDED, REFUND_DENIED, OFFER_APPLIED or RETRY_ATTEMPTED. Allowed null
-     * for non-payment actions such as ANALYTICS_VIEWED.
-     */
     private String method;
 
-    /** See note on {@link #method}. */
     private Double amount;
 
     private Map<String, Object> details = new HashMap<>();
@@ -60,11 +40,17 @@ public class PaymentAuditEvent {
                              String method,
                              Double amount,
                              Map<String, Object> details) {
+        if (paymentId == null) {
+            throw new IllegalArgumentException("paymentId must not be null");
+        }
+        if (action == null || !PaymentAction.isValidAction(action)) {
+            throw new IllegalArgumentException("Invalid action: " + action);
+        }
         this.paymentId = paymentId;
         this.action = action;
+        this.timestamp = LocalDateTime.now();
         this.method = method;
         this.amount = amount;
-        this.timestamp = LocalDateTime.now();
         this.details = details != null ? details : new HashMap<>();
     }
 
@@ -89,7 +75,6 @@ public class PaymentAuditEvent {
     public Map<String, Object> getDetails() { return details; }
     public void setDetails(Map<String, Object> details) { this.details = details; }
 
-    /** Canonical action constants; written in UPPER_SNAKE_CASE per Section 7.1.6. */
     public static final class Actions {
         private Actions() {}
         public static final String CREATED          = "CREATED";
