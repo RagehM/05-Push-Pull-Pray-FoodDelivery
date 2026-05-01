@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.delivery.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -10,7 +11,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
 import com.team05.fooddelivery.delivery.dto.*;
+import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
+import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -28,9 +32,13 @@ import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final DeliveryTrackingEventRepository trackingEventRepository;
+    private final CassandraRowAdapter cassandraRowAdapter = new CassandraRowAdapter();
 
-    public DeliveryService(DeliveryRepository deliveryRepository) {
+    public DeliveryService(DeliveryRepository deliveryRepository,
+                           DeliveryTrackingEventRepository trackingEventRepository) {
         this.deliveryRepository = deliveryRepository;
+        this.trackingEventRepository = trackingEventRepository;
     }
 
     @Caching(evict = {
@@ -335,6 +343,22 @@ validateOrder(orderId);
                 .firstDelivery((LocalDateTime) row[4])
                 .lastDelivery((LocalDateTime) row[5])
                 .build();
+    }
+
+    @Cacheable(cacheNames = "delivery-service::S4-F12", key = "#deliveryId + ':' + #startTime + ':' + #endTime")
+    @Transactional(readOnly = true)
+    public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(Long deliveryId, String startTime, String endTime) {
+        getDeliveryById(deliveryId);
+
+        List<DeliveryTrackingEvent> events;
+        if (startTime != null && endTime != null) {
+            events = trackingEventRepository.findByKeyDeliveryIdAndKeyTimestampBetween(
+                    deliveryId, Instant.parse(startTime), Instant.parse(endTime));
+        } else {
+            events = trackingEventRepository.findByKeyDeliveryId(deliveryId);
+        }
+
+        return events.stream().map(cassandraRowAdapter::adapt).toList();
     }
 
 }
