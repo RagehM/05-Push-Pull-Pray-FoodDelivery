@@ -1,0 +1,149 @@
+info:
+  name: "[S4-F11] Record Delivery Status Event"
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/{{Last_Delivery_Id}}/tracking"
+  body:
+    type: json
+    data: |-
+      {
+        "status": "PICKED_UP",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "notes": "Picked up from restaurant"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const axios = require('axios');
+
+        const baseUrl    = bru.getEnvVar("DELIVERY_SERVICE_URL");
+        const token      = bru.getEnvVar("AUTH_TOKEN");
+        const deliveryId = bru.getEnvVar("Last_Delivery_Id");
+
+        // ─── Prerequisites guard ──────────────────────────────────────────────────────
+        test("[S4-F11] Prerequisites: env vars must be configured", function () {
+          expect(baseUrl,    "DELIVERY_SERVICE_URL is not set").to.exist;
+          expect(token,      "AUTH_TOKEN is not set").to.exist;
+          expect(deliveryId, "Last_Delivery_Id is not set — run CreateDelivery first").to.exist;
+          expect(deliveryId).to.not.equal("").and.not.equal("undefined");
+        });
+
+        // ─── TC118 (HTTP layer) — Scenario (a): PICKED_UP → 201 ──────────────────────
+        test("[S4-F11 TC118a] PICKED_UP tracking event returns 201", function () {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("[S4-F11 TC118a] Response body is empty or void on 201", function () {
+          const body = res.getBody();
+          const isEmpty =
+            body === null ||
+            body === undefined ||
+            body === "" ||
+            (typeof body === "object" && Object.keys(body).length === 0);
+          expect(isEmpty).to.equal(true);
+        });
+
+        // ─── TC118 (HTTP layer) — Scenario (b): IN_TRANSIT → 201 ─────────────────────
+        let inTransitStatus;
+        try {
+          const inTransitRes = await axios.post(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            {
+              status: "IN_TRANSIT",
+              latitude: 30.0600,
+              longitude: 31.2500,
+              notes: "En route to customer",
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+              },
+              validateStatus: () => true,
+            }
+          );
+          inTransitStatus = inTransitRes.status;
+        } catch (e) {
+          console.error(e);
+          inTransitStatus = null;
+        }
+
+        test("[S4-F11 TC118b] IN_TRANSIT tracking event returns 201", function () {
+          expect(inTransitStatus).to.equal(201);
+        });
+
+        // ─── TC125: non-existent delivery ID → 404 ───────────────────────────────────
+        let notFoundStatus;
+        try {
+          const notFoundRes = await axios.post(
+            `${baseUrl}/api/deliveries/999/tracking`,
+            { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
+            {
+              headers: { "Authorization": `Bearer ${token}` },
+              validateStatus: () => true,
+            }
+          );
+          notFoundStatus = notFoundRes.status;
+        } catch (e) {
+          notFoundStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F11 TC125] Non-existent delivery ID returns strictly 404", function () {
+          expect(notFoundStatus).to.equal(404);
+        });
+
+        // ─── TC126: missing JWT → 401 ─────────────────────────────────────────────────
+        let unauthStatus;
+        try {
+          const unauthRes = await axios.post(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
+            {
+              headers: { "Content-Type": "application/json" },
+              validateStatus: () => true,
+            }
+          );
+          unauthStatus = unauthRes.status;
+        } catch (e) {
+          unauthStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F11 TC126] Missing JWT returns strictly 401", function () {
+          expect(unauthStatus).to.equal(401);
+        });
+
+        // ─── TC127: malformed JWT → 401 ──────────────────────────────────────────────
+        let malformedJwtStatus;
+        try {
+          const malformedRes = await axios.post(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer xxx.yyy.zzz",
+              },
+              validateStatus: () => true,
+            }
+          );
+          malformedJwtStatus = malformedRes.status;
+        } catch (e) {
+          malformedJwtStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F11 TC127] Malformed JWT returns strictly 401", function () {
+          expect(malformedJwtStatus).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

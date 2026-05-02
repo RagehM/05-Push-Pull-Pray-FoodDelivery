@@ -37,12 +37,16 @@ public class RestaurantService {
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final EventFactory eventFactory = new EventFactory();
+    private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
-            MongoRestaurantEventRepository mongoRestaurantEventRepository) {
+            MongoRestaurantEventRepository mongoRestaurantEventRepository,
+            //s2-f11
+            RestaurantElasticsearchIndexService restaurantElasticsearchIndexService) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
+        this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
@@ -74,6 +78,8 @@ public class RestaurantService {
         eventDetails.put("cuisineType", saved.getCuisineType());
         params.put("details", eventDetails);
         notifyObservers(RestaurantEventActions.RESTAURANT_CREATED, params);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         return saved;
     }
@@ -123,7 +129,8 @@ public class RestaurantService {
         details.put("status", saved.getStatus());
         params.put("details", details);
         notifyObservers(RestaurantEventActions.UPDATED, params);
-
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
         return saved;
     }
 
@@ -141,6 +148,8 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         restaurantRepository.deleteById(id);
+        //s2-f11
+        restaurantElasticsearchIndexService.deleteByRestaurantId(id);
 
         Map<String, Object> params = new HashMap<>();
         params.put("action", RestaurantEventActions.RESTAURANT_DELETED);
@@ -177,6 +186,8 @@ public class RestaurantService {
             existing.setDetails(currentDetails);
         }
         Restaurant saved = restaurantRepository.save(existing);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         Map<String, Object> params = new HashMap<>();
         params.put("action", RestaurantEventActions.DETAILS_UPDATED);
@@ -224,6 +235,8 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
         Map<String, Object> params = new HashMap<>();
         params.put("action", RestaurantEventActions.STATUS_CHANGED);
@@ -288,6 +301,8 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
         Map<String, Object> params = new HashMap<>();
         params.put("action", RestaurantEventActions.REVIEW_ADDED);
@@ -316,6 +331,12 @@ public class RestaurantService {
         }
         return dtos;
     }
+    //s2-f11
+    public void indexRestaurantForSearch(Long id) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+        restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
+    }
 
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
@@ -330,4 +351,6 @@ public class RestaurantService {
             observer.onEvent(eventType, payload);
         }
     }
+
+
 }
