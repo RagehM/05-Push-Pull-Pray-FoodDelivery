@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 @JsonDeserialize(builder = UserOrderSummaryDTO.Builder.class)
-public class UserOrderSummaryDTO{
+public class UserOrderSummaryDTO {
     private Long userId;
     private String name;
     private Integer totalOrders;
@@ -24,18 +24,39 @@ public class UserOrderSummaryDTO{
         this.averageOrderAmount = builder.averageOrderAmount;
     }
 
-    public Long getUserId() { return userId; }
-    public String getName() { return name; }
-    public Integer getTotalOrders() { return totalOrders; }
-    public Integer getDeliveredOrders() { return deliveredOrders; }
-    public Integer getCancelledOrders() { return cancelledOrders; }
-    public Double getTotalSpent() { return totalSpent; }
-    public Double getAverageOrderAmount() { return averageOrderAmount; }
+    public Long getUserId() {
+        return userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Integer getTotalOrders() {
+        return totalOrders;
+    }
+
+    public Integer getDeliveredOrders() {
+        return deliveredOrders;
+    }
+
+    public Integer getCancelledOrders() {
+        return cancelledOrders;
+    }
+
+    public Double getTotalSpent() {
+        return totalSpent;
+    }
+
+    public Double getAverageOrderAmount() {
+        return averageOrderAmount;
+    }
 
 
     public static Builder builder() {
         return new Builder();
     }
+
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Long userId;
