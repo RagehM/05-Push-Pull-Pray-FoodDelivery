@@ -68,7 +68,7 @@ public class PaymentService {
         paymentAuditEvent.put("action", "PAYMENT_CREATED");
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("PAYMENT_CREATED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -105,12 +105,11 @@ public class PaymentService {
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
-        paymentAuditEvent.put("action", "PAYMENT_UPDATED");
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("PAYMENT_UPDATED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -132,10 +131,9 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", payment.getId());
         paymentAuditEvent.put("amount", payment.getAmount());
         paymentAuditEvent.put("method", payment.getMethod().name());
-        paymentAuditEvent.put("action", "PAYMENT_DELETED");
         paymentAuditEvent.put("details", payment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("PAYMENT_DELETED", paymentAuditEvent);
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -191,12 +189,11 @@ public class PaymentService {
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
-        paymentAuditEvent.put("action", "REFUNDED");
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("REFUNDED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -275,10 +272,9 @@ public class PaymentService {
         createdPaymentAuditEvent.put("paymentId", payment.getId());
         createdPaymentAuditEvent.put("amount", payment.getAmount());
         createdPaymentAuditEvent.put("method", payment.getMethod().name());
-        createdPaymentAuditEvent.put("action", "CREATED");
         createdPaymentAuditEvent.put("details", payment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", createdPaymentAuditEvent);
+        notifyObservers("CREATED", createdPaymentAuditEvent);
 
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
         if (transactionDetails == null) {
@@ -323,10 +319,9 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", savedPayment.getId());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
-        paymentAuditEvent.put("action", action);
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers(action, paymentAuditEvent);
 
         return savedPayment;
     }
@@ -395,10 +390,9 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", savedPayment.getId());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
-        paymentAuditEvent.put("action", "OFFER_APPLIED");
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("OFFER_APPLIED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -485,10 +479,9 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", savedPayment.getId());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
-        paymentAuditEvent.put("action", "RETRY_ATTEMPTED");
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("RETRY_ATTEMPTED", paymentAuditEvent);
 
         return savedPayment;
     }

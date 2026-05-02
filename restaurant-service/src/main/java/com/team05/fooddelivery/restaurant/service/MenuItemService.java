@@ -125,7 +125,6 @@ public class MenuItemService {
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.MENU_ITEM_TOGGLED);
         params.put("restaurantId", restaurantId);
         Map<String, Object> details = new HashMap<>();
         details.put("menuItemId", menuItemId);

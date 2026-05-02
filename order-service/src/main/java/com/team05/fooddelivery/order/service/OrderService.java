@@ -86,7 +86,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CONFIRMED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -98,7 +97,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CONFIRMED", params);
+        notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
         return savedOrder;
 
     }
@@ -156,7 +155,6 @@ public class OrderService {
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
         Order savedOrder = orderRepository.save(foundOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_DELIVERED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -169,7 +167,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_DELIVERED", params);
+        notifyObservers(OrderEventActions.ORDER_DELIVERED, params);
         return savedOrder;
 
 
@@ -203,7 +201,6 @@ public class OrderService {
         //Update status to CANCELLED
         order.setStatus(OrderStatusEnum.CANCELLED);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CANCELLED");
         params.put("order", order);
         params.put("orderId", order.getId());
 
@@ -214,7 +211,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CANCELLED", params);
+        notifyObservers(OrderEventActions.ORDER_CANCELLED, params);
         //Update status of all order items to cancelled through repository
         // // // try {
         // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
@@ -250,7 +247,6 @@ public class OrderService {
 
         Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_ITEMS_ADDED");
         params.put("order", returnObject);
         params.put("orderId", returnObject.getId());
 
@@ -263,7 +259,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_ITEMS_ADDED", params);
+        notifyObservers(OrderEventActions.ITEMS_ADDED, params);
 
         return returnObject;
     }
@@ -339,7 +335,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CREATED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -352,7 +347,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CREATED", params);
+        notifyObservers(OrderEventActions.ORDER_CREATED, params);
         return savedOrder;
     }
     //// Update order
@@ -391,7 +386,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(existingOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_UPDATED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -403,7 +397,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_UPDATED", params);
+        notifyObservers(OrderEventActions.ORDER_UPDATED, params);
         return savedOrder;
     }
     //// Delete order
@@ -412,7 +406,6 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_DELETED");
         params.put("order", existingOrder);
         params.put("orderId", existingOrder.getId());
 
@@ -424,7 +417,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_DELETED", params);
+        notifyObservers(OrderEventActions.ORDER_DELETED, params);
     }
 
     public void registerObserver(EntityObserver observer) {

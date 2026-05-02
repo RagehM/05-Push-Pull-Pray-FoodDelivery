@@ -63,6 +63,7 @@ public class OrderEvent implements MongoEvent{
         public static final String ITEMS_ADDED = "ITEMS_ADDED";
         public static final String ORDER_CREATED = "ORDER_CREATED";
         public static final String ORDER_DELETED = "ORDER_DELETED";
+        public static final String ORDER_UPDATED = "ORDER_UPDATED";
 
     }
 }

@@ -69,7 +69,6 @@ public class RestaurantService {
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.RESTAURANT_CREATED);
         params.put("restaurantId", saved.getId());
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("name", saved.getName());
@@ -150,7 +149,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.deleteByRestaurantId(id);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.RESTAURANT_DELETED);
         params.put("restaurantId", id);
         params.put("details", new HashMap<>());
         notifyObservers(RestaurantEventActions.RESTAURANT_DELETED, params);
@@ -188,7 +186,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.DETAILS_UPDATED);
         params.put("restaurantId", saved.getId());
         params.put("details", newDetails);
         notifyObservers(RestaurantEventActions.DETAILS_UPDATED, params);
@@ -237,7 +234,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.STATUS_CHANGED);
         params.put("restaurantId", id);
         Map<String, Object> details = new HashMap<>();
         details.put("newStatus", newStatus);
@@ -303,7 +299,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.REVIEW_ADDED);
         params.put("restaurantId", restaurantId);
         Map<String, Object> details = new HashMap<>();
         details.put("rating", rating);
