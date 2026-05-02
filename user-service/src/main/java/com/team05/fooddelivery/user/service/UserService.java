@@ -370,13 +370,14 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
     }
     @Caching(
             put = {
-                    @CachePut(value = "user-service::user", key = "#id"),
+
                     @CachePut(value = "user-service::S1-F8", key = "#id")
             },
             evict = {
                     @CacheEvict(value = "user-service::S1-F1", allEntries = true),
                     @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-                    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::user", key = "#id")
             }
     )
     public User updateUserRole(long id, UserRole role) {
