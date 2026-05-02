@@ -56,6 +56,14 @@ public class UserService {
         }
     }
 
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
 
     public List<User> findAll()
     {
