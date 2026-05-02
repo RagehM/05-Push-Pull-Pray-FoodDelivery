@@ -13,7 +13,10 @@ import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import com.team05.shared.observer.EntityObserver;
@@ -69,6 +72,13 @@ public class OrderService {
     }
     // [S3-F2] Confirm Order and Assign Restaurant (Transactional)
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#orderId"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId")
+    })
     public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
         Order order = getOrderById(orderId);
         if (order.getStatus() != OrderStatusEnum.PLACED) {
@@ -145,6 +155,14 @@ public class OrderService {
     }
     // [S3-F4] Deliver Order
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#id"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#id")
+    })
     public Order deliverOrder(Long id) {
         Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
@@ -202,6 +220,14 @@ public class OrderService {
     }
     // [S3-F7] Cancel Order
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId")
+    })
     public void cancelOrder(Long orderId) {
         //Get order through JPA default method findById, if order not found, throw HTTP 404 Not Found
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -240,6 +266,15 @@ public class OrderService {
     }
     // [S3-F8] Add items to existing order
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#orderId"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId")
+    })
     public Order addItemsToOrder(Long orderId, List<OrderItem> orderItems) {
         Order existingOrder = getOrderById(orderId);
         int line_item_count = existingOrder.getOrderItems() != null ? existingOrder.getOrderItems().size() : 0;
@@ -368,6 +403,15 @@ public class OrderService {
     }
     //// Update order
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#orderId"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId")
+    })
     public Order updateOrder(Long orderId, Order updatedOrder) {
         Order existingOrder = getOrderById(orderId);
 
@@ -419,6 +463,14 @@ public class OrderService {
     }
     //// Delete order
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId")
+    })
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
