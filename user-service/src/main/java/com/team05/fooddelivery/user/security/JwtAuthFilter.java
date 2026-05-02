@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.user.security;
 
 import com.team05.fooddelivery.user.dto.AuthContext;
+import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -50,6 +51,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         catch (Exception e) {
             System.out.println(e);
+            throw e;
         }
 
 
@@ -66,7 +68,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         signatureValidationHandler.setNext(userLoaderHandler);
         userLoaderHandler.setNext(roleAuthorizationHandler);
 
-        AuthContext ctx = new AuthContext(request,null,null,null);
+        AuthContext ctx = new AuthContext(request,null,null,UserRole.CUSTOMER);
         ctx = tokenExtractionHandler.handle(ctx);
         return ctx;
     }

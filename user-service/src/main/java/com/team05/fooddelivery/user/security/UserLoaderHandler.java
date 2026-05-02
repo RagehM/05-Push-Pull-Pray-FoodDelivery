@@ -5,6 +5,7 @@ import com.team05.fooddelivery.user.service.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
 public class UserLoaderHandler extends AuthHandler {
@@ -20,12 +21,26 @@ public class UserLoaderHandler extends AuthHandler {
     AuthContext handle(AuthContext ctx)
     {
         String username = jwtService.extractUsername(ctx.token());
-        if(username != null)
+        try
         {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails,ctx.requiredRole()));
+            if(username != null)
+            {
+                System.out.println("Username EXTRACTED: " + username);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                System.out.println("USER RETRIEVED : " + userDetails.getUsername());
+                return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails,ctx.requiredRole()));
+            }
         }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader)");
+        catch (UsernameNotFoundException e)
+        {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader)");
+        }
+        catch(Exception e)
+        {
+            throw e;
+        }
+
+        return ctx;
     }
 
 }

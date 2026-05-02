@@ -8,14 +8,22 @@ import org.springframework.web.server.ResponseStatusException;
 public class TokenExtractionHandler extends AuthHandler {
 
     @Override
-    AuthContext handle(AuthContext ctx) {
-        String header = ctx.request().getHeader("Authorization");
-        if (header == null || !header.startsWith("Bearer "))
+    AuthContext handle(AuthContext ctx)
+    {
+        try
         {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (TokenExtractor)");
+            String header = ctx.request().getHeader("Authorization");
+            if (header == null || !header.startsWith("Bearer "))
+            {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (TokenExtractor)");
+            }
+            String token = header.substring(7);
+            return nextHandler.handle(new AuthContext(ctx.request(), token,null,ctx.requiredRole()));
         }
-        String token = header.substring(7);
-        return nextHandler.handle(new AuthContext(ctx.request(), token,null,ctx.requiredRole()));
+        catch(Exception e)
+        {
+            throw e;
+        }
 
     }
 }
