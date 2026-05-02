@@ -1,16 +1,17 @@
 package com.team05.fooddelivery.order.controller;
 
-import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
+import com.team05.fooddelivery.order.dto.*;
 import com.team05.fooddelivery.order.model.Order;
-import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
-import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
-import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -84,6 +85,51 @@ public class OrderController {
     @GetMapping("/{orderId}/details")
     public ResponseEntity<OrderDetailsDTO> getOrderDetails(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.getOrderDetails(orderId));
+    }
+    // [S3-F12]
+        @GetMapping("/recommendations")
+        public ResponseEntity<List<RestaurantRecommendationDTO>> getRestaurantRecommendations(
+                @RequestParam Long userId,
+                @RequestParam(required = false) Integer limit,
+                Authentication authentication
+        ) {
+            if (!isAdmin(authentication) && !ownsUserId(authentication, userId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+            }
+
+            List<RestaurantRecommendationDTO> recommendations = orderService.getRestaurantRecommendations(userId, limit);
+            return ResponseEntity.ok(recommendations);
+        }
+
+    private static boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
+
+        for (GrantedAuthority a : authentication.getAuthorities()) {
+            String role = a.getAuthority();
+            if ("ADMIN".equals(role) || "ROLE_ADMIN".equals(role)) {
+                return true;
+            }
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof com.team05.fooddelivery.order.security.JwtUserPrincipal jwtUser) {
+            return "ADMIN".equals(jwtUser.role()) || "ROLE_ADMIN".equals(jwtUser.role());
+        }
+
+        return false;
+    }
+    private static boolean ownsUserId(Authentication authentication, Long userId) {
+        if (authentication == null) return false;
+
+        try {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof com.team05.fooddelivery.order.security.JwtUserPrincipal jwtUser) {
+                return jwtUser.uid() != null && jwtUser.uid().equals(userId);
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return false;
     }
     // [CRUD]
     //// Get order by ID

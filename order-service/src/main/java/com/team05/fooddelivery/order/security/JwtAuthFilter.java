@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.order.security;
 
-import com.team05.fooddelivery.order.config.JwtConfigurationManager;
+import org.springframework.beans.factory.annotation.Value;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -21,10 +21,10 @@ import java.util.List;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtConfigurationManager jwtConfig;
+    private final String jwtSecret;
 
-    public JwtAuthFilter() {
-        this.jwtConfig = JwtConfigurationManager.getInstance();
+    public JwtAuthFilter(@Value("${jwt.secret:}") String jwtSecret) {
+        this.jwtSecret = jwtSecret;
     }
 
     @Override
@@ -42,17 +42,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             String token = header.substring(7);
             Claims claims = Jwts.parser()
-                    .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtConfig.getSecret())))
+                    .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret)))
                     .build()
                     .parseClaimsJws(token)
                     .getPayload();
 
             String username = claims.getSubject();
             String role = claims.get("role", String.class);
+            Long uid = readUid(claims);
 
-            if (username != null) {
+            if (username != null && role != null) {
+                JwtUserPrincipal principal = new JwtUserPrincipal(uid, username, role);
                 var auth = new UsernamePasswordAuthenticationToken(
-                        username, null,
+                        principal, null,
                         List.of(new SimpleGrantedAuthority("ROLE_" + role))
                 );
                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -62,6 +64,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    private static Long readUid(Claims claims) {
+        Object raw = claims.get("uid");
+        if (raw instanceof Number n) return n.longValue();
+        if (raw instanceof String s) {
+            try { return Long.parseLong(s); } catch (Exception ignored) {}
+        }
+        return null;
     }
 }
 

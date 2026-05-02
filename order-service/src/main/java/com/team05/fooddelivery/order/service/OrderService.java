@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.dto.RestaurantRecommendationDTO;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
@@ -13,7 +14,11 @@ import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
+import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
 
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
@@ -21,6 +26,7 @@ import com.team05.shared.model.mongo.MongoEvent.EventType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Duration;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,6 +34,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,9 +51,22 @@ public class OrderService {
     private final MongoOrderEventRepository mongoOrderEventRepository;
     private final EventFactory eventFactory = new EventFactory();
 
-    public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
+    private final UserNodeRepository userNodeRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+
+    public OrderService(
+            OrderRepository orderRepository,
+            MongoOrderEventRepository mongoOrderEventRepository,
+            UserNodeRepository userNodeRepository,
+            StringRedisTemplate redisTemplate,
+            ObjectMapper objectMapper
+    ) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
+        this.userNodeRepository = userNodeRepository;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
         this.observers.add(
             new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER, eventFactory)
         );
@@ -314,6 +335,62 @@ public class OrderService {
                 .preparedItems(preparedItems)
                 .build();
     }
+
+    //[S3-F12]
+        public List<RestaurantRecommendationDTO> getRestaurantRecommendations(Long userId, Integer limit) {
+            // Default to 5 recommendations if limit is not provided
+            int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
+
+            String cacheKey = "order-service::S3-F12::" + userId + ":" + finalLimit;
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                try {
+                    return objectMapper.readValue(cached, new TypeReference<List<RestaurantRecommendationDTO>>() {});
+                } catch (Exception e) {
+                    // ignore cache parsing errors and fallback to DB
+                }
+            }
+
+            // Validate user existence
+            if (!orderRepository.existsByUserId(userId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            }
+
+            // Fetch restaurant recommendations using Neo4j repository
+            List<UserNodeRepository.RestaurantRecommendationRow> rows = userNodeRepository.findRecommendations(userId, finalLimit);
+
+            // If no recommendations found, return an empty list
+            if (rows.isEmpty()) {
+                List<RestaurantRecommendationDTO> empty = List.of();
+                cacheRecommendations(cacheKey, empty);
+                return empty;
+            }
+
+            Set<Long> restaurantIds = rows.stream().map(UserNodeRepository.RestaurantRecommendationRow::getRestaurantId).collect(Collectors.toSet());
+            Map<Long, OrderRepository.RestaurantInfoRow> infoById = orderRepository.findRestaurantInfoByIds(restaurantIds)
+                    .stream()
+                    .collect(Collectors.toMap(OrderRepository.RestaurantInfoRow::getRestaurantId, r -> r));
+
+            List<RestaurantRecommendationDTO> recommendations = rows.stream()
+                    .map(r -> {
+                        OrderRepository.RestaurantInfoRow info = infoById.get(r.getRestaurantId());
+                        if (info == null) return null;
+                        return new RestaurantRecommendationDTO(info.getRestaurantId(), info.getName(), info.getCuisineType(), r.getScore());
+                    })
+                    .filter(r -> r != null)
+                    .toList();
+
+            cacheRecommendations(cacheKey, recommendations);
+            return recommendations;
+        }
+
+        private void cacheRecommendations(String key, List<RestaurantRecommendationDTO> recommendations) {
+            try {
+                redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(recommendations), Duration.ofMinutes(5));
+            } catch (Exception ignored) {
+            }
+        }
+
     // [CRUD]
     //// Get order by ID
     @Transactional(readOnly = true)
