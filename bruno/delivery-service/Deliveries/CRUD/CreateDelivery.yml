@@ -1,0 +1,41 @@
+info:
+  name: CreateDelivery
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
+  body:
+    type: json
+    data: |-
+      {
+        "orderId": 1,
+        "driverName": "Ahmed",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "status": "IN_TRANSIT",
+        "metadata": {
+          "estimatedArrival": 40,
+          "vehicleType": "bike",
+          "speed": 20
+        }
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("create delivery returns 200 and has id", function () {
+          expect(res.getStatus()).to.equal(201);
+          const body = res.getBody();
+          expect(body).to.have.property('id');
+          bru.setVar('lastDeliveryId', body.id);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

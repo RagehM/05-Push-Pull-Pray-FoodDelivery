@@ -1,0 +1,29 @@
+info:
+  name: GetAllDeliveries
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
+  params:
+    - name: status
+      value: PENDING
+      type: query
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("get all deliveries returns array", function () {
+          expect(res.getStatus()).to.equal(200);
+          const body = res.getBody();
+          expect(body).to.be.an('array');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

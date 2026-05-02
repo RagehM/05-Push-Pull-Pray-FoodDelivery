@@ -27,9 +27,9 @@ spring:
       port: 6379
       password: redispass
 
-    mongodb:
-      uri: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
-
+  mongodb:
+    uri: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
+    
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}

@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
-import com.team05.fooddelivery.user.config.JwtConfig;
+import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -13,10 +13,10 @@ import javax.crypto.SecretKey;
 @Service
 public class JwtService {
 
-    private final JwtConfig jwtConfig;
+    private final JwtConfigurationManager jwtConfig;
 
-    public JwtService(JwtConfig jwtConfig) {
-        this.jwtConfig = jwtConfig;
+    public JwtService() {
+    this.jwtConfig=JwtConfigurationManager.getInstance();
     }
 
     public String generateToken(User user) {
@@ -52,7 +52,7 @@ public class JwtService {
     }
 
     private SecretKey getSigningKey() {
-        byte[] bytes = Decoders.BASE64.decode(jwtConfig.getSecret());
+        byte[] bytes = Decoders.BASE64.decode(JwtConfigurationManager.getInstance().getSecret());
         return Keys.hmacShaKeyFor(bytes);
     }
 }
