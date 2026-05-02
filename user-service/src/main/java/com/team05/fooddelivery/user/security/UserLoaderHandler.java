@@ -5,6 +5,7 @@ import com.team05.fooddelivery.user.service.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
 public class UserLoaderHandler extends AuthHandler {
@@ -16,16 +17,18 @@ public class UserLoaderHandler extends AuthHandler {
         this.userDetailsService = userDetailsService;
     }
 
-
-    AuthContext handle(AuthContext ctx)
-    {
+    @Override
+    public AuthContext handle(AuthContext ctx) {
         String username = jwtService.extractUsername(ctx.token());
-        if(username != null)
-        {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails,ctx.requiredRole()));
+        if (username == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): missing subject claim");
         }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader)");
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails, ctx.requiredRole()));
+        } catch (UsernameNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): user not found");
+        }
     }
 
 }

@@ -6,11 +6,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 public class RoleAuthorizationHandler extends AuthHandler {
 
-
-    AuthContext handle(AuthContext ctx)
-    {
-        if(!ctx.user().getAuthorities().contains(ctx.requiredRole()))
-        {
+    @Override
+    public AuthContext handle(AuthContext ctx) {
+        if (ctx.requiredRole() == null) {
+            return ctx;
+        }
+        String requiredAuthority = "ROLE_" + ctx.requiredRole().name();
+        boolean hasRole = ctx.user().getAuthorities().stream()
+                .anyMatch(a -> requiredAuthority.equals(a.getAuthority()));
+        if (!hasRole) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden (RoleAuthorization)");
         }
         return ctx;

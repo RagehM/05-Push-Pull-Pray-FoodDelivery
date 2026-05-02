@@ -5,12 +5,13 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8081/api/users/1
-  auth: inherit
+  url: http://localhost:8081/api/users/12
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDEyMzRAbXNhaWwuY29tIiwidWlkIjoxMiwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3NzUwMzg4LCJleHAiOjE3Nzc4MzY3ODh9.Yg7WaHmnv0pcP19ENxBJkZ6RSSr4Iu-UCEGcDJrKWT8
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

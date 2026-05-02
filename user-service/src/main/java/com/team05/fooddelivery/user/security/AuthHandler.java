@@ -4,13 +4,15 @@ import com.team05.fooddelivery.user.dto.AuthContext;
 
 public abstract class AuthHandler {
     protected AuthHandler nextHandler;
-    AuthContext handle(AuthContext ctx)
-    {
-        return nextHandler.handle(ctx);
+
+    public AuthContext handle(AuthContext ctx) {
+        if (nextHandler != null) {
+            return nextHandler.handle(ctx);
+        }
+        return ctx;
     }
 
-    void setNext(AuthHandler next)
-    {
+    public void setNext(AuthHandler next) {
         this.nextHandler = next;
     }
 }
