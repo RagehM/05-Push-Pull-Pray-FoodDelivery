@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8081/api/users/1/addresses
+  url: http://localhost:8081/api/users/6/addresses
   body:
     type: json
     data: |-
@@ -16,11 +16,12 @@ http:
         "postalCode": "10115",
         "isDefault": false
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzcyMzE5NSwiZXhwIjoxNzc3ODA5NTk1fQ.wsZGOkPNZcEPUtogrBIQiGw5N8dF0l73jB5o_PJdcK0
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

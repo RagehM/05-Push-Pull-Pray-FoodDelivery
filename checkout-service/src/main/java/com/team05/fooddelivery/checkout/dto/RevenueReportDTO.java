@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.checkout.dto;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+@JsonDeserialize(builder = RevenueReportDTO.Builder.class)
 public class RevenueReportDTO {
 
     private Double totalRevenue;
@@ -26,6 +29,7 @@ public class RevenueReportDTO {
         return new Builder();
     }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Double totalRevenue;
         private Integer totalTransactions;
