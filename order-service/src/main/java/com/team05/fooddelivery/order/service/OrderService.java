@@ -9,7 +9,6 @@ import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
-import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
@@ -18,6 +17,7 @@ import org.springframework.stereotype.Service;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,14 +26,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import com.team05.fooddelivery.order.factory.EventFactory;
 
 @Service
 public class OrderService {
@@ -41,13 +38,12 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
-    private final EventFactory eventFactory = new EventFactory();
 
     public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.observers.add(
-            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER, eventFactory)
+            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
     }
 

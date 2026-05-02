@@ -5,7 +5,6 @@ import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
-import com.team05.fooddelivery.checkout.factory.PaymentAuditEventFactory;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
@@ -40,7 +39,6 @@ public class PaymentService {
     private final PaymentOfferRepository paymentOfferRepository;
     private final MongoPaymentAuditEventRepository paymentAuditEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
-    private final PaymentAuditEventFactory paymentAuditEventFactory = new PaymentAuditEventFactory();
 
     public PaymentService(PaymentRepository paymentRepository,  OfferRepository offerRepository,  PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository) {
         this.paymentRepository =  paymentRepository;
@@ -48,7 +46,7 @@ public class PaymentService {
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT, paymentAuditEventFactory)
+                new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT)
         );
     }
 

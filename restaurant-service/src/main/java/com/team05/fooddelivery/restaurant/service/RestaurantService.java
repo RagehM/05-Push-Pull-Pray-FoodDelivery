@@ -6,14 +6,13 @@ import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
-import com.team05.fooddelivery.restaurant.factory.EventFactory;
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.mongo.MongoRestaurantEventRepository;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,7 +35,6 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
-    private final EventFactory eventFactory = new EventFactory();
     private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
@@ -50,7 +48,7 @@ public class RestaurantService {
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
-                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory));
+                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
 
     // CRUD create — no cache eviction (spec Section 4.4.4)

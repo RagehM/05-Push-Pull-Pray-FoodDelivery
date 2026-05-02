@@ -5,8 +5,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Repository;
 
+import com.team05.shared.model.mongo.OrderEvent;
 import com.team05.shared.repository.mongo.MongoEventRepository;
-import com.team05.fooddelivery.order.model.mongo.OrderEvent;
 
 @Repository
 public interface MongoOrderEventRepository extends MongoEventRepository<OrderEvent, String> {

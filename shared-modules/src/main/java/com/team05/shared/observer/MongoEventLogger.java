@@ -2,7 +2,7 @@ package com.team05.shared.observer;
 
 import java.util.Map;
 
-import com.team05.shared.factory.EventFactoryBase;
+import com.team05.shared.factory.EventFactory;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.repository.mongo.MongoEventRepository;
@@ -17,12 +17,10 @@ public class MongoEventLogger<T extends MongoEvent> implements EntityObserver {
 
     private final MongoEventRepository<T, String> loggerRepository;
     private final EventType loggerEventType;
-    private final EventFactoryBase eventFactory;
 
-    public MongoEventLogger(MongoEventRepository<T, String> loggerRepo, EventType eventType, EventFactoryBase eventFactory) {
+    public MongoEventLogger(MongoEventRepository<T, String> loggerRepo, EventType eventType) {
         this.loggerRepository = loggerRepo;
         this.loggerEventType = eventType;
-        this.eventFactory = eventFactory;
     }
 
     @Override
@@ -30,7 +28,7 @@ public class MongoEventLogger<T extends MongoEvent> implements EntityObserver {
         try {
             ((Map<String, Object>) payload).put("action", eventType);
             @SuppressWarnings("unchecked") // Flags this typecast as unsafe with warning if suppressed is not used
-            T event = (T) eventFactory.createEvent(this.loggerEventType, (Map<String, Object>) payload);
+            T event = (T) EventFactory.createEvent(this.loggerEventType, (Map<String, Object>) payload);
             
             // save to mongo
             this.loggerRepository.save(event);

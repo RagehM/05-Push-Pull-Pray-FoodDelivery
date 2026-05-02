@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.checkout.enums;
+package com.team05.shared.enums;
 
 public enum PaymentAction {
     CREATED,

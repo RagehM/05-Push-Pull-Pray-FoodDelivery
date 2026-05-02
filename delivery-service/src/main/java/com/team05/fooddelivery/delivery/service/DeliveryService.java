@@ -25,7 +25,6 @@ import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
-import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
 import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
@@ -45,7 +44,7 @@ public class DeliveryService {
         this.deliveryRepository = deliveryRepository;
         this.deliveryTrackingEventRepository = deliveryTrackingEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY, new DeliveryEventFactory())
+                new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY)
         );
     }
 

@@ -4,7 +4,6 @@ import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
-import com.team05.fooddelivery.user.factory.AuthEventFactory;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
@@ -40,7 +39,6 @@ public class UserService {
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
-    private final AuthEventFactory authEventFactory = new AuthEventFactory();
 
     @Autowired
     public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository,AuthEventRepository authEventRepository) {
@@ -48,7 +46,7 @@ public class UserService {
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
+                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
     }
 
