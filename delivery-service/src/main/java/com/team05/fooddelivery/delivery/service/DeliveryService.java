@@ -5,8 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.Optional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -15,8 +13,16 @@ import java.util.stream.Collectors;
 
 import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
 import com.team05.fooddelivery.delivery.dto.*;
+import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
+import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
+import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
+import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
+import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
+import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -24,15 +30,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
-import com.team05.fooddelivery.delivery.model.Delivery;
-import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
-import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
-import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
-import com.team05.shared.model.mongo.MongoEvent;
-import com.team05.shared.observer.EntityObserver;
-import com.team05.shared.observer.MongoEventLogger;
 
 @Service
 @Transactional
@@ -44,7 +41,8 @@ public class DeliveryService {
     private final List<EntityObserver> observers = new ArrayList<>();
 
     public DeliveryService(DeliveryRepository deliveryRepository,
-                           DeliveryTrackingEventRepository trackingEventRepository) {
+                           DeliveryTrackingEventRepository trackingEventRepository,
+                           DeliveryEventRepository eventRepository) {
         this.deliveryRepository = deliveryRepository;
         this.trackingEventRepository = trackingEventRepository;
         this.observers.add(
@@ -137,6 +135,62 @@ public class DeliveryService {
         notifyObservers("DELIVERY_CREATED", eventPayload);
 
         return saved;
+    }
+
+    /**
+     * [S4-F11] Record Delivery Status Event
+     * Endpoint: POST /api/deliveries/{id}/tracking
+     */
+    public void recordDeliveryTracking(Long deliveryId, DeliveryTrackingRequestDTO request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "request body is required");
+        }
+        if (request.status() == null || request.status().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status is required");
+        }
+        if (request.latitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude is required");
+        }
+        if (request.longitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "longitude is required");
+        }
+
+        DeliveryStatus status;
+        try {
+            status = DeliveryStatus.valueOf(request.status().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status");
+        }
+
+        Delivery delivery = getDeliveryById(deliveryId);
+
+        DeliveryTrackingEvent trackingEvent = new DeliveryTrackingEvent(
+                deliveryId,
+                Instant.now(),
+                status.name(),
+                delivery.getDriverName(),
+                request.latitude(),
+                request.longitude(),
+                request.notes()
+        );
+        trackingEventRepository.save(trackingEvent);
+
+        Map<String, Object> eventDetails = new HashMap<>();
+        eventDetails.put("status", status.name());
+        eventDetails.put("deliveryId", deliveryId);
+        eventDetails.put("driverName", delivery.getDriverName());
+        eventDetails.put("coordinates", Map.of("latitude", request.latitude(), "longitude", request.longitude()));
+        if (request.notes() != null && !request.notes().isBlank()) {
+            eventDetails.put("notes", request.notes());
+        }
+
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("deliveryId", deliveryId);
+        eventPayload.put("action", "TRACKING_RECORDED");
+        eventPayload.put("details", eventDetails);
+
+        // Mongo logging is observational and must not block the Cassandra write path.
+        notifyObservers("TRACKING_RECORDED", eventPayload);
     }
 
     /**

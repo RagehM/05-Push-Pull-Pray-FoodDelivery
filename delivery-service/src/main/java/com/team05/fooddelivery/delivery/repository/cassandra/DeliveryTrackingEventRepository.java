@@ -28,6 +28,10 @@ public interface DeliveryTrackingEventRepository extends CassandraRepository<Del
     // status is a non-key column → requires ALLOW FILTERING
     @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND status = ?1 ALLOW FILTERING")
     List<DeliveryTrackingEvent> findByKeyDeliveryIdAndStatus(Long deliveryId, String status);
+
+    long countByKeyDeliveryId(Long deliveryId);
+
+    List<DeliveryTrackingEvent> findByKeyDeliveryIdOrderByKeyTimestampDesc(Long deliveryId);
 }
 
 
