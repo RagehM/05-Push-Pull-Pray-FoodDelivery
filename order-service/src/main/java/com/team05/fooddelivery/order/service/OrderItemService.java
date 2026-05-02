@@ -2,6 +2,7 @@ package com.team05.fooddelivery.order.service;
 
 import java.util.List;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +27,7 @@ public class OrderItemService {
     public OrderItem getOrderItemById_Logical(Long orderItemId) {
         return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
-
+    @Cacheable(value = "order-service::orderItem", key = "#orderItemId") // orderID is not being used in cache key since it is not being used in the query.
     public OrderItem getOrderItemById(Long orderId, Long orderItemId) {
         return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
@@ -37,6 +38,7 @@ public class OrderItemService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::orderItemsByOrderId", key = "#orderId")
     public List<OrderItem> getOrderItemsByOrderId(Long orderId) {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
         if (orderItems == null || orderItems.isEmpty()) {

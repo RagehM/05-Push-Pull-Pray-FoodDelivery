@@ -13,6 +13,7 @@ import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.team05.shared.observer.EntityObserver;
@@ -52,6 +53,7 @@ public class OrderService {
     }
 
     // [S3-F1] Search Orders by Status and Date Range
+    @Cacheable(value = "order-service::S3-F1", key = "{#status, #startDate.toString(), #endDate.toString()}")
     public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
@@ -108,6 +110,7 @@ public class OrderService {
     }
     // [S3-F3] Order Cost Estimation (Report DTO)
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F3", key = "{#request.restaurantId(), #request.itemCount(), #request.deliveryDistance()}")
     public OrderCostEstimateDTO estimateOrderCost(OrderEstimateRequest request) {
         if(request == null || request.restaurantId() == null || request.itemCount() == null || request.deliveryDistance() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order estimate request");
@@ -180,6 +183,7 @@ public class OrderService {
     }
     // [S3-F5] Filter Orders by Metadata
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F5", key = "{#key, #value}")
     public List<Order> searchOrdersByMetadata(String key, String value) {
         if (key == null || key.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Metadata key must not be empty");
@@ -192,6 +196,7 @@ public class OrderService {
         return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
     }
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
+    @Cacheable(value = "order-service::S3-F6", key = "{#startDate.toString(), #endDate.toString()}")
     public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
         return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
     }
@@ -273,6 +278,7 @@ public class OrderService {
     }
     // [S3-F9] Get Order Details with items (Report DTO)
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F9", key = "#orderId")
     public OrderDetailsDTO getOrderDetails(Long orderId) {
         Order order = orderRepository.findByIdWithItems(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -317,6 +323,7 @@ public class OrderService {
     // [CRUD]
     //// Get order by ID
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::order", key = "#orderId")
     public Order getOrderById(Long orderId) {
         return orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
     }
