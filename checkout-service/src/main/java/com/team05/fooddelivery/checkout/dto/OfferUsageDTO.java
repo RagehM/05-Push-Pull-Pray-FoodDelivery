@@ -1,7 +1,10 @@
 package com.team05.fooddelivery.checkout.dto;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 
+@JsonDeserialize(builder = OfferUsageDTO.Builder.class)
 public class OfferUsageDTO {
 
     private Long offerId;
@@ -37,6 +40,7 @@ public class OfferUsageDTO {
         return new Builder();
     }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Long offerId;
         private String code;

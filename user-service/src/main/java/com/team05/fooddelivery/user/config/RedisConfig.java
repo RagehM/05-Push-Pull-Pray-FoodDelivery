@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.checkout.config;
+package com.team05.fooddelivery.user.config;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -37,17 +37,14 @@ public class RedisConfig {
 
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
-        cacheConfigs.put("checkout-service::payment", defaultConfig.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigs.put("checkout-service::offer", defaultConfig.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigs.put("checkout-service::payment-offer", defaultConfig.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigs.put("user-service::user", defaultConfig.entryTtl(Duration.ofMinutes(15)));
 
-        cacheConfigs.put("checkout-service::S5-F1", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigs.put("checkout-service::S5-F3", defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigs.put("checkout-service::S5-F6", defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigs.put("checkout-service::S5-F8", defaultConfig.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigs.put("checkout-service::S5-F9",  defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigs.put("checkout-service::S5-F10", defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigs.put("checkout-service::S5-F11", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("user-service::S1-F1", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigs.put("user-service::S1-F3", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("user-service::S1-F5", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigs.put("user-service::S1-F6", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("user-service::S1-F8", defaultConfig.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigs.put("user-service::S1-F9", defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)

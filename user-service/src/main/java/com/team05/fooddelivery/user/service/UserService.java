@@ -15,6 +15,10 @@ import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,12 +58,21 @@ public class UserService {
         }
     }
 
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
 
     public List<User> findAll()
     {
         return userRepository.findAll();
     }
 
+@Cacheable(value = "user-service::user", key = "#id")
     public User findUserById(long id)
     {
         return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -95,6 +108,18 @@ public class UserService {
         return saved;
     }
 
+    @Caching(
+            put = {
+                    @CachePut(value = "user-service::user", key = "#id"),
+            },
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+
+            }
+    )
     public User updateUser(User user, Long id)
     {
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -120,7 +145,15 @@ public class UserService {
         notifyObservers("USER_UPDATED", authEvent);
         return updatedSaved;
     }
-
+@Caching(evict = {
+    @CacheEvict(value = "user-service::user", key = "#id"),
+    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+    @CacheEvict(value = "user-service::S1-F3", allEntries = true),
+    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+    @CacheEvict(value = "user-service::S1-F6", allEntries = true),
+    @CacheEvict(value = "user-service::S1-F8", key = "#id"),
+    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+    })
     public void deleteUser(Long id)
     {
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -131,7 +164,7 @@ public class UserService {
         authEvent.put("action", "USER_DELETED");
         notifyObservers("USER_DELETED", authEvent);
     }
-
+@Cacheable(value = "user-service::S1-F1", key = "#name + '-' + #email + '-' + #role")
     public List<User> searchUsers(String name, String email, String role)
     {
         if(name!=null && name.isEmpty())name = null;
@@ -146,7 +179,20 @@ public class UserService {
     }
 
 
+
     //Service responsible for feature 1.2
+    @Caching(
+            put = {
+                    @CachePut(value = "user-service::user", key = "#id")
+            },
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+
+            }
+    )
     public User updateUserPreferences(Map<String,Object> preferences, Long id){
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         Map<String,Object> currentUserPreferences = updatedUser.getPreferences();
@@ -163,7 +209,18 @@ public class UserService {
     }
   
     @Transactional
-    public ResponseStatusException deactivateUserAccount(Long id){
+    @Caching(
+            put = {
+                    @CachePut(value = "user-service::user", key = "#id"),
+            },
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+
+            }
+    )    public ResponseStatusException deactivateUserAccount(Long id){
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object> activeOrders=userRepository.findOrdersByUserId(id);
         if(activeOrders.size()>0){
@@ -181,7 +238,7 @@ public class UserService {
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
 
-
+@Cacheable(value = "user-service::S1-F6", key = "#startDate + '-' + #endDate + '-' + #limit")
     public List<TopCustomerDTO> topCustomersBySpending(LocalDate startDate, LocalDate endDate, Integer limit)
     {
         if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
@@ -189,17 +246,20 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
         }
         List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
-        List<TopCustomerDTO> topCustomerDTOs = new ArrayList<TopCustomerDTO>();
-        result.forEach(object -> {
-            Long userID = (Long) object[0];
-            String userName = (String) object[1];
-            Double totalSpent = (Double) object[2];
-            Integer orderCount = Math.toIntExact((Long) object[3]);
-            topCustomerDTOs.add(new TopCustomerDTO(userID,userName, totalSpent, orderCount ));
-        });
-        return topCustomerDTOs;
+        return result.stream().map(row -> {
+            Long userID = ((Number) row[0]).longValue();
+            String userName = (String) row[1];
+            Double totalSpent =  ((Number) row[2]).doubleValue();
+            Integer orderCount = ((Number) row[3]).intValue();
+            return TopCustomerDTO.builder()
+                    .userId(userID)
+                    .name(userName)
+                    .totalSpent(totalSpent)
+                    .orderCount(orderCount)
+                    .build();
+        }).toList();
     }
-
+@Cacheable(value = "user-service::S1-F5", key = "#key + '-' + #value")
     public List<User> filterUsersByPreferences(String key, String value)
     {
         if(key == null || key.isEmpty() || value == null || value.isEmpty()
@@ -210,8 +270,8 @@ public class UserService {
         }
         return userRepository.findUserByPreferencesContaining(key,value);
     }
-
-    public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
+@Cacheable(value = "user-service::S1-F3", key = "#userId")
+public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object[]> orders = userRepository.findTotalOrders(userId);
         List<Object[]> deliveredOrders = userRepository.findDeliveredOrders(userId);
@@ -230,35 +290,44 @@ public class UserService {
 
 
 
-        return new UserOrderSummaryDTO(
-                user.getId(),
-                user.getName(),
-                orders.size(),
-                deliveredOrders.size(),
-                cancelledOrders.size(),
-                totalSpent,
-                averageOrderAmount
-        );
+        return UserOrderSummaryDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .totalOrders(orders.size())
+                .deliveredOrders(deliveredOrders.size())
+                .cancelledOrders(cancelledOrders.size())
+                .totalSpent(totalSpent)
+                .averageOrderAmount(averageOrderAmount)
+                .build();
     }
 
-
-    public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders)
-    {
-        if(diet == null || diet.isEmpty())
-        {
+    @Cacheable(value = "user-service::S1-F9", key = "#diet + '-' + #minimumOrders")
+    public List<User> findUsersByPreferencesAndMinimumOrders(String diet, Integer minimumOrders) {
+        if (diet == null || diet.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Diet cannot be null or empty");
         }
-        if(minimumOrders == null || minimumOrders < 0)
-        {
+        if (minimumOrders == null || minimumOrders < 0) {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Minimum orders cannot be null or less than 0");
         }
-        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet,minimumOrders);
+        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet, minimumOrders);
         List<User> users = new ArrayList<>();
 
         result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
         return users;
     }
     @Transactional
+    @Caching(
+            put = {
+                    @CachePut(value = "user-service::user", key = "#userId"),
+            },
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#userId")
+
+            }
+    )
     public User setDefaultDeliveryAddress(long userId, long addressId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         DeliveryAddress address = deliveryAddressRepository.findById(addressId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
@@ -286,6 +355,7 @@ public class UserService {
         User user=userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return user.getDeliveryAddresses();
     }
+    @Cacheable(value = "user-service::S1-F8", key = "#id")
     public UserProfileDTO getUserProfile(Long id) {
         User user = userRepository.findByIdWithDeliveryAddresses(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -304,13 +374,42 @@ public class UserService {
                         addr.getMetadata(),
                         addr.getCreatedAt())).collect(Collectors.toList());
 
-        return new UserProfileDTO(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getPreferences(),
-                addressDtos,
-                addressDtos.size());
+
+        return UserProfileDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .preferences(user.getPreferences())
+                .deliveryAddresses(addressDtos)
+                .totalAddresses(addressDtos.size())
+                .build();
+    }
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::user", key = "#id"),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+            }
+    )
+    public User updateUserRole(long id, UserRole role) {
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        UserRole oldRole=user.getUserRole();
+        user.setRole(role);
+        User updatedUser = userRepository.save(user);
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "ROLE_CHANGED");
+        Map<String, Object> details = new HashMap<>();
+        details.put("old Role", oldRole);
+        details.put("new Role", role);
+        authEvent.put("details", details);
+        notifyObservers("ROLE_CHANGED", authEvent);
+
+        return updatedUser;
+
     }
 }
