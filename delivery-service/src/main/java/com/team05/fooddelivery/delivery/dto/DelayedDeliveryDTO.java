@@ -1,7 +1,9 @@
 package com.team05.fooddelivery.delivery.dto;
-
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.time.LocalDateTime;
 
+@JsonDeserialize(builder = DelayedDeliveryDTO.Builder.class)
 public class DelayedDeliveryDTO {
 
     private Long deliveryId;
@@ -64,6 +66,7 @@ public class DelayedDeliveryDTO {
         return new Builder();
     }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
         private Long deliveryId;
