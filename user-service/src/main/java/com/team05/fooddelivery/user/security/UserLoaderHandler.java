@@ -17,30 +17,18 @@ public class UserLoaderHandler extends AuthHandler {
         this.userDetailsService = userDetailsService;
     }
 
-
-    AuthContext handle(AuthContext ctx)
-    {
+    @Override
+    public AuthContext handle(AuthContext ctx) {
         String username = jwtService.extractUsername(ctx.token());
-        try
-        {
-            if(username != null)
-            {
-                System.out.println("Username EXTRACTED: " + username);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                System.out.println("USER RETRIEVED : " + userDetails.getUsername());
-                return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails,ctx.requiredRole()));
-            }
+        if (username == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): missing subject claim");
         }
-        catch (UsernameNotFoundException e)
-        {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader)");
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails, ctx.requiredRole()));
+        } catch (UsernameNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): user not found");
         }
-        catch(Exception e)
-        {
-            throw e;
-        }
-
-        return ctx;
     }
 
 }

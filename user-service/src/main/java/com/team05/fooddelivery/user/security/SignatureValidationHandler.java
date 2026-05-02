@@ -13,25 +13,16 @@ public class SignatureValidationHandler extends AuthHandler {
     }
 
 
-    AuthContext handle(AuthContext ctx)
-    {
-            if(!jwtService.isTokenValid(ctx.token()))
-            {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (SignatureValidation)");
-            }
-            else
-            {
-                try
-                {
-                    System.out.println("Signature validation handled");
-                    return nextHandler.handle(ctx);
-                }
-                catch (Exception e)
-                {
-                    throw e;
-                }
-            }
-
+    @Override
+    public AuthContext handle(AuthContext ctx)    {
+        if(!jwtService.isTokenValid(ctx.token()))
+        {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (SignatureValidation)");
+        }
+        else
+        {
+            return nextHandler.handle(ctx);
+        }
     }
 
 }
