@@ -35,12 +35,12 @@ runtime:
           expect(deliveryId).to.not.equal("").and.not.equal("undefined");
         });
 
-        // ─── Scenario (a): PICKED_UP → 201 ───────────────────────────────────────────
-        test("[S4-F11a] PICKED_UP tracking event returns 201", function () {
+        // ─── TC118 (HTTP layer) — Scenario (a): PICKED_UP → 201 ──────────────────────
+        test("[S4-F11 TC118a] PICKED_UP tracking event returns 201", function () {
           expect(res.getStatus()).to.equal(201);
         });
 
-        test("[S4-F11a] Response body is empty or void on 201", function () {
+        test("[S4-F11 TC118a] Response body is empty or void on 201", function () {
           const body = res.getBody();
           const isEmpty =
             body === null ||
@@ -50,7 +50,7 @@ runtime:
           expect(isEmpty).to.equal(true);
         });
 
-        // ─── Scenario (b): IN_TRANSIT → 201 ──────────────────────────────────────────
+        // ─── TC118 (HTTP layer) — Scenario (b): IN_TRANSIT → 201 ─────────────────────
         let inTransitStatus;
         try {
           const inTransitRes = await axios.post(
@@ -75,11 +75,11 @@ runtime:
           inTransitStatus = null;
         }
 
-        test("[S4-F11b] IN_TRANSIT tracking event returns 201", function () {
+        test("[S4-F11 TC118b] IN_TRANSIT tracking event returns 201", function () {
           expect(inTransitStatus).to.equal(201);
         });
 
-        // ─── Scenario (c): unknown delivery ID ───────────────────────────────────────
+        // ─── TC125: non-existent delivery ID → 404 ───────────────────────────────────
         let notFoundStatus;
         try {
           const notFoundRes = await axios.post(
@@ -87,28 +87,27 @@ runtime:
             { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
             {
               headers: { "Authorization": `Bearer ${token}` },
-              validateStatus: (status) => status < 500 // Only throw on server errors
+              validateStatus: () => true,
             }
           );
           notFoundStatus = notFoundRes.status;
         } catch (e) {
-          // If Axios throws, the status is hidden inside e.response
           notFoundStatus = e.response ? e.response.status : null;
         }
 
-        test("[S4-F11c] Non-existent delivery ID returns 404", function () {
+        test("[S4-F11 TC125] Non-existent delivery ID returns strictly 404", function () {
           expect(notFoundStatus).to.equal(404);
         });
 
-        // ─── Scenario (d): missing token ───────────────────────────────────────
+        // ─── TC126: missing JWT → 401 ─────────────────────────────────────────────────
         let unauthStatus;
         try {
           const unauthRes = await axios.post(
             `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
             { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
             {
-              headers: { "Content-Type": "application/json" }, // No token
-              validateStatus: (status) => status < 500
+              headers: { "Content-Type": "application/json" },
+              validateStatus: () => true,
             }
           );
           unauthStatus = unauthRes.status;
@@ -116,8 +115,31 @@ runtime:
           unauthStatus = e.response ? e.response.status : null;
         }
 
-        test("[S4-F11d] Missing JWT returns 401", function () {
+        test("[S4-F11 TC126] Missing JWT returns strictly 401", function () {
           expect(unauthStatus).to.equal(401);
+        });
+
+        // ─── TC127: malformed JWT → 401 ──────────────────────────────────────────────
+        let malformedJwtStatus;
+        try {
+          const malformedRes = await axios.post(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            { status: "PICKED_UP", latitude: 30.0444, longitude: 31.2357 },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer xxx.yyy.zzz",
+              },
+              validateStatus: () => true,
+            }
+          );
+          malformedJwtStatus = malformedRes.status;
+        } catch (e) {
+          malformedJwtStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F11 TC127] Malformed JWT returns strictly 401", function () {
+          expect(malformedJwtStatus).to.equal(401);
         });
 
 settings:

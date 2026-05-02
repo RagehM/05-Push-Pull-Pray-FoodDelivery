@@ -176,6 +176,7 @@ public class DeliveryService {
 
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("status", status.name());
+        eventDetails.put("deliveryId", deliveryId);
         eventDetails.put("driverName", delivery.getDriverName());
         eventDetails.put("coordinates", Map.of("latitude", request.latitude(), "longitude", request.longitude()));
         if (request.notes() != null && !request.notes().isBlank()) {
