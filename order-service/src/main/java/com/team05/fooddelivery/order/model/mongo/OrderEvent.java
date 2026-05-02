@@ -30,6 +30,12 @@ public class OrderEvent implements MongoEvent{
     }
 
     public OrderEvent(Long orderId, String action, Map<String, Object> details) {
+        if (orderId == null) {
+            throw new IllegalArgumentException("orderId cannot be null");
+        }
+        if (action == null) {
+            throw new IllegalArgumentException("action cannot be null");
+        }
         this.orderId = orderId;
         this.action = action;
         this.timestamp = LocalDateTime.now();

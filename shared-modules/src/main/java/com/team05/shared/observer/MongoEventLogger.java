@@ -28,6 +28,7 @@ public class MongoEventLogger<T extends MongoEvent> implements EntityObserver {
     @Override
     public void onEvent(String eventType, Object payload) {
         try {
+            ((Map<String, Object>) payload).put("action", eventType);
             @SuppressWarnings("unchecked") // Flags this typecast as unsafe with warning if suppressed is not used
             T event = (T) eventFactory.createEvent(this.loggerEventType, (Map<String, Object>) payload);
             
