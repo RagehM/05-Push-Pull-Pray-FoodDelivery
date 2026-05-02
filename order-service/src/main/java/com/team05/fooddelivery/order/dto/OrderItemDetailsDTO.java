@@ -12,19 +12,14 @@ public class OrderItemDetailsDTO {
     private OrderItemStatusEnum status;
     private Map<String, Object> metadata;
 
-    public OrderItemDetailsDTO() {
-    }
-
-    public OrderItemDetailsDTO(Long id, Integer lineNumber, String itemName,
-                               Integer quantity, Double unitPrice,
-                               OrderItemStatusEnum status, Map<String, Object> metadata) {
-        this.id = id;
-        this.lineNumber = lineNumber;
-        this.itemName = itemName;
-        this.quantity = quantity;
-        this.unitPrice = unitPrice;
-        this.status = status;
-        this.metadata = metadata;
+    private OrderItemDetailsDTO(Builder builder) {
+        this.id = builder.id;
+        this.lineNumber = builder.lineNumber;
+        this.itemName = builder.itemName;
+        this.quantity = builder.quantity;
+        this.unitPrice = builder.unitPrice;
+        this.status = builder.status;
+        this.metadata = builder.metadata;
     }
 
     public Long getId() {
@@ -132,15 +127,7 @@ public class OrderItemDetailsDTO {
         }
 
         public OrderItemDetailsDTO build() {
-            return new OrderItemDetailsDTO(
-                    id,
-                    lineNumber,
-                    itemName,
-                    quantity,
-                    unitPrice,
-                    status,
-                    metadata
-            );
+            return new OrderItemDetailsDTO(this);
         }
     }
 }
