@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.order.service;
 
 import com.team05.fooddelivery.order.adapter.ObjectArrayToOrderAnalyticsDashboardDTOAdapter;
+import com.team05.fooddelivery.order.adapter.orderArrayToOrderAnalyticsDTOAdapter;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDashboardDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
@@ -11,7 +12,6 @@ import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
-import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -198,7 +197,11 @@ public class OrderService {
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before endDate");
         }
-        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate)[0];
+        
+        OrderAnalyticsDTO analyticsObject = orderArrayToOrderAnalyticsDTOAdapter.adapt(analyticsData);
+
+        return analyticsObject;
     }
     // [S3-F7] Cancel Order
     @Transactional
