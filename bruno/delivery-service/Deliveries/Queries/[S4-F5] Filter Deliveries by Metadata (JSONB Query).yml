@@ -1,11 +1,11 @@
 info:
-  name: SearchDeliveriesByMetadata
+  name: "[S4-F5] Filter Deliveries by Metadata (JSONB Query)"
   type: http
-  seq: 9
+  seq: 4
 
 http:
   method: GET
-  url: http://localhost:8084/api/deliveries/metadata/search?key=zone&operator=eq&value=north
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/metadata/search?key=zone&operator=eq&value=north"
   params:
     - name: key
       value: zone
@@ -16,11 +16,9 @@ http:
     - name: value
       value: north
       type: query
-  auth: inherit
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

@@ -1,7 +1,7 @@
 package com.team05.fooddelivery.delivery.adapter;
 
 import com.team05.fooddelivery.delivery.dto.DeliveryTrackingDTO;
-import com.team05.fooddelivery.delivery.model.DeliveryTrackingEvent;
+import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 
 public class CassandraRowAdapter {
 

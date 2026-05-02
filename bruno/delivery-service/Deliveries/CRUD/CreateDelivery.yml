@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8084/api/deliveries
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
   body:
     type: json
     data: |-
@@ -14,16 +14,25 @@ http:
         "driverName": "Ahmed",
         "latitude": 30.0444,
         "longitude": 31.2357,
-        "status": "ASSIGNED",
+        "status": "IN_TRANSIT",
         "metadata": {
           "estimatedArrival": 40,
           "vehicleType": "bike",
           "speed": 20
         }
       }
-  auth:
-    type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY0MTAyNCwiZXhwIjoxNzc3NzI3NDI0fQ.Idvdm_63MxYSzXoEnPrVXQivdinILgen4xIIITtgu4Q
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("create delivery returns 200 and has id", function () {
+          expect(res.getStatus()).to.equal(201);
+          const body = res.getBody();
+          expect(body).to.have.property('id');
+          bru.setVar('lastDeliveryId', body.id);
+        });
 
 settings:
   encodeUrl: true
