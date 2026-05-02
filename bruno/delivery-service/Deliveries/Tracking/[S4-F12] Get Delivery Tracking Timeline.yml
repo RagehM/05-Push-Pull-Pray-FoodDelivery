@@ -1,0 +1,192 @@
+info:
+  name: "[S4-F12] Get Delivery Tracking Timeline"
+  type: http
+  seq: 12
+
+http:
+  method: GET
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/{{Last_Delivery_Id}}/tracking"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        const axios = require('axios');
+
+        const baseUrl    = bru.getEnvVar("DELIVERY_SERVICE_URL");
+        const token      = bru.getEnvVar("AUTH_TOKEN");
+        const deliveryId = bru.getEnvVar("Last_Delivery_Id");
+
+        // ─── Prerequisites guard ──────────────────────────────────────────────────────
+        test("[S4-F12] Prerequisites: env vars must be configured", function () {
+          expect(baseUrl,    "DELIVERY_SERVICE_URL is not set").to.exist;
+          expect(token,      "AUTH_TOKEN is not set").to.exist;
+          expect(deliveryId, "Last_Delivery_Id is not set — run CreateDelivery first").to.exist;
+          expect(deliveryId).to.not.equal("").and.not.equal("undefined");
+        });
+
+        // ─── TC128: Happy path — events returned, ordered DESC ───────────────────────
+        test("[S4-F12 TC128] Happy path returns 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("[S4-F12 TC128] Response body is an array", function () {
+          const body = res.getBody();
+          expect(Array.isArray(body)).to.equal(true);
+        });
+
+        test("[S4-F12 TC128] Events are ordered newest first (DESC timestamps)", function () {
+          const body = res.getBody();
+          if (body.length >= 2) {
+            const t0 = new Date(body[0].timestamp).getTime();
+            const t1 = new Date(body[1].timestamp).getTime();
+            expect(t0).to.be.greaterThanOrEqual(t1);
+          }
+        });
+
+        // ─── TC129: Time range filter — past range returns 0 events ──────────────────
+        let timeRangeStatus, timeRangeBody;
+        try {
+          const timeRangeRes = await axios.get(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking?startTime=2020-01-01T00:00:00Z&endTime=2020-01-02T00:00:00Z`,
+            {
+              headers: { "Authorization": `Bearer ${token}` },
+              validateStatus: () => true,
+            }
+          );
+          timeRangeStatus = timeRangeRes.status;
+          timeRangeBody   = timeRangeRes.data;
+        } catch (e) {
+          timeRangeStatus = null;
+        }
+
+        test("[S4-F12 TC129] Time range filter returns 200", function () {
+          expect(timeRangeStatus).to.equal(200);
+        });
+
+        test("[S4-F12 TC129] Time range filter applied — past range returns empty list", function () {
+          expect(Array.isArray(timeRangeBody)).to.equal(true);
+          expect(timeRangeBody.length).to.equal(0);
+        });
+
+        // ─── TC130: Empty timeline — delivery with no events returns 200 [] ──────────
+        let emptyStatus, emptyBody;
+        try {
+          // Create a brand-new delivery to guarantee no tracking events exist for it
+          const createRes = await axios.post(
+            `${baseUrl}/api/deliveries`,
+            { driverName: "F12-test-driver", latitude: 30.0, longitude: 31.0, orderId: 1 },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+              },
+              validateStatus: () => true,
+            }
+          );
+          const freshId = createRes.data && createRes.data.id;
+
+          if (freshId) {
+            const emptyRes = await axios.get(
+              `${baseUrl}/api/deliveries/${freshId}/tracking`,
+              {
+                headers: { "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+            emptyStatus = emptyRes.status;
+            emptyBody   = emptyRes.data;
+          }
+        } catch (e) {
+          emptyStatus = null;
+        }
+
+        test("[S4-F12 TC130] Empty timeline returns strictly 200 (not 404)", function () {
+          expect(emptyStatus).to.equal(200);
+        });
+
+        test("[S4-F12 TC130] Empty timeline returns empty list", function () {
+          expect(Array.isArray(emptyBody)).to.equal(true);
+          expect(emptyBody.length).to.equal(0);
+        });
+
+        // ─── TC131: Non-existent delivery → 404 ──────────────────────────────────────
+        let notFoundStatus;
+        try {
+          const notFoundRes = await axios.get(
+            `${baseUrl}/api/deliveries/999999/tracking`,
+            {
+              headers: { "Authorization": `Bearer ${token}` },
+              validateStatus: () => true,
+            }
+          );
+          notFoundStatus = notFoundRes.status;
+        } catch (e) {
+          notFoundStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F12 TC131] Non-existent delivery returns strictly 404", function () {
+          expect(notFoundStatus).to.equal(404);
+        });
+
+        // ─── TC132: Missing JWT → 401 ─────────────────────────────────────────────────
+        let unauthStatus;
+        try {
+          const unauthRes = await axios.get(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            { validateStatus: () => true }
+          );
+          unauthStatus = unauthRes.status;
+        } catch (e) {
+          unauthStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F12 TC132] Missing JWT returns strictly 401", function () {
+          expect(unauthStatus).to.equal(401);
+        });
+
+        // ─── TC133: Malformed JWT → 401 ──────────────────────────────────────────────
+        let malformedStatus;
+        try {
+          const malformedRes = await axios.get(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            {
+              headers: { "Authorization": "Bearer xxx.yyy.zzz" },
+              validateStatus: () => true,
+            }
+          );
+          malformedStatus = malformedRes.status;
+        } catch (e) {
+          malformedStatus = e.response ? e.response.status : null;
+        }
+
+        test("[S4-F12 TC133] Malformed JWT returns strictly 401", function () {
+          expect(malformedStatus).to.equal(401);
+        });
+
+        // ─── TC135: Cache hit — second identical call returns same body ───────────────
+        let cacheHitBody;
+        try {
+          const cacheRes = await axios.get(
+            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            {
+              headers: { "Authorization": `Bearer ${token}` },
+              validateStatus: () => true,
+            }
+          );
+          cacheHitBody = JSON.stringify(cacheRes.data);
+        } catch (e) {
+          cacheHitBody = null;
+        }
+
+        test("[S4-F12 TC135] Second call returns same body as first (cache hit)", function () {
+          const firstBody = JSON.stringify(res.getBody());
+          expect(cacheHitBody).to.equal(firstBody);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
