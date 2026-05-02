@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.delivery.dto;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
+@JsonDeserialize(builder = NearbyDeliveryDTO.Builder.class)
 public class NearbyDeliveryDTO {
 
     private Long deliveryId;
@@ -56,6 +59,7 @@ public class NearbyDeliveryDTO {
         return new Builder();
     }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
         private Long deliveryId;

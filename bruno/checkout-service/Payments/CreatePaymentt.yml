@@ -1,23 +1,22 @@
 info:
-  name: CreateUser
+  name: CreatePayment
   type: http
-  seq: 1
+  seq: 11
 
 http:
   method: POST
-  url: http://localhost:8081/api/users
+  url: http://localhost:8085/api/payments
   body:
     type: json
     data: |-
       {
-        "name": "Ali Ahmed",
-        "password": "securePassword123",
-        "email": "ali@example.com",
-        "phone": "+491234567890",
-        "userRole": "CUSTOMER",
-        "preferences": {
-          "language": "en",
-          "dietaryRestrictions": "none"
+        "orderId": 1,
+        "userId": 1,
+        "amount": 130,
+        "method": "CREDIT_CARD",
+        "status": "COMPLETED",
+        "transactionDetails": {
+          "deliveryFee": 20
         }
       }
   auth:
