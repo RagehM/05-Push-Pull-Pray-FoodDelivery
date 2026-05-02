@@ -10,3 +10,7 @@ variables:
     value: bruno_test@example.com
   - name: TEST_USER_PASSWORD
     value: Password123!
+  - name: Last_Delivery_Id
+    value: "20"
+  - name: AUTH_TOKEN
+    value: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY2NjI4NiwiZXhwIjoxNzc3NzUyNjg2fQ.eQnGwe5HZus2oSTvudLBNcRqnVNggLucAsejK4Wp-v4

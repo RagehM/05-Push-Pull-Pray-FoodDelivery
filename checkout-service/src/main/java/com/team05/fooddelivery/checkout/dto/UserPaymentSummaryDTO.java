@@ -1,7 +1,10 @@
 package com.team05.fooddelivery.checkout.dto;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import java.util.Map;
 
+@JsonDeserialize(builder = UserPaymentSummaryDTO.Builder.class)
 public class UserPaymentSummaryDTO {
 
     private Long userId;
@@ -25,6 +28,7 @@ public class UserPaymentSummaryDTO {
         return new Builder();
     }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Long userId;
         private Long totalPayments;
