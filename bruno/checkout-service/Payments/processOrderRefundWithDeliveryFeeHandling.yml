@@ -1,24 +1,17 @@
 info:
-  name: CreateUser
+  name: processOrderRefundWithDeliveryFeeHandling
   type: http
-  seq: 1
+  seq: 12
 
 http:
   method: POST
-  url: http://localhost:8081/api/users
+  url: http://localhost:8085/api/payments/49/refund-with-fee-handling
   body:
     type: json
     data: |-
       {
-        "name": "Ali Ahmed",
-        "password": "securePassword123",
-        "email": "ali@example.com",
-        "phone": "+491234567890",
-        "userRole": "CUSTOMER",
-        "preferences": {
-          "language": "en",
-          "dietaryRestrictions": "none"
-        }
+        "reason": "food_quality",
+        "refundDeliveryFee": false
       }
   auth:
     type: bearer

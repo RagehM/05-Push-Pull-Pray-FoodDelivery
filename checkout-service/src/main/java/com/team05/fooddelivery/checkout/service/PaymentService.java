@@ -557,7 +557,7 @@ public class PaymentService {
                 .build();
     }
 
-    //[S5-F12] Process Order Refund with Delivery Fee Handling
+    //[ S5-F12] Process Order Refund with Delivery Fee Handling
     @Transactional
     @Caching(
             put = @CachePut(value = "checkout-service::payment", key = "#paymentId"),
@@ -567,8 +567,6 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
                     @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(Long paymentId, RefundRequest refundRequest) {
@@ -576,6 +574,10 @@ public class PaymentService {
 
         if (payment.getStatus() != PaymentStatus.COMPLETED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only COMPLETED payments can be refunded");
+        }
+
+        if (payment.getStatus() == PaymentStatus.REFUNDED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This payment has already been refunded");
         }
 
         RefundStrategy strategy = refundStrategySelector.select(refundRequest, payment.getCreatedAt());
@@ -588,7 +590,7 @@ public class PaymentService {
             denialAuditEvent.put("action", "REFUND_DENIED");
             denialAuditEvent.put("method", payment.getMethod().name());
             denialAuditEvent.put("amount", payment.getAmount());
-            Map<String, Object> details = payment.getTransactionDetails();
+            Map<String, Object> details = new HashMap<>();
             details.put("strategy", strategyName);
             details.put("reason", "refund window expired");
             denialAuditEvent.put("details", details);
@@ -611,7 +613,7 @@ public class PaymentService {
         }
         transactionDetails.put("refundAmount", refundResult.amount());
         transactionDetails.put("refundDeliveryFeeIncluded", refundRequest.refundDeliveryFee());
-        transactionDetails.put("refundReason", refundResult.reasonCode());
+        transactionDetails.put("refundReason", refundRequest.reason());
         transactionDetails.put("refundedAt", LocalDateTime.now().toString());
 
         payment.setTransactionDetails(transactionDetails);
@@ -623,12 +625,14 @@ public class PaymentService {
         refundedAuditEvent.put("paymentId", savedPayment.getId());
         refundedAuditEvent.put("action", "REFUNDED");
         refundedAuditEvent.put("method", savedPayment.getMethod().name());
-        Map<String, Object> details = payment.getTransactionDetails();
+
+        Map<String, Object> details = new HashMap<>();
         details.put("strategy", strategyName);
+        details.put("reason", refundRequest.reason());
         details.put("originalAmount", savedPayment.getAmount());
         details.put("refundAmount", refundResult.amount());
         details.put("refundDeliveryFeeIncluded", refundRequest.refundDeliveryFee());
-        details.put("reason", refundResult.reasonCode());
+
         refundedAuditEvent.put("details", details);
 
         notifyObservers("PAYMENT_AUDIT", refundedAuditEvent);

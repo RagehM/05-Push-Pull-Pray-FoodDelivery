@@ -125,7 +125,7 @@ public class PaymentController {
     }
 
     // [S5-F12] Process Order Refund with Delivery Fee Handling
-    @PostMapping("/{id}/refund-with-delivery-fee")
+    @PostMapping("/{id}/refund-with-fee-handling")
     public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(
             @PathVariable Long id,
             @RequestBody RefundRequest refundRequest) {
