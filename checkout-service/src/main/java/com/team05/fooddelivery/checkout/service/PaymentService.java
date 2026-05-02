@@ -153,6 +153,14 @@ public class PaymentService {
         }
     }
 
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
+    }
+
     // [S5-F1] Get Payments by Status and Date Range
     @Cacheable(
             value = "checkout-service::S5-F1",
