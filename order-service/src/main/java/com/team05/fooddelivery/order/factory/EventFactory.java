@@ -23,11 +23,11 @@ public class EventFactory implements EventFactoryBase {
             case RESTAURANT:
                 throw new UnsupportedOperationException("RESTAURANT events are not supported in Order Service");
             case ORDER:
-                OrderEvent orderEvent = new OrderEvent();
-                orderEvent.setOrderId(((Long)params.get("orderId")));
-                orderEvent.setAction((String)params.get("action"));
-                // orderEvent.setTimestamp(LocalDateTime.now()); no need, timestamp is set in constructor
-                orderEvent.setDetails(details);
+                OrderEvent orderEvent = new OrderEvent(
+                    (Long)params.get("orderId"),
+                    (String)params.get("action"),
+                    details
+                );
                 return orderEvent;
             case DELIVERY:
                 throw new UnsupportedOperationException("DELIVERY events are not supported in Order Service");
