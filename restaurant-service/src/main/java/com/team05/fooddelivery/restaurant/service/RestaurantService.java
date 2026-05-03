@@ -6,14 +6,13 @@ import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
-import com.team05.fooddelivery.restaurant.factory.EventFactory;
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.mongo.MongoRestaurantEventRepository;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,7 +35,6 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
-    private final EventFactory eventFactory = new EventFactory();
     private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
@@ -50,7 +48,7 @@ public class RestaurantService {
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
-                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory));
+                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
 
     // CRUD create — no cache eviction (spec Section 4.4.4)
@@ -71,7 +69,6 @@ public class RestaurantService {
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.RESTAURANT_CREATED);
         params.put("restaurantId", saved.getId());
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("name", saved.getName());
@@ -152,7 +149,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.deleteByRestaurantId(id);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.RESTAURANT_DELETED);
         params.put("restaurantId", id);
         params.put("details", new HashMap<>());
         notifyObservers(RestaurantEventActions.RESTAURANT_DELETED, params);
@@ -190,7 +186,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.DETAILS_UPDATED);
         params.put("restaurantId", saved.getId());
         params.put("details", newDetails);
         notifyObservers(RestaurantEventActions.DETAILS_UPDATED, params);
@@ -239,7 +234,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.STATUS_CHANGED);
         params.put("restaurantId", id);
         Map<String, Object> details = new HashMap<>();
         details.put("newStatus", newStatus);
@@ -305,7 +299,6 @@ public class RestaurantService {
         restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.REVIEW_ADDED);
         params.put("restaurantId", restaurantId);
         Map<String, Object> details = new HashMap<>();
         details.put("rating", rating);

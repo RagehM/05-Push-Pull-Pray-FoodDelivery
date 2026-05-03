@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.adapter.orderArrayToOrderAnalyticsDTOAdapter;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
@@ -9,7 +10,6 @@ import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
-import com.team05.fooddelivery.order.model.mongo.OrderEvent.OrderEventActions;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,14 +27,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import com.team05.fooddelivery.order.factory.EventFactory;
 
 @Service
 public class OrderService {
@@ -41,13 +39,12 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
-    private final EventFactory eventFactory = new EventFactory();
 
     public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.observers.add(
-            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER, eventFactory)
+            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
     }
 
@@ -90,7 +87,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CONFIRMED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -102,7 +98,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CONFIRMED", params);
+        notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
         return savedOrder;
 
     }
@@ -160,7 +156,6 @@ public class OrderService {
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
         Order savedOrder = orderRepository.save(foundOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_DELIVERED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -173,7 +168,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_DELIVERED", params);
+        notifyObservers(OrderEventActions.ORDER_DELIVERED, params);
         return savedOrder;
 
 
@@ -193,7 +188,11 @@ public class OrderService {
     }
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
     public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
-        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate)[0];
+        
+        OrderAnalyticsDTO analyticsObject = orderArrayToOrderAnalyticsDTOAdapter.adapt(analyticsData);
+
+        return analyticsObject;
     }
     // [S3-F7] Cancel Order
     @Transactional
@@ -207,7 +206,6 @@ public class OrderService {
         //Update status to CANCELLED
         order.setStatus(OrderStatusEnum.CANCELLED);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CANCELLED");
         params.put("order", order);
         params.put("orderId", order.getId());
 
@@ -218,7 +216,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CANCELLED", params);
+        notifyObservers(OrderEventActions.ORDER_CANCELLED, params);
         //Update status of all order items to cancelled through repository
         // // // try {
         // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
@@ -254,7 +252,6 @@ public class OrderService {
 
         Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_ITEMS_ADDED");
         params.put("order", returnObject);
         params.put("orderId", returnObject.getId());
 
@@ -267,7 +264,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_ITEMS_ADDED", params);
+        notifyObservers(OrderEventActions.ITEMS_ADDED, params);
 
         return returnObject;
     }
@@ -343,7 +340,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CREATED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -356,7 +352,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CREATED", params);
+        notifyObservers(OrderEventActions.ORDER_CREATED, params);
         return savedOrder;
     }
     //// Update order
@@ -395,7 +391,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(existingOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_UPDATED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -407,7 +402,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_UPDATED", params);
+        notifyObservers(OrderEventActions.ORDER_UPDATED, params);
         return savedOrder;
     }
     //// Delete order
@@ -416,7 +411,6 @@ public class OrderService {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_DELETED");
         params.put("order", existingOrder);
         params.put("orderId", existingOrder.getId());
 
@@ -428,7 +422,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_DELETED", params);
+        notifyObservers(OrderEventActions.ORDER_DELETED, params);
     }
 
     public void registerObserver(EntityObserver observer) {

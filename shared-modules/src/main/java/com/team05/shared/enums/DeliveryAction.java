@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.delivery.enums;
+package com.team05.shared.enums;
 
 import java.util.Arrays;
 import java.util.Locale;
