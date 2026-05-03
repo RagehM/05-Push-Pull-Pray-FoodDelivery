@@ -31,6 +31,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
 @Service
 public class RestaurantService {
 
@@ -38,12 +41,16 @@ public class RestaurantService {
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final EventFactory eventFactory = new EventFactory();
+    private final CacheManager cacheManager;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
-            MongoRestaurantEventRepository mongoRestaurantEventRepository) {
+            MongoRestaurantEventRepository mongoRestaurantEventRepository , 
+            CacheManager cacheManager) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
+        this.cacheManager = cacheManager;
+
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
@@ -324,30 +331,48 @@ public class RestaurantService {
         return dtos;
     }
 
-    // [S2-F12] Get Restaurant Performance Dashboard
-    // Section 10.2.3 — Cached 10 min, logs DASHBOARD_VIEWED to MongoDB on every
-    // call
-    @Cacheable(value = "restaurant-service::S2-F12", key = "#id")
-    public RestaurantDashboardDTO getDashboard(Long id) {
-        Restaurant restaurant = getById(id);
 
-        List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
-        Object[] row = stats.get(0);
-        Long totalOrders = ((Number) row[0]).longValue();
-        Double totalRevenue = ((Number) row[1]).doubleValue();
-        Double averageOrderValue = ((Number) row[2]).doubleValue();
+// [S2-F12] Get Restaurant Performance Dashboard
+// Uses CacheManager 
+// Section 10.2.3 — cached 10 min
+public RestaurantDashboardDTO getDashboard(Long id) {
+    // Step 1 — logging ALWAYS runs (even on cache hits)
+    notifyDashboardViewed(id);
 
-        Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
-
-        return RestaurantDashboardDTO.builder()
-                .restaurantId(restaurant.getId())
-                .name(restaurant.getName())
-                .totalOrders(totalOrders)
-                .totalRevenue(totalRevenue)
-                .averageOrderValue(averageOrderValue)
-                .activeMenuItems(activeMenuItems)
-                .build();
+    // Step 2 — check cache manually
+    Cache cache = cacheManager.getCache("restaurant-service::S2-F12");
+    if (cache != null) {
+        RestaurantDashboardDTO cached = cache.get(id, RestaurantDashboardDTO.class);
+        if (cached != null) {
+            return cached; // cache hit
+        }
     }
+
+    // Step 3 — cache miss — fetch from DB
+    Restaurant restaurant = getById(id);
+    List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
+    Object[] row = stats.get(0);
+    Long totalOrders = ((Number) row[0]).longValue();
+    Double totalRevenue = ((Number) row[1]).doubleValue();
+    Double averageOrderValue = ((Number) row[2]).doubleValue();
+    Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
+
+    RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
+            .restaurantId(restaurant.getId())
+            .name(restaurant.getName())
+            .totalOrders(totalOrders)
+            .totalRevenue(totalRevenue)
+            .averageOrderValue(averageOrderValue)
+            .activeMenuItems(activeMenuItems)
+            .build();
+
+    // Step 4 — store in cache
+    if (cache != null) {
+        cache.put(id, dto);
+    }
+
+    return dto;
+}
 
     // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
     // including cache hits

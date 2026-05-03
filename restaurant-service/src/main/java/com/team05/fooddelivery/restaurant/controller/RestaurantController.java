@@ -169,8 +169,6 @@ public class RestaurantController {
     // cache hits
     @GetMapping("/{id}/dashboard")
     public ResponseEntity<RestaurantDashboardDTO> getDashboard(@PathVariable Long id) {
-        restaurantService.notifyDashboardViewed(id);
-
         return ResponseEntity.ok(restaurantService.getDashboard(id));
     }
 
