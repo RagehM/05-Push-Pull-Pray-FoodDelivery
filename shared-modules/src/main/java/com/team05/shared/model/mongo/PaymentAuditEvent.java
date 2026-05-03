@@ -1,7 +1,10 @@
-package com.team05.fooddelivery.checkout.model.mongo;
+package com.team05.shared.model.mongo;
 
-import com.team05.fooddelivery.checkout.enums.PaymentAction;
-import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.enums.PaymentAction;
+
+
+import com.mongodb.lang.NonNull;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -9,8 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-
-@Document("payment_audit_trail")
+@Document(collection = "payment_audit_trail")
 public class PaymentAuditEvent implements MongoEvent {
 
     @Id
@@ -35,12 +37,8 @@ public class PaymentAuditEvent implements MongoEvent {
         this.timestamp = LocalDateTime.now();
     }
 
-    public PaymentAuditEvent(Long paymentId,
-                             String action,
-                             String method,
-                             Double amount,
-                             Map<String, Object> details) {
-        if (paymentId == null) {
+    public PaymentAuditEvent(Long paymentId, String action, String method, Double amount, Map<String, Object> details) {
+        if(paymentId == null){
             throw new IllegalArgumentException("paymentId must not be null");
         }
         if (action == null || !PaymentAction.isValidAction(action)) {
@@ -51,7 +49,7 @@ public class PaymentAuditEvent implements MongoEvent {
         this.timestamp = LocalDateTime.now();
         this.method = method;
         this.amount = amount;
-        this.details = details != null ? details : new HashMap<>();
+        this.details = details;
     }
 
     public String getId() { return id; }

@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.order.model.mongo;
+package com.team05.shared.model.mongo;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -7,8 +7,6 @@ import java.util.Map;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-import com.team05.shared.model.mongo.MongoEvent;
 
 import com.mongodb.lang.NonNull;
 
@@ -65,6 +63,7 @@ public class OrderEvent implements MongoEvent{
         public static final String ITEMS_ADDED = "ITEMS_ADDED";
         public static final String ORDER_CREATED = "ORDER_CREATED";
         public static final String ORDER_DELETED = "ORDER_DELETED";
+        public static final String ORDER_UPDATED = "ORDER_UPDATED";
 
     }
 }

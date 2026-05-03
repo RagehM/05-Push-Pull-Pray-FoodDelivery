@@ -1,6 +1,5 @@
-package com.team05.fooddelivery.restaurant.model.mongo;
+package com.team05.shared.model.mongo;
 
-import com.team05.shared.model.mongo.MongoEvent;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;

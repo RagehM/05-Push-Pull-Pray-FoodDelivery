@@ -8,26 +8,20 @@ http:
   url: http://localhost:8082/api/restaurants
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzUwODc0NCwiZXhwIjoxNzc3NTk1MTQ0fQ.2oCOqfAFC5kTpAiZtuUIaxinNNT6tdLi5B5BauEMDoY
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzczNjQ2NSwiZXhwIjoxNzc3ODIyODY1fQ.nls9yFQkFLjf9l4QK0BxZaNz0rmwJJaaL-lEhEkspYY
   body:
     type: json
     data: |-
-      ###
-      POST http://localhost:8080/api/restaurants
-      Content-Type: application/json
-
       {
         "id": 0,
-        "name": "",
-        "email": "",
-        "phone": "",
+        "name": "sth",
+        "email": "7aga@gmail.com",
+        "phone": "01145010477",
         "cuisineType": "EGYPTIAN",
         "status": "OPEN",
         "rating": 0,
         "totalRatings": 0,
         "details": "",
-        "createdAt": "",
-        "menuItems": []
       }
   auth: inherit
 

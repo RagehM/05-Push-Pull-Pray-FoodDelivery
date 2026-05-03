@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.delivery.model.mongo;
+package com.team05.shared.model.mongo;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -6,8 +6,8 @@ import java.util.Map;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import com.team05.shared.model.mongo.MongoEvent;
-import com.team05.fooddelivery.delivery.enums.DeliveryAction;
+
+import com.team05.shared.enums.DeliveryAction;
 
 /**
  * MongoDB document for delivery service event logging.

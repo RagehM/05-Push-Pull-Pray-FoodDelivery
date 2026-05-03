@@ -25,7 +25,6 @@ import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
-import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
 import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
@@ -45,7 +44,7 @@ public class DeliveryService {
         this.deliveryRepository = deliveryRepository;
         this.deliveryTrackingEventRepository = deliveryTrackingEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY, new DeliveryEventFactory())
+                new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY)
         );
     }
 
@@ -94,7 +93,6 @@ public class DeliveryService {
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("deliveryId", saved.getId());
-        eventPayload.put("action", "DELIVERY_CREATED");
         eventPayload.put("details", eventDetails);
 
         notifyObservers("DELIVERY_CREATED", eventPayload);
@@ -127,7 +125,6 @@ public class DeliveryService {
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("deliveryId", saved.getId());
-        eventPayload.put("action", "DELIVERY_CREATED");
         eventPayload.put("details", eventDetails);
 
 
@@ -185,7 +182,6 @@ public class DeliveryService {
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("deliveryId", deliveryId);
-        eventPayload.put("action", "TRACKING_RECORDED");
         eventPayload.put("details", eventDetails);
 
         // Mongo logging is observational and must not block the Cassandra write path.
@@ -295,7 +291,6 @@ public class DeliveryService {
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("deliveryId", saved.getId());
-        eventPayload.put("action", "DELIVERY_UPDATED");
         eventPayload.put("details", eventDetails);
 
         notifyObservers("DELIVERY_UPDATED", eventPayload);
@@ -331,7 +326,6 @@ public class DeliveryService {
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("deliveryId", id);
-        eventPayload.put("action", "DELIVERY_DELETED");
         eventPayload.put("details", eventDetails);
 
         notifyObservers("DELIVERY_DELETED", eventPayload);
@@ -388,7 +382,6 @@ public class DeliveryService {
 
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("deliveryId", request.getOrderId());
-        eventPayload.put("action", "BATCH_STATUS_UPDATED");
         eventPayload.put("details", eventDetails);
 
         notifyObservers("BATCH_STATUS_UPDATED", eventPayload);
@@ -554,7 +547,6 @@ public class DeliveryService {
 
             Map<String, Object> eventPayload = new HashMap<>();
             eventPayload.put("deliveryId", 0L); // System-wide purge; use 0 as placeholder
-            eventPayload.put("action", "OLD_DATA_PURGED");
             eventPayload.put("details", eventDetails);
 
             notifyObservers("OLD_DATA_PURGED", eventPayload);
