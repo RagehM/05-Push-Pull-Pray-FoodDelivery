@@ -1,9 +1,12 @@
 package com.team05.fooddelivery.delivery.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,16 +14,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
 import com.team05.fooddelivery.delivery.dto.*;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
+import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
@@ -29,20 +26,28 @@ import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
-    private final DeliveryTrackingEventRepository deliveryTrackingEventRepository;
+    private final DeliveryTrackingEventRepository trackingEventRepository;
+    private final CassandraRowAdapter cassandraRowAdapter = new CassandraRowAdapter();
     private final List<EntityObserver> observers = new ArrayList<>();
 
     public DeliveryService(DeliveryRepository deliveryRepository,
-                           DeliveryTrackingEventRepository deliveryTrackingEventRepository,
+                           DeliveryTrackingEventRepository trackingEventRepository,
                            DeliveryEventRepository eventRepository) {
         this.deliveryRepository = deliveryRepository;
-        this.deliveryTrackingEventRepository = deliveryTrackingEventRepository;
+        this.trackingEventRepository = trackingEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY)
         );
@@ -169,7 +174,7 @@ public class DeliveryService {
                 request.longitude(),
                 request.notes()
         );
-        deliveryTrackingEventRepository.save(trackingEvent);
+        trackingEventRepository.save(trackingEvent);
 
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("status", status.name());
@@ -414,6 +419,17 @@ public class DeliveryService {
         this.observers.remove(observer);
     }
 
+    // Accepts "HH:mm" (e.g. "14:10") or full ISO-8601 (e.g. "2024-01-01T14:10:00Z").
+    // HH:mm is resolved against today's date in UTC — matches spec test scenario format.
+    private Instant parseTimeParam(String value) {
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException e) {
+            LocalTime time = LocalTime.parse(value, DateTimeFormatter.ofPattern("HH:mm"));
+            return LocalDate.now(ZoneOffset.UTC).atTime(time).toInstant(ZoneOffset.UTC);
+        }
+    }
+
     private void validateOrder(Long orderId) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -593,6 +609,27 @@ public class DeliveryService {
                 .firstDelivery((LocalDateTime) row[4])
                 .lastDelivery((LocalDateTime) row[5])
                 .build();
+    }
+
+    @Cacheable(cacheNames = "delivery-service::S4-F12", key = "#deliveryId + ':' + #startTime + ':' + #endTime")
+    @Transactional(readOnly = true)
+    public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(Long deliveryId, String startTime, String endTime) {
+        getDeliveryById(deliveryId);
+
+        List<DeliveryTrackingEvent> events;
+        if (startTime != null && endTime != null) {
+            try {
+                events = trackingEventRepository.findByKeyDeliveryIdInTimeRange(
+                        deliveryId, parseTimeParam(startTime), parseTimeParam(endTime));
+            } catch (DateTimeParseException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Invalid time format — use HH:mm (e.g. 14:10) or ISO-8601 (e.g. 2024-01-01T14:00:00Z)");
+            }
+        } else {
+            events = trackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
+        }
+
+        return events.stream().map(cassandraRowAdapter::adapt).toList();
     }
 
 }
