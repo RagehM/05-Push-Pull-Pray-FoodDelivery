@@ -150,5 +150,11 @@ public class RestaurantController {
     public ResponseEntity<List<RestaurantMenuAlertDTO>> getRestaurantsWithUnavailableItems() {
         return ResponseEntity.ok(restaurantService.getRestaurantsWithUnavailableItems());
     }
+    // [S2-F11] Index restaurant for search (Milestone 2 §10.2.2)
+    @PostMapping("/{id}/index")
+    public ResponseEntity<Void> indexRestaurant(@PathVariable Long id) {
+        restaurantService.indexRestaurantForSearch(id);
+        return ResponseEntity.ok().build();
+    }
 
 }

@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
@@ -139,6 +140,14 @@ public class PaymentController {
 
         List<CuisineRevenueDTO> result = paymentService.getRevenueByCuisine(start, end);
         return ResponseEntity.ok(result);
+    }
+
+    // [S5-F12] Process Order Refund with Delivery Fee Handling
+    @PostMapping("/{id}/refund-with-fee-handling")
+    public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(
+            @PathVariable Long id,
+            @RequestBody RefundRequest refundRequest) {
+        return paymentService.processOrderRefundWithDeliveryFeeHandling(id, refundRequest);
     }
 
 }

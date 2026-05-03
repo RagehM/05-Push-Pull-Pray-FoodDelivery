@@ -64,7 +64,7 @@ public class AuthService {
         authEvent.put("userId", user.getId());
         authEvent.put("action", "LOGGED_IN");
 
-        notifyObservers("AUTH", authEvent);
+        notifyObservers("LOGGED_IN", authEvent);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
@@ -109,4 +109,4 @@ public class AuthService {
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
-        }
+}

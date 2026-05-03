@@ -2,10 +2,13 @@ package com.team05.fooddelivery.checkout.dto;
 
 import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import java.util.List;
 import java.util.Map;
 
+@JsonDeserialize(builder = PaymentDetailsDTO.Builder.class)
 public class PaymentDetailsDTO {
 
     private Long paymentId;
@@ -47,6 +50,7 @@ public class PaymentDetailsDTO {
         return new Builder();
     }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Long paymentId;
         private Long orderId;

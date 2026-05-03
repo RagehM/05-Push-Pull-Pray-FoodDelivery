@@ -69,6 +69,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             nativeQuery = true)
     String findOrderStatusById(@Param("orderId") Long orderId);
 
+    // S5-F4: Fetch delivery fee inputs: order metadata.deliveryType, total_amount, and restaurant details.deliveryFee
+    @Query(value = "SELECT o.metadata->>'deliveryType', o.total_amount, r.details->>'deliveryFee' " +
+                   "FROM orders o " +
+                   "LEFT JOIN restaurants r ON r.id = o.restaurant_id " +
+                   "WHERE o.id = :orderId",
+           nativeQuery = true)
+    List<Object[]> findOrderDeliveryData(@Param("orderId") Long orderId);
 
     // S5-F8:The findByIdWithOffers JPQL query (added in S5-F4 section) uses LEFT JOIN FETCH to eagerly load the paymentOffers collection
     // and the nested offer in a single round-trip, avoiding LazyInitializationException:

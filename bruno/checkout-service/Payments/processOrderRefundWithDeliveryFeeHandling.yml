@@ -1,0 +1,24 @@
+info:
+  name: processOrderRefundWithDeliveryFeeHandling
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: http://localhost:8085/api/payments/49/refund-with-fee-handling
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "food_quality",
+        "refundDeliveryFee": false
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY3MDU4MSwiZXhwIjoxNzc3NzU2OTgxfQ.HWBXDk-oA0KevlQbGFaFxFvWESCux5yyCsYVgOk01ok
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
