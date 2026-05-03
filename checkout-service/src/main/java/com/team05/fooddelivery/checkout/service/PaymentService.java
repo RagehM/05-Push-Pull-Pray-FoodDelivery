@@ -4,6 +4,7 @@ import com.team05.fooddelivery.checkout.dto.AppliedOfferDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentMethodDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
+import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
@@ -16,16 +17,22 @@ import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
 import com.team05.fooddelivery.checkout.repository.mongo.MongoPaymentAuditEventRepository;
+import com.team05.fooddelivery.checkout.dto.RefundResult;
+import com.team05.fooddelivery.checkout.strategy.NoRefundStrategy;
+import com.team05.fooddelivery.checkout.strategy.RefundStrategy;
+import com.team05.fooddelivery.checkout.strategy.RefundStrategySelector;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -47,15 +54,19 @@ public class PaymentService {
     private final MongoPaymentAuditEventRepository paymentAuditEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final PaymentAuditEventFactory paymentAuditEventFactory = new PaymentAuditEventFactory();
+    private final RefundStrategySelector refundStrategySelector;
+    private final CacheManager cacheManager;
 
     public PaymentService(PaymentRepository paymentRepository,
                           OfferRepository offerRepository,
                           PaymentOfferRepository paymentOfferRepository,
-                          MongoPaymentAuditEventRepository paymentAuditEventRepository) {
+                          MongoPaymentAuditEventRepository paymentAuditEventRepository,RefundStrategySelector refundStrategySelector, CacheManager cacheManager) {
         this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
+        this.refundStrategySelector = refundStrategySelector;
+        this.cacheManager = cacheManager;
         this.observers.add(
                 new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT, paymentAuditEventFactory)
         );
@@ -63,10 +74,10 @@ public class PaymentService {
 
     // Payment CRUD
     public Payment createPayment(Payment payment) {
-        if(paymentRepository.userExists(payment.getUserId()) == false) {
+        if (paymentRepository.userExists(payment.getUserId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        if(paymentRepository.orderExists(payment.getOrderId()) == false) {
+        if (paymentRepository.orderExists(payment.getOrderId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
 
@@ -76,10 +87,13 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", savedPayment.getId());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
-        paymentAuditEvent.put("action", "PAYMENT_CREATED");
-        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
+        auditDetails.put("status", savedPayment.getStatus().name());
+
+        paymentAuditEvent.put("details", auditDetails);
+
+        notifyObservers("PAYMENT_CREATED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -122,7 +136,7 @@ public class PaymentService {
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("PAYMENT_UPDATED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -148,13 +162,21 @@ public class PaymentService {
         paymentAuditEvent.put("action", "PAYMENT_DELETED");
         paymentAuditEvent.put("details", payment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("PAYMENT_DELETED", paymentAuditEvent);
     }
 
     private void notifyObservers(String eventType, Object payload) {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
         }
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
     }
 
     // [S5-F1] Get Payments by Status and Date Range
@@ -210,7 +232,7 @@ public class PaymentService {
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
-        notifyObservers("PAYMENT_AUDIT", paymentAuditEvent);
+        notifyObservers("REFUNDED", paymentAuditEvent);
 
         return savedPayment;
     }
@@ -298,6 +320,16 @@ public class PaymentService {
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
         if (transactionDetails == null) {
             transactionDetails = new HashMap<>();
+        }
+
+        // Compute delivery fee: order.metadata.deliveryType → restaurant.details.deliveryFee → 10% of subtotal
+        List<Object[]> deliveryRows = paymentRepository.findOrderDeliveryData(orderId);
+        if (!deliveryRows.isEmpty()) {
+            Object[] row = deliveryRows.get(0);
+            String deliveryTypeFee = (String) row[0];
+            Double orderTotal = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            String restaurantFeeStr = (String) row[2];
+            transactionDetails.put("deliveryFee", computeDeliveryFee(deliveryTypeFee, orderTotal, restaurantFeeStr));
         }
 
         if (dto != null) {
@@ -390,7 +422,6 @@ public class PaymentService {
         newPaymentOffer.setAppliedAt(LocalDateTime.now());
         newPaymentOffer.setPayment(payment);
         newPaymentOffer.setOffer(offer);
-
 
         offer.setCurrentUses(offer.getCurrentUses() + 1);
 
@@ -501,8 +532,24 @@ public class PaymentService {
         return savedPayment;
     }
 
+    private double computeDeliveryFee(String deliveryTypeFee, Double orderTotal, String restaurantFeeStr) {
+        if (deliveryTypeFee != null) {
+            try {
+                return Double.parseDouble(deliveryTypeFee);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (restaurantFeeStr != null) {
+            try {
+                return Double.parseDouble(restaurantFeeStr);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return orderTotal != null ? orderTotal * 0.10 : 0.0;
+    }
+
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)
-    @Cacheable(value = "checkout-service::S5-F8",key = "#paymentId")
+    @Cacheable(value = "checkout-service::S5-F8", key = "#paymentId")
     public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
         // Fetch payment with offers eagerly loaded via JOIN FETCH
         Payment payment = paymentRepository.findByIdWithOffers(paymentId)
@@ -568,13 +615,13 @@ public class PaymentService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
 
-        // (c) Pull only COMPLETED + FAILED audit events in the window.
-        Set<String> actions = Set.of(
+        // (c) Pull only events whose transactionDetails.status is COMPLETED or FAILED.
+        Set<String> statuses = Set.of(
                 PaymentAuditEvent.Actions.COMPLETED,
                 PaymentAuditEvent.Actions.FAILED
         );
         List<PaymentAuditEvent> events =
-                paymentAuditEventRepository.findByActionInAndTimestampBetween(actions, start, end);
+                paymentAuditEventRepository.findByDetailsStatusInAndTimestampBetween(statuses, start, end);
 
         if (events == null || events.isEmpty()) {
             // (f) Empty list when no data — do NOT 404.
@@ -592,6 +639,14 @@ public class PaymentService {
             if (rawMethod == null || ev.getAmount() == null) {
                 continue;
             }
+
+            // Read status from transactionDetails map stored inside the audit event
+            Object rawStatus = ev.getDetails() != null ? ev.getDetails().get("status") : null;
+            if (rawStatus == null) {
+                continue;
+            }
+            String status = rawStatus.toString();
+
             PaymentMethod method;
             try {
                 method = PaymentMethod.valueOf(rawMethod);
@@ -600,10 +655,10 @@ public class PaymentService {
             }
 
             long[] c = counts.computeIfAbsent(method, k -> new long[2]);
-            if (PaymentAuditEvent.Actions.COMPLETED.equals(ev.getAction())) {
+            if (PaymentAuditEvent.Actions.COMPLETED.equals(status)) {
                 c[0] += 1; // successCount
                 totals.merge(method, ev.getAmount(), Double::sum);
-            } else if (PaymentAuditEvent.Actions.FAILED.equals(ev.getAction())) {
+            } else if (PaymentAuditEvent.Actions.FAILED.equals(status)) {
                 c[1] += 1; // failureCount
             }
         }
@@ -619,5 +674,88 @@ public class PaymentService {
             result.add(new PaymentMethodDTO(entry.getKey(), success, failure, rate, total));
         }
         return result;
+    }
+
+    //[ S5-F12] Process Order Refund with Delivery Fee Handling
+    @Transactional
+    @Caching(
+            put = @CachePut(value = "checkout-service::payment", key = "#paymentId"),
+            evict = {
+                    @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
+                    @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
+            }
+    )
+    public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(Long paymentId, RefundRequest refundRequest) {
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+
+        if (payment.getStatus() != PaymentStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only COMPLETED payments can be refunded");
+        }
+
+        if (payment.getStatus() == PaymentStatus.REFUNDED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This payment has already been refunded");
+        }
+
+        RefundStrategy strategy = refundStrategySelector.select(refundRequest, payment.getCreatedAt());
+        String strategyName = strategy.getClass().getSimpleName();
+
+        if (strategy instanceof NoRefundStrategy) {
+            Map<String, Object> denialAuditEvent = new HashMap<>();
+
+            denialAuditEvent.put("paymentId", payment.getId());
+            denialAuditEvent.put("action", "REFUND_DENIED");
+            denialAuditEvent.put("method", payment.getMethod().name());
+            denialAuditEvent.put("amount", payment.getAmount());
+            Map<String, Object> details = new HashMap<>();
+            details.put("strategy", strategyName);
+            details.put("reason", "refund window expired");
+            denialAuditEvent.put("details", details);
+
+            notifyObservers("PAYMENT_AUDIT", denialAuditEvent);
+
+            Cache f10 = cacheManager.getCache("checkout-service::S5-F10");
+            Cache f11 = cacheManager.getCache("checkout-service::S5-F11");
+            if (f10 != null) f10.clear();
+            if (f11 != null) f11.clear();
+
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refund window expired");
+        }
+
+        RefundResult refundResult = strategy.calculateRefund(payment, refundRequest);
+
+        Map<String, Object> transactionDetails = payment.getTransactionDetails();
+        if (transactionDetails == null) {
+            transactionDetails = new HashMap<>();
+        }
+        transactionDetails.put("refundAmount", refundResult.amount());
+        transactionDetails.put("refundDeliveryFeeIncluded", refundRequest.refundDeliveryFee());
+        transactionDetails.put("refundReason", refundRequest.reason());
+        transactionDetails.put("refundedAt", LocalDateTime.now().toString());
+
+        payment.setTransactionDetails(transactionDetails);
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        Map<String, Object> refundedAuditEvent = new HashMap<>();
+        refundedAuditEvent.put("paymentId", savedPayment.getId());
+        refundedAuditEvent.put("action", "REFUNDED");
+        refundedAuditEvent.put("method", savedPayment.getMethod().name());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("strategy", strategyName);
+        details.put("reason", refundRequest.reason());
+        details.put("originalAmount", savedPayment.getAmount());
+        details.put("refundAmount", refundResult.amount());
+        details.put("refundDeliveryFeeIncluded", refundRequest.refundDeliveryFee());
+
+        refundedAuditEvent.put("details", details);
+
+        notifyObservers("PAYMENT_AUDIT", refundedAuditEvent);
+
+        return ResponseEntity.ok(savedPayment);
     }
 }

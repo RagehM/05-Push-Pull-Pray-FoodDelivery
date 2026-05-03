@@ -1,7 +1,10 @@
 package com.team05.fooddelivery.restaurant.dto;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 // [S2-F6] Response DTO for the top-rated restaurants report endpoint.
 // Builder pattern — Section 3.5
+@JsonDeserialize(builder = TopRestaurantDTO.Builder.class)
 public class TopRestaurantDTO {
 
     private Long restaurantId;
@@ -23,6 +26,7 @@ public class TopRestaurantDTO {
 
     public static Builder builder() { return new Builder(); }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Long restaurantId;
         private String name;

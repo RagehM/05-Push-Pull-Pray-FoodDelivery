@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
-import com.team05.fooddelivery.user.config.JwtConfig;
+import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.dto.AuthResponse;
 import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
@@ -27,16 +27,16 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final JwtConfig jwtConfig;
+    private final JwtConfigurationManager jwtConfig;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
     private final AuthEventFactory authEventFactory = new AuthEventFactory();
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, JwtConfig jwtConfig,AuthEventRepository authEventRepository) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService,AuthEventRepository authEventRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.jwtConfig = jwtConfig;
+        this.jwtConfig = JwtConfigurationManager.getInstance();
         this.authEventRepository = authEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
@@ -64,7 +64,7 @@ public class AuthService {
         authEvent.put("userId", user.getId());
         authEvent.put("action", "LOGGED_IN");
 
-        notifyObservers("AUTH", authEvent);
+        notifyObservers("LOGGED_IN", authEvent);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
@@ -99,8 +99,14 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
         userRepository.save(user);
 
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "REGISTERED");
+
+        notifyObservers("REGISTERED", authEvent);
+
         String token = jwtService.generateToken(user);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }
-        }
+}

@@ -2,6 +2,7 @@ package com.team05.fooddelivery.checkout.repository.mongo;
 
 import com.team05.fooddelivery.checkout.model.mongo.PaymentAuditEvent;
 import com.team05.shared.repository.mongo.MongoEventRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,12 @@ public interface MongoPaymentAuditEventRepository
 
     List<PaymentAuditEvent> findByActionInAndTimestampBetween(
             Collection<String> actions,
+            LocalDateTime start,
+            LocalDateTime end);
+
+    @Query("{ 'details.status': { $in: ?0 }, 'timestamp': { $gte: ?1, $lte: ?2 } }")
+    List<PaymentAuditEvent> findByDetailsStatusInAndTimestampBetween(
+            Collection<String> statuses,
             LocalDateTime start,
             LocalDateTime end);
 

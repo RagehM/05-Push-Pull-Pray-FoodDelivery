@@ -11,9 +11,10 @@ public enum DeliveryAction {
     TRACKING_RECORDED,
     ANALYTICS_VIEWED,
     DELIVERY_CREATED,
+    DELIVERY_UPDATED,
+    DELIVERY_DELETED,
     BATCH_STATUS_UPDATED,
-    OLD_DATA_PURGED,
-    DELIVERY_DELETED;
+    OLD_DATA_PURGED;
 
     /**
      * Case-insensitive validation helper. Accepts both exact enum names and common variations.

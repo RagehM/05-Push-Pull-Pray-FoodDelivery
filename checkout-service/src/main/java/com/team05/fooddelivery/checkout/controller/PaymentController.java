@@ -4,8 +4,8 @@ import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentMethodDTO;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
+import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
-import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
@@ -137,6 +137,14 @@ public class PaymentController {
         List<PaymentMethodDTO> breakdown =
                 paymentService.getPaymentMethodBreakdown(startDate, endDate);
         return ResponseEntity.ok(breakdown);
+    }
+
+    // [S5-F12] Process Order Refund with Delivery Fee Handling
+    @PostMapping("/{id}/refund-with-fee-handling")
+    public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(
+            @PathVariable Long id,
+            @RequestBody RefundRequest refundRequest) {
+        return paymentService.processOrderRefundWithDeliveryFeeHandling(id, refundRequest);
     }
 
 }

@@ -1,10 +1,13 @@
 package com.team05.fooddelivery.restaurant.dto;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import java.util.List;
 
 // [S2-F9] Response DTO for the unavailable menu items alert endpoint.
 // Builder pattern — Section 3.5
+@JsonDeserialize(builder = RestaurantMenuAlertDTO.Builder.class)
 public class RestaurantMenuAlertDTO {
 
     private Long restaurantId;
@@ -29,6 +32,7 @@ public class RestaurantMenuAlertDTO {
 
     public static Builder builder() { return new Builder(); }
 
+    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
         private Long restaurantId;
         private String restaurantName;

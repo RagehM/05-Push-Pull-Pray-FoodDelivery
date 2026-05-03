@@ -45,8 +45,8 @@ public class RedisConfig {
         cacheConfigs.put("checkout-service::S5-F3", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigs.put("checkout-service::S5-F6", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigs.put("checkout-service::S5-F8", defaultConfig.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigs.put("checkout-service::S5-F9", defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        // S5-F11 Payment Method Breakdown (10-minute TTL per Section 10.5.2 step e)
+        cacheConfigs.put("checkout-service::S5-F9",  defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("checkout-service::S5-F10", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigs.put("checkout-service::S5-F11", defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
         return RedisCacheManager.builder(factory)
