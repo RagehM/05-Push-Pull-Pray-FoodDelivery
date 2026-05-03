@@ -1,10 +1,12 @@
 package com.team05.fooddelivery.delivery.service;
 
 import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -423,6 +425,17 @@ public class DeliveryService {
         this.observers.remove(observer);
     }
 
+    // Accepts "HH:mm" (e.g. "14:10") or full ISO-8601 (e.g. "2024-01-01T14:10:00Z").
+    // HH:mm is resolved against today's date in UTC — matches spec test scenario format.
+    private Instant parseTimeParam(String value) {
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException e) {
+            LocalTime time = LocalTime.parse(value, DateTimeFormatter.ofPattern("HH:mm"));
+            return LocalDate.now(ZoneOffset.UTC).atTime(time).toInstant(ZoneOffset.UTC);
+        }
+    }
+
     private void validateOrder(Long orderId) {
         if (!deliveryRepository.orderExists(orderId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
@@ -614,10 +627,10 @@ public class DeliveryService {
         if (startTime != null && endTime != null) {
             try {
                 events = trackingEventRepository.findByKeyDeliveryIdInTimeRange(
-                        deliveryId, Instant.parse(startTime), Instant.parse(endTime));
+                        deliveryId, parseTimeParam(startTime), parseTimeParam(endTime));
             } catch (DateTimeParseException e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Invalid datetime format — use ISO-8601, e.g. 2024-01-01T14:00:00Z");
+                        "Invalid time format — use HH:mm (e.g. 14:10) or ISO-8601 (e.g. 2024-01-01T14:00:00Z)");
             }
         } else {
             events = trackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
