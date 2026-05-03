@@ -1,19 +1,22 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
+import com.team05.fooddelivery.checkout.dto.PaymentMethodDTO;
+import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
+import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Map;
 
 @RestController
@@ -122,6 +125,18 @@ public class PaymentController {
     public ResponseEntity<PaymentDetailsDTO> getPaymentDetails(@PathVariable Long paymentId) {
         PaymentDetailsDTO details = paymentService.getPaymentDetails(paymentId);
         return ResponseEntity.ok(details);
+    }
+
+    // S5-F11: GET /api/payments/analytics/methods?startDate={d}&endDate={d}
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @GetMapping("/analytics/methods")
+    public ResponseEntity<List<PaymentMethodDTO>> getPaymentMethodBreakdown(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        List<PaymentMethodDTO> breakdown =
+                paymentService.getPaymentMethodBreakdown(startDate, endDate);
+        return ResponseEntity.ok(breakdown);
     }
 
     // [S5-F12] Process Order Refund with Delivery Fee Handling

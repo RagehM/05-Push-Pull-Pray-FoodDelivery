@@ -1,7 +1,9 @@
 package com.team05.fooddelivery.checkout.service;
 import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
+import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
+import com.team05.fooddelivery.checkout.factory.PaymentAuditEventFactory;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
@@ -9,10 +11,12 @@ import com.team05.fooddelivery.checkout.repository.OfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
 import com.team05.fooddelivery.checkout.repository.PaymentRepository;
 import com.team05.fooddelivery.checkout.repository.mongo.MongoPaymentAuditEventRepository;
+import com.team05.fooddelivery.checkout.dto.RefundResult;
 import com.team05.fooddelivery.checkout.strategy.NoRefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategySelector;
 import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.model.mongo.PaymentAuditEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.Cache;
@@ -27,11 +31,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PaymentService {
@@ -43,7 +50,7 @@ public class PaymentService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final RefundStrategySelector refundStrategySelector;
     private final CacheManager cacheManager;
-    
+
     public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager) {
         this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
@@ -71,8 +78,11 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", savedPayment.getId());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
-        paymentAuditEvent.put("action", "PAYMENT_CREATED");
-        paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
+
+        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
+        auditDetails.put("status", savedPayment.getStatus().name());
+
+        paymentAuditEvent.put("details", auditDetails);
 
         notifyObservers("PAYMENT_CREATED", paymentAuditEvent);
 
@@ -95,7 +105,8 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
-                    @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F9", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment updatePayment(Long id, Payment updatedPayment) {
@@ -126,7 +137,8 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
-            @CacheEvict(value = "checkout-service::S5-F9", key = "#id")
+            @CacheEvict(value = "checkout-service::S5-F9", key = "#id"),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public void deletePaymentById(Long id) {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
@@ -177,7 +189,8 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment refundPayment(Long id, String reason) {
@@ -252,7 +265,8 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-            @CacheEvict(value = "checkout-service::S5-F8", allEntries = true)
+            @CacheEvict(value = "checkout-service::S5-F8", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto, boolean simulateFailure) {
 
@@ -349,12 +363,13 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
-            @CacheEvict(value = "checkout-service::S5-F9", allEntries = true)
+            @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment applyOfferToPayment(Long paymentId, Long offerId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "cannot apply offer to a completed/cancelled payment"));
 
-        if (payment.getStatus().equals(PaymentStatus.COMPLETED) || payment.getStatus().equals(PaymentStatus.REFUNDED)) {
+        if(payment.getStatus().equals(PaymentStatus.COMPLETED) ||  payment.getStatus().equals(PaymentStatus.REFUNDED)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment status cant be COMPLETED or REFUNDED");
         }
 
@@ -450,7 +465,8 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
-                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id")
+                    @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment retryFailedPayment(Long id) {
@@ -553,6 +569,95 @@ public class PaymentService {
                 .totalDiscount(totalDiscount)
                 .finalAmount(finalAmount)
                 .build();
+    }
+
+    // [S5-F11] Get Payment Method Breakdown
+    //
+    // Reads the payment_audit_trail MongoDB collection, filtered by timestamp in
+    // the inclusive range [startDate T00:00:00, endDate T23:59:59.999] and by
+    // action ∈ {COMPLETED, FAILED}. Groups by `method`, computing per-method
+    // successCount / failureCount / successRate / totalAmount. Auth (USER role)
+    // is enforced at the controller / SecurityConfig level. Result is cached
+    // for 10 minutes under checkout-service::S5-F11::<startDate>:<endDate>.
+    @Cacheable(
+            value = "checkout-service::S5-F11",
+            key = "T(String).valueOf(#startDate) + ':' + T(String).valueOf(#endDate)"
+    )
+    public List<PaymentMethodDTO> getPaymentMethodBreakdown(LocalDate startDate, LocalDate endDate) {
+        // (b) Validate the date range — 400 if startDate is after endDate.
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "startDate and endDate are required");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "startDate must be on or before endDate");
+        }
+
+        // Expand to a fully-closed [00:00:00, 23:59:59.999] window matching
+        // server-time-zone PG TIMESTAMPS / Mongo timestamps.
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
+
+        // (c) Pull only events whose transactionDetails.status is COMPLETED or FAILED.
+        Set<String> statuses = Set.of(
+                PaymentAuditEvent.Actions.COMPLETED,
+                PaymentAuditEvent.Actions.FAILED
+        );
+        List<PaymentAuditEvent> events =
+                paymentAuditEventRepository.findByDetailsStatusInAndTimestampBetween(statuses, start, end);
+
+        if (events == null || events.isEmpty()) {
+            // (f) Empty list when no data — do NOT 404.
+            return List.of();
+        }
+
+        // (d) Aggregate per method. EnumMap keeps the result deterministic and
+        // skips events whose `method` is missing or unrecognised — per the
+        // M2 spec, such events "silently vanish from the breakdown".
+        Map<PaymentMethod, long[]>   counts = new EnumMap<>(PaymentMethod.class); // [success, failure]
+        Map<PaymentMethod, Double>   totals = new EnumMap<>(PaymentMethod.class); // sum of COMPLETED amounts
+
+        for (PaymentAuditEvent ev : events) {
+            String rawMethod = ev.getMethod();
+            if (rawMethod == null || ev.getAmount() == null) {
+                continue;
+            }
+
+            // Read status from transactionDetails map stored inside the audit event
+            Object rawStatus = ev.getDetails() != null ? ev.getDetails().get("status") : null;
+            if (rawStatus == null) {
+                continue;
+            }
+            String status = rawStatus.toString();
+
+            PaymentMethod method;
+            try {
+                method = PaymentMethod.valueOf(rawMethod);
+            } catch (IllegalArgumentException ignored) {
+                continue;
+            }
+
+            long[] c = counts.computeIfAbsent(method, k -> new long[2]);
+            if (PaymentAuditEvent.Actions.COMPLETED.equals(status)) {
+                c[0] += 1; // successCount
+                totals.merge(method, ev.getAmount(), Double::sum);
+            } else if (PaymentAuditEvent.Actions.FAILED.equals(status)) {
+                c[1] += 1; // failureCount
+            }
+        }
+
+        List<PaymentMethodDTO> result = new ArrayList<>(counts.size());
+        for (Map.Entry<PaymentMethod, long[]> entry : counts.entrySet()) {
+            long success = entry.getValue()[0];
+            long failure = entry.getValue()[1];
+            long denom   = success + failure;
+            double rate  = denom == 0 ? 0.0 : (double) success / denom;
+            double total = totals.getOrDefault(entry.getKey(), 0.0);
+
+            result.add(new PaymentMethodDTO(entry.getKey(), success, failure, rate, total));
+        }
+        return result;
     }
 
     //[ S5-F12] Process Order Refund with Delivery Fee Handling

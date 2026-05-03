@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.adapter.orderArrayToOrderAnalyticsDTOAdapter;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
@@ -187,7 +188,11 @@ public class OrderService {
     }
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
     public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
-        return orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate);
+        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate)[0];
+        
+        OrderAnalyticsDTO analyticsObject = orderArrayToOrderAnalyticsDTOAdapter.adapt(analyticsData);
+
+        return analyticsObject;
     }
     // [S3-F7] Cancel Order
     @Transactional
