@@ -23,11 +23,37 @@ runtime:
           expect(token,   "AUTH_TOKEN is not set").to.exist;
         });
 
-        // ─── Setup: create delivery + record 3 events with distinct timestamps ────────
-        // Mirrors spec scenario (a): ASSIGNED at 14:00, PICKED_UP at 14:15, IN_TRANSIT at 14:30
-        // 100 ms sleeps give each event a distinct Instant.now() timestamp.
+        // ─── Helpers ──────────────────────────────────────────────────────────────────
+        // Returns "HH:MM" in UTC from an ISO timestamp string
+        function toHHMM(isoStr) {
+          const d = new Date(isoStr);
+          return d.getUTCHours().toString().padStart(2, '0') + ':' +
+                 d.getUTCMinutes().toString().padStart(2, '0');
+        }
+
+        // Returns "HH:MM" of (given UTC minute - 1)
+        function minuteBefore(isoStr) {
+          const d = new Date(isoStr);
+          d.setUTCSeconds(0); d.setUTCMilliseconds(0);
+          d.setUTCMinutes(d.getUTCMinutes() - 1);
+          return toHHMM(d.toISOString());
+        }
+
+        // Returns "HH:MM" of (given UTC minute + 1)
+        function minuteAfter(isoStr) {
+          const d = new Date(isoStr);
+          d.setUTCSeconds(0); d.setUTCMilliseconds(0);
+          d.setUTCMinutes(d.getUTCMinutes() + 1);
+          return toHHMM(d.toISOString());
+        }
+
+        // ─── Setup: create delivery + record 3 events ─────────────────────────────────
+        // Events are recorded 65 seconds apart so each falls in a DIFFERENT UTC minute.
+        // This mirrors the spec scenario (ASSIGNED 14:00, PICKED_UP 14:15, IN_TRANSIT 14:30)
+        // and makes the HH:MM range filter unambiguous: only PICKED_UP falls between its
+        // neighbouring minutes.
         let deliveryId, allEventsStatus, allEventsBody;
-        let assignedTs, inTransitTs;
+        let assignedTs, pickedUpTs, inTransitTs;
 
         try {
           const createRes = await axios.post(
@@ -41,7 +67,7 @@ runtime:
           deliveryId = createRes.data && createRes.data.id;
 
           if (deliveryId) {
-            // 1st event — ASSIGNED (oldest)
+            // 1st — ASSIGNED
             await axios.post(
               `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
               { status: "ASSIGNED", latitude: 30.0, longitude: 31.0 },
@@ -51,9 +77,10 @@ runtime:
               }
             );
 
-            await new Promise(r => setTimeout(r, 100));
+            // Wait 65 s — pushes PICKED_UP into the next UTC minute
+            await new Promise(r => setTimeout(r, 65000));
 
-            // 2nd event — PICKED_UP (middle)
+            // 2nd — PICKED_UP
             await axios.post(
               `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
               { status: "PICKED_UP", latitude: 30.1, longitude: 31.1 },
@@ -63,9 +90,10 @@ runtime:
               }
             );
 
-            await new Promise(r => setTimeout(r, 100));
+            // Wait 65 s — pushes IN_TRANSIT into yet another UTC minute
+            await new Promise(r => setTimeout(r, 65000));
 
-            // 3rd event — IN_TRANSIT (newest)
+            // 3rd — IN_TRANSIT
             await axios.post(
               `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
               { status: "IN_TRANSIT", latitude: 30.2, longitude: 31.2 },
@@ -85,10 +113,11 @@ runtime:
             allEventsStatus = allRes.status;
             allEventsBody   = allRes.data;
 
-            // Response is DESC: [IN_TRANSIT, PICKED_UP, ASSIGNED]
+            // DESC order: [IN_TRANSIT, PICKED_UP, ASSIGNED]
             if (Array.isArray(allEventsBody) && allEventsBody.length === 3) {
-              inTransitTs = allEventsBody[0].timestamp; // newest
-              assignedTs  = allEventsBody[2].timestamp; // oldest
+              inTransitTs = allEventsBody[0].timestamp;
+              pickedUpTs  = allEventsBody[1].timestamp;
+              assignedTs  = allEventsBody[2].timestamp;
             }
           }
         } catch (e) {
@@ -126,16 +155,19 @@ runtime:
           expect(e).to.have.property("longitude");
         });
 
-        // ─── Scenario b / TC129: time range → only PICKED_UP ─────────────────────────
-        // Range: (ASSIGNED + 1 ms) → (IN_TRANSIT − 1 ms)  ← must capture only PICKED_UP
+        // ─── Scenario b / TC129: HH:MM range → only PICKED_UP ────────────────────────
+        // startTime = minute after ASSIGNED, endTime = minute of PICKED_UP
+        // Because events are 65 s apart they each sit in a distinct UTC minute,
+        // so only PICKED_UP falls inside the window — matching the spec scenario
+        // (startTime=14:10&endTime=14:20 returning only the 14:15 PICKED_UP event).
         let rangeStatus, rangeBody;
         try {
-          if (deliveryId && assignedTs && inTransitTs) {
-            const startTime = new Date(new Date(assignedTs).getTime() + 1).toISOString();
-            const endTime   = new Date(new Date(inTransitTs).getTime() - 1).toISOString();
+          if (deliveryId && assignedTs && pickedUpTs && inTransitTs) {
+            const startTime = minuteAfter(assignedTs);   // e.g. "14:01"
+            const endTime   = toHHMM(pickedUpTs);        // e.g. "14:15" — PICKED_UP's own minute
 
             const rangeRes = await axios.get(
-              `${baseUrl}/api/deliveries/${deliveryId}/tracking?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking?startTime=${startTime}&endTime=${endTime}`,
               {
                 headers: { "Authorization": `Bearer ${token}` },
                 validateStatus: () => true,
@@ -148,11 +180,11 @@ runtime:
           rangeStatus = null;
         }
 
-        test("[S4-F12 b] Time range filter returns 200", function () {
+        test("[S4-F12 b] HH:MM time range filter returns 200", function () {
           expect(rangeStatus).to.equal(200);
         });
 
-        test("[S4-F12 b] Time range [after ASSIGNED, before IN_TRANSIT] returns exactly 1 event", function () {
+        test("[S4-F12 b] HH:MM range returns exactly 1 event", function () {
           expect(Array.isArray(rangeBody)).to.equal(true);
           expect(rangeBody.length).to.equal(1);
         });
@@ -254,7 +286,7 @@ runtime:
 
         // ─── TC134: Redis TTL ─────────────────────────────────────────────────────────
         // Requires direct Redis CLI access — not verifiable from Bruno.
-        // Verified manually: TTL on key delivery-service::S4-F12::<id>:null:null is ≤ 300s.
+        // Verified manually: TTL on delivery-service::S4-F12::<id>:null:null is ≤ 300s.
 
         // ─── TC135: cache hit — second call returns same body ────────────────────────
         let cacheHitStatus, cacheHitBody;
