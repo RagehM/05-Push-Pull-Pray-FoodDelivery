@@ -19,19 +19,18 @@ import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEventKey
 @Repository
 public interface DeliveryTrackingEventRepository extends CassandraRepository<DeliveryTrackingEvent, DeliveryTrackingEventKey> {
 
-    // key.deliveryId = partition key → Spring Data derives: WHERE delivery_id = ?
-    List<DeliveryTrackingEvent> findByKeyDeliveryId(Long deliveryId);
+    // Explicit DESC ordering on both paths — sort order is independent of native table clustering schema
+    List<DeliveryTrackingEvent> findByKeyDeliveryIdOrderByKeyTimestampDesc(Long deliveryId);
 
-    // key.deliveryId + key.timestamp = partition + clustering key → no ALLOW FILTERING needed
-    List<DeliveryTrackingEvent> findByKeyDeliveryIdAndKeyTimestampBetween(Long deliveryId, Instant startTime, Instant endTime);
+    // Explicit CQL avoids Spring Data's Between bound-reversal bug on DESC clustering keys
+    @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND timestamp >= ?1 AND timestamp <= ?2 ORDER BY timestamp DESC")
+    List<DeliveryTrackingEvent> findByKeyDeliveryIdInTimeRange(Long deliveryId, Instant startTime, Instant endTime);
 
     // status is a non-key column → requires ALLOW FILTERING
     @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND status = ?1 ALLOW FILTERING")
     List<DeliveryTrackingEvent> findByKeyDeliveryIdAndStatus(Long deliveryId, String status);
 
     long countByKeyDeliveryId(Long deliveryId);
-
-    List<DeliveryTrackingEvent> findByKeyDeliveryIdOrderByKeyTimestampDesc(Long deliveryId);
 }
 
 

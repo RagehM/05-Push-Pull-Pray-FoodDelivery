@@ -14,78 +14,184 @@ runtime:
       code: |-
         const axios = require('axios');
 
-        const baseUrl    = bru.getEnvVar("DELIVERY_SERVICE_URL");
-        const token      = bru.getEnvVar("AUTH_TOKEN");
-        const deliveryId = bru.getEnvVar("Last_Delivery_Id");
+        const baseUrl = bru.getEnvVar("DELIVERY_SERVICE_URL");
+        const token   = bru.getEnvVar("AUTH_TOKEN");
 
-        // ─── Prerequisites guard ──────────────────────────────────────────────────────
+        // ─── Prerequisites ────────────────────────────────────────────────────────────
         test("[S4-F12] Prerequisites: env vars must be configured", function () {
-          expect(baseUrl,    "DELIVERY_SERVICE_URL is not set").to.exist;
-          expect(token,      "AUTH_TOKEN is not set").to.exist;
-          expect(deliveryId, "Last_Delivery_Id is not set — run CreateDelivery first").to.exist;
-          expect(deliveryId).to.not.equal("").and.not.equal("undefined");
+          expect(baseUrl, "DELIVERY_SERVICE_URL is not set").to.exist;
+          expect(token,   "AUTH_TOKEN is not set").to.exist;
         });
 
-        // ─── TC128: Happy path — events returned, ordered DESC ───────────────────────
-        test("[S4-F12 TC128] Happy path returns 200", function () {
-          expect(res.getStatus()).to.equal(200);
+        // ─── Setup: create delivery + record 3 events with distinct timestamps ────────
+        // Mirrors spec scenario (a): ASSIGNED at 14:00, PICKED_UP at 14:15, IN_TRANSIT at 14:30
+        // 100 ms sleeps give each event a distinct Instant.now() timestamp.
+        let deliveryId, allEventsStatus, allEventsBody;
+        let assignedTs, inTransitTs;
+
+        try {
+          const createRes = await axios.post(
+            `${baseUrl}/api/deliveries`,
+            { driverName: "F12-driver", latitude: 30.0, longitude: 31.0, orderId: 1 },
+            {
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              validateStatus: () => true,
+            }
+          );
+          deliveryId = createRes.data && createRes.data.id;
+
+          if (deliveryId) {
+            // 1st event — ASSIGNED (oldest)
+            await axios.post(
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+              { status: "ASSIGNED", latitude: 30.0, longitude: 31.0 },
+              {
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+
+            await new Promise(r => setTimeout(r, 100));
+
+            // 2nd event — PICKED_UP (middle)
+            await axios.post(
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+              { status: "PICKED_UP", latitude: 30.1, longitude: 31.1 },
+              {
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+
+            await new Promise(r => setTimeout(r, 100));
+
+            // 3rd event — IN_TRANSIT (newest)
+            await axios.post(
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+              { status: "IN_TRANSIT", latitude: 30.2, longitude: 31.2 },
+              {
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+
+            const allRes = await axios.get(
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+              {
+                headers: { "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+            allEventsStatus = allRes.status;
+            allEventsBody   = allRes.data;
+
+            // Response is DESC: [IN_TRANSIT, PICKED_UP, ASSIGNED]
+            if (Array.isArray(allEventsBody) && allEventsBody.length === 3) {
+              inTransitTs = allEventsBody[0].timestamp; // newest
+              assignedTs  = allEventsBody[2].timestamp; // oldest
+            }
+          }
+        } catch (e) {
+          // setup failure — each test below will fail with its own clear message
+        }
+
+        // ─── Scenario a / TC128: 3 events returned, IN_TRANSIT first ─────────────────
+        test("[S4-F12 a] GET all events returns 200", function () {
+          expect(allEventsStatus).to.equal(200);
         });
 
-        test("[S4-F12 TC128] Response body is an array", function () {
-          const body = res.getBody();
-          expect(Array.isArray(body)).to.equal(true);
+        test("[S4-F12 a] Returns exactly 3 events", function () {
+          expect(Array.isArray(allEventsBody)).to.equal(true);
+          expect(allEventsBody.length).to.equal(3);
         });
 
-        test("[S4-F12 TC128] Events are ordered newest first (DESC timestamps)", function () {
-          const body = res.getBody();
-          if (body.length >= 2) {
-            const t0 = new Date(body[0].timestamp).getTime();
-            const t1 = new Date(body[1].timestamp).getTime();
+        test("[S4-F12 a] First event is IN_TRANSIT (most recent, DESC order)", function () {
+          expect(allEventsBody[0].status).to.equal("IN_TRANSIT");
+        });
+
+        test("[S4-F12 a] Events sorted newest-first (DESC timestamps)", function () {
+          if (Array.isArray(allEventsBody) && allEventsBody.length >= 2) {
+            const t0 = new Date(allEventsBody[0].timestamp).getTime();
+            const t1 = new Date(allEventsBody[1].timestamp).getTime();
             expect(t0).to.be.greaterThanOrEqual(t1);
           }
         });
 
-        // ─── TC129: Time range filter — past range returns 0 events ──────────────────
-        let timeRangeStatus, timeRangeBody;
+        test("[S4-F12 a] Response has all required DTO fields", function () {
+          const e = allEventsBody[0];
+          expect(e).to.have.property("timestamp");
+          expect(e).to.have.property("status");
+          expect(e).to.have.property("driverName");
+          expect(e).to.have.property("latitude");
+          expect(e).to.have.property("longitude");
+        });
+
+        // ─── Scenario b / TC129: time range → only PICKED_UP ─────────────────────────
+        // Range: (ASSIGNED + 1 ms) → (IN_TRANSIT − 1 ms)  ← must capture only PICKED_UP
+        let rangeStatus, rangeBody;
         try {
-          const timeRangeRes = await axios.get(
-            `${baseUrl}/api/deliveries/${deliveryId}/tracking?startTime=2020-01-01T00:00:00Z&endTime=2020-01-02T00:00:00Z`,
+          if (deliveryId && assignedTs && inTransitTs) {
+            const startTime = new Date(new Date(assignedTs).getTime() + 1).toISOString();
+            const endTime   = new Date(new Date(inTransitTs).getTime() - 1).toISOString();
+
+            const rangeRes = await axios.get(
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking?startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+              {
+                headers: { "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+            rangeStatus = rangeRes.status;
+            rangeBody   = rangeRes.data;
+          }
+        } catch (e) {
+          rangeStatus = null;
+        }
+
+        test("[S4-F12 b] Time range filter returns 200", function () {
+          expect(rangeStatus).to.equal(200);
+        });
+
+        test("[S4-F12 b] Time range [after ASSIGNED, before IN_TRANSIT] returns exactly 1 event", function () {
+          expect(Array.isArray(rangeBody)).to.equal(true);
+          expect(rangeBody.length).to.equal(1);
+        });
+
+        test("[S4-F12 b] The single returned event is PICKED_UP", function () {
+          expect(rangeBody[0].status).to.equal("PICKED_UP");
+        });
+
+        // ─── Scenario c / TC131: non-existent delivery → 404 ─────────────────────────
+        let notFoundStatus;
+        try {
+          const notFoundRes = await axios.get(
+            `${baseUrl}/api/deliveries/999999/tracking`,
             {
               headers: { "Authorization": `Bearer ${token}` },
               validateStatus: () => true,
             }
           );
-          timeRangeStatus = timeRangeRes.status;
-          timeRangeBody   = timeRangeRes.data;
+          notFoundStatus = notFoundRes.status;
         } catch (e) {
-          timeRangeStatus = null;
+          notFoundStatus = null;
         }
 
-        test("[S4-F12 TC129] Time range filter returns 200", function () {
-          expect(timeRangeStatus).to.equal(200);
+        test("[S4-F12 c] Non-existent delivery returns strictly 404", function () {
+          expect(notFoundStatus).to.equal(404);
         });
 
-        test("[S4-F12 TC129] Time range filter applied — past range returns empty list", function () {
-          expect(Array.isArray(timeRangeBody)).to.equal(true);
-          expect(timeRangeBody.length).to.equal(0);
-        });
-
-        // ─── TC130: Empty timeline — delivery with no events returns 200 [] ──────────
+        // ─── Scenario d / TC130: fresh delivery with no events → 200 [] ──────────────
         let emptyStatus, emptyBody;
         try {
-          // Create a brand-new delivery to guarantee no tracking events exist for it
-          const createRes = await axios.post(
+          const freshRes = await axios.post(
             `${baseUrl}/api/deliveries`,
-            { driverName: "F12-test-driver", latitude: 30.0, longitude: 31.0, orderId: 1 },
+            { driverName: "F12-empty-driver", latitude: 30.0, longitude: 31.0, orderId: 1 },
             {
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`,
-              },
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
               validateStatus: () => true,
             }
           );
-          const freshId = createRes.data && createRes.data.id;
+          const freshId = freshRes.data && freshRes.data.id;
 
           if (freshId) {
             const emptyRes = await axios.get(
@@ -102,55 +208,36 @@ runtime:
           emptyStatus = null;
         }
 
-        test("[S4-F12 TC130] Empty timeline returns strictly 200 (not 404)", function () {
+        test("[S4-F12 d] Delivery with no events returns 200 (not 404)", function () {
           expect(emptyStatus).to.equal(200);
         });
 
-        test("[S4-F12 TC130] Empty timeline returns empty list", function () {
+        test("[S4-F12 d] Delivery with no events returns empty list", function () {
           expect(Array.isArray(emptyBody)).to.equal(true);
           expect(emptyBody.length).to.equal(0);
         });
 
-        // ─── TC131: Non-existent delivery → 404 ──────────────────────────────────────
-        let notFoundStatus;
-        try {
-          const notFoundRes = await axios.get(
-            `${baseUrl}/api/deliveries/999999/tracking`,
-            {
-              headers: { "Authorization": `Bearer ${token}` },
-              validateStatus: () => true,
-            }
-          );
-          notFoundStatus = notFoundRes.status;
-        } catch (e) {
-          notFoundStatus = e.response ? e.response.status : null;
-        }
-
-        test("[S4-F12 TC131] Non-existent delivery returns strictly 404", function () {
-          expect(notFoundStatus).to.equal(404);
-        });
-
-        // ─── TC132: Missing JWT → 401 ─────────────────────────────────────────────────
+        // ─── Scenario e / TC132: no JWT → 401 ────────────────────────────────────────
         let unauthStatus;
         try {
           const unauthRes = await axios.get(
-            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            `${baseUrl}/api/deliveries/${deliveryId || 1}/tracking`,
             { validateStatus: () => true }
           );
           unauthStatus = unauthRes.status;
         } catch (e) {
-          unauthStatus = e.response ? e.response.status : null;
+          unauthStatus = null;
         }
 
-        test("[S4-F12 TC132] Missing JWT returns strictly 401", function () {
+        test("[S4-F12 e] Without token returns strictly 401", function () {
           expect(unauthStatus).to.equal(401);
         });
 
-        // ─── TC133: Malformed JWT → 401 ──────────────────────────────────────────────
+        // ─── TC133: malformed JWT → 401 ──────────────────────────────────────────────
         let malformedStatus;
         try {
           const malformedRes = await axios.get(
-            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+            `${baseUrl}/api/deliveries/${deliveryId || 1}/tracking`,
             {
               headers: { "Authorization": "Bearer xxx.yyy.zzz" },
               validateStatus: () => true,
@@ -158,31 +245,41 @@ runtime:
           );
           malformedStatus = malformedRes.status;
         } catch (e) {
-          malformedStatus = e.response ? e.response.status : null;
+          malformedStatus = null;
         }
 
         test("[S4-F12 TC133] Malformed JWT returns strictly 401", function () {
           expect(malformedStatus).to.equal(401);
         });
 
-        // ─── TC135: Cache hit — second identical call returns same body ───────────────
-        let cacheHitBody;
+        // ─── TC134: Redis TTL ─────────────────────────────────────────────────────────
+        // Requires direct Redis CLI access — not verifiable from Bruno.
+        // Verified manually: TTL on key delivery-service::S4-F12::<id>:null:null is ≤ 300s.
+
+        // ─── TC135: cache hit — second call returns same body ────────────────────────
+        let cacheHitStatus, cacheHitBody;
         try {
-          const cacheRes = await axios.get(
-            `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
-            {
-              headers: { "Authorization": `Bearer ${token}` },
-              validateStatus: () => true,
-            }
-          );
-          cacheHitBody = JSON.stringify(cacheRes.data);
+          if (deliveryId) {
+            const cacheRes = await axios.get(
+              `${baseUrl}/api/deliveries/${deliveryId}/tracking`,
+              {
+                headers: { "Authorization": `Bearer ${token}` },
+                validateStatus: () => true,
+              }
+            );
+            cacheHitStatus = cacheRes.status;
+            cacheHitBody   = JSON.stringify(cacheRes.data);
+          }
         } catch (e) {
-          cacheHitBody = null;
+          cacheHitStatus = null;
         }
 
-        test("[S4-F12 TC135] Second call returns same body as first (cache hit)", function () {
-          const firstBody = JSON.stringify(res.getBody());
-          expect(cacheHitBody).to.equal(firstBody);
+        test("[S4-F12 TC135] Second call returns 200 (cache served)", function () {
+          expect(cacheHitStatus).to.equal(200);
+        });
+
+        test("[S4-F12 TC135] Second call body matches first call (cache hit)", function () {
+          expect(cacheHitBody).to.equal(JSON.stringify(allEventsBody));
         });
 
 settings:

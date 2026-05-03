@@ -1,6 +1,7 @@
 package com.team05.fooddelivery.delivery.service;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -611,10 +612,15 @@ public class DeliveryService {
 
         List<DeliveryTrackingEvent> events;
         if (startTime != null && endTime != null) {
-            events = trackingEventRepository.findByKeyDeliveryIdAndKeyTimestampBetween(
-                    deliveryId, Instant.parse(startTime), Instant.parse(endTime));
+            try {
+                events = trackingEventRepository.findByKeyDeliveryIdInTimeRange(
+                        deliveryId, Instant.parse(startTime), Instant.parse(endTime));
+            } catch (DateTimeParseException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Invalid datetime format — use ISO-8601, e.g. 2024-01-01T14:00:00Z");
+            }
         } else {
-            events = trackingEventRepository.findByKeyDeliveryId(deliveryId);
+            events = trackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
         }
 
         return events.stream().map(cassandraRowAdapter::adapt).toList();
