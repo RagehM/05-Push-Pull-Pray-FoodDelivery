@@ -2,6 +2,7 @@ package com.team05.fooddelivery.restaurant.service;
 
 import com.team05.fooddelivery.restaurant.adapter.RestaurantRevenueAdapter;
 import com.team05.fooddelivery.restaurant.adapter.TopRestaurantAdapter;
+import com.team05.fooddelivery.restaurant.dto.RestaurantDashboardDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
@@ -103,8 +104,10 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
+
     public Restaurant update(Long id, Restaurant updated) {
         Restaurant existing = getById(id);
         if (updated.getName() != null)
@@ -141,7 +144,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public void delete(Long id) {
         if (!restaurantRepository.existsById(id)) {
@@ -174,7 +178,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
         Restaurant existing = getById(id);
@@ -203,7 +208,7 @@ public class RestaurantService {
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
         List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
-        return new RestaurantRevenueAdapter(results.get(0), restaurant).toDTO();
+        return new RestaurantRevenueAdapter(results.get(0), restaurant).adapt(results.get(0));
     }
 
     // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
@@ -214,7 +219,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public void updateRestaurantStatus(Long id, String newStatus) {
         if (newStatus == null || newStatus.isBlank()) {
@@ -259,7 +265,7 @@ public class RestaurantService {
         List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
         List<TopRestaurantDTO> dtos = new ArrayList<>();
         for (Object[] row : results) {
-            dtos.add(new TopRestaurantAdapter(row).toDTO());
+            dtos.add(new TopRestaurantAdapter(row).adapt(row));
         }
         return dtos;
     }
@@ -272,7 +278,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId")
     })
     public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
         if (rating == null) {
@@ -336,6 +343,42 @@ public class RestaurantService {
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
+    }
+
+    // [S2-F12] Get Restaurant Performance Dashboard
+    // Section 10.2.3 — Cached 10 min, logs DASHBOARD_VIEWED to MongoDB on every
+    // call
+    @Cacheable(value = "restaurant-service::S2-F12", key = "#id")
+    public RestaurantDashboardDTO getDashboard(Long id) {
+        Restaurant restaurant = getById(id);
+
+        List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
+        Object[] row = stats.get(0);
+        Long totalOrders = ((Number) row[0]).longValue();
+        Double totalRevenue = ((Number) row[1]).doubleValue();
+        Double averageOrderValue = ((Number) row[2]).doubleValue();
+
+        Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
+
+        return RestaurantDashboardDTO.builder()
+                .restaurantId(restaurant.getId())
+                .name(restaurant.getName())
+                .totalOrders(totalOrders)
+                .totalRevenue(totalRevenue)
+                .averageOrderValue(averageOrderValue)
+                .activeMenuItems(activeMenuItems)
+                .build();
+    }
+
+    // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
+    // including cache hits
+    // Section 10.2.3 — pure observability, does NOT invalidate cache
+    public void notifyDashboardViewed(Long restaurantId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.DASHBOARD_VIEWED);
+        params.put("restaurantId", restaurantId);
+        params.put("details", new HashMap<>());
+        notifyObservers(RestaurantEventActions.DASHBOARD_VIEWED, params);
     }
 
     public void registerObserver(EntityObserver observer) {
