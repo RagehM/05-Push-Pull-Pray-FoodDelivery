@@ -6,61 +6,31 @@ import java.time.LocalDateTime;
 @JsonDeserialize(builder = DelayedDeliveryDTO.Builder.class)
 public class DelayedDeliveryDTO {
 
-    private Long deliveryId;
-    private String driverName;
-    private Long orderId;
-    private Double latitude;
-    private Double longitude;
-    private Double estimatedArrival;
-    private LocalDateTime updatedAt;
+    private final Long deliveryId;
+    private final String driverName;
+    private final Long orderId;
+    private final Double latitude;
+    private final Double longitude;
+    private final Double estimatedArrival;
+    private final LocalDateTime updatedAt;
 
-    public DelayedDeliveryDTO() {}
-
-    public DelayedDeliveryDTO(
-            Long deliveryId,
-            String driverName,
-            Long orderId,
-            Double latitude,
-            Double longitude,
-            Double estimatedArrival,
-            LocalDateTime updatedAt
-    ) {
-        this.deliveryId = deliveryId;
-        this.driverName = driverName;
-        this.orderId = orderId;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.estimatedArrival = estimatedArrival;
-        this.updatedAt = updatedAt;
+    private DelayedDeliveryDTO(Builder builder) {
+        this.deliveryId = builder.deliveryId;
+        this.driverName = builder.driverName;
+        this.orderId = builder.orderId;
+        this.latitude = builder.latitude;
+        this.longitude = builder.longitude;
+        this.estimatedArrival = builder.estimatedArrival;
+        this.updatedAt = builder.updatedAt;
     }
 
-    public Long getDeliveryId() {
-        return deliveryId;
-    }
-
-    public String getDriverName() {
-        return driverName;
-    }
-
-    public Long getOrderId() {
-        return orderId;
-    }
-
-    public Double getLatitude() {
-        return latitude;
-    }
-
-    public Double getLongitude() {
-        return longitude;
-    }
-
-    public Double getEstimatedArrival() {
-        return estimatedArrival;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+    public Long getDeliveryId() { return deliveryId; }
+    public String getDriverName() { return driverName; }
+    public Long getOrderId() { return orderId; }
+    public Double getLatitude() { return latitude; }
+    public Double getLongitude() { return longitude; }
+    public Double getEstimatedArrival() { return estimatedArrival; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     public static Builder builder() {
         return new Builder();
@@ -113,15 +83,7 @@ public class DelayedDeliveryDTO {
         }
 
         public DelayedDeliveryDTO build() {
-            return new DelayedDeliveryDTO(
-                    deliveryId,
-                    driverName,
-                    orderId,
-                    latitude,
-                    longitude,
-                    estimatedArrival,
-                    updatedAt
-            );
+            return new DelayedDeliveryDTO(this);
         }
     }
 }
