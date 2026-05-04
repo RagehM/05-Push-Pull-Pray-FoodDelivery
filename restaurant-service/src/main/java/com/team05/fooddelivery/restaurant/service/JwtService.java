@@ -1,12 +1,12 @@
-package com.team05.fooddelivery.user.service;
+package com.team05.fooddelivery.restaurant.service;
 
-import com.team05.fooddelivery.user.config.JwtConfigurationManager;
-import com.team05.fooddelivery.user.model.User;
+import com.team05.fooddelivery.restaurant.config.JwtConfigurationManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
+
 import javax.crypto.SecretKey;
 
 @Service
@@ -16,18 +16,6 @@ public class JwtService {
 
     public JwtService() {
     this.jwtConfig=JwtConfigurationManager.getInstance();
-    }
-
-
-    public String generateToken(User user) {
-        return Jwts.builder()
-                .subject(user.getEmail())
-                .claim("uid", user.getId())
-                .claim("role", user.getRole())
-                .issuedAt(new java.util.Date())
-                .expiration(new java.util.Date(System.currentTimeMillis() + jwtConfig.getExpiration()))
-                .signWith(getSigningKey())
-                .compact();
     }
 
     public String extractUsername(String token) {
@@ -41,6 +29,15 @@ public class JwtService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public Claims getAllClaims(String token, String secret) {
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private Claims extractClaims(String token) {

@@ -40,7 +40,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         ROLE_REQUIREMENTS.put("PUT", putRoles);
     }
 
-    /** Public paths that must bypass JWT validation entirely. */
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/register",
             "/api/auth/login",
@@ -53,22 +52,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
-    /**
-     * Skip this filter for public endpoints so Spring Security's {@code permitAll()}
-     * rules take effect without the filter short-circuiting with a 401 first.
-     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return PUBLIC_PATHS.stream().anyMatch(p -> pathMatcher.match(p, path));
     }
 
-    /**
-     * Resolves the required {@link UserRole} for the given request by matching its
-     * method and path against the statically configured role requirements.
-     *
-     * @return the required {@link UserRole}, or {@code null} if no role restriction applies.
-     */
     private UserRole resolveRequiredRole(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
@@ -83,11 +72,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return null;
     }
 
-    /**
-     * Writes a JSON error response directly to the {@link HttpServletResponse}.
-     * This is necessary because {@code @RestControllerAdvice} does not intercept
-     * exceptions thrown inside Servlet filters.
-     */
     private void writeErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
@@ -104,7 +88,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         try {
-            // --- Build the Chain of Responsibility ---
             AuthHandler tokenExtractionHandler = new TokenExtractionHandler();
             AuthHandler signatureValidationHandler = new SignatureValidationHandler(jwtService);
             AuthHandler userLoaderHandler = new UserLoaderHandler(jwtService, userDetailsService);
@@ -114,13 +97,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             signatureValidationHandler.setNext(userLoaderHandler);
             userLoaderHandler.setNext(roleAuthorizationHandler);
 
-            // Resolve the role required by this specific endpoint (null = no role restriction)
             UserRole requiredRole = resolveRequiredRole(request);
 
-            // Invoke the head of the chain; each handler validates one step and delegates to the next
             AuthContext ctx = tokenExtractionHandler.handle(new AuthContext(request, null, null, requiredRole));
 
-            // All handlers passed — populate the Spring Security context
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     ctx.user(),
                     null,
@@ -130,14 +110,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
 
         } catch (ResponseStatusException e) {
-            // A handler in the chain explicitly rejected the request with a known HTTP status.
-            // Write the status + reason directly to the response so the caller receives the
-            // correct code and a descriptive JSON body (mirrors GlobalExceptionHandler format).
             String reason = e.getReason() != null ? e.getReason() : e.getMessage();
             writeErrorResponse(response, e.getStatusCode().value(), reason);
 
         } catch (Exception e) {
-            // Unexpected error during authentication — treat as 401 Unauthorized.
             writeErrorResponse(response, HttpStatus.UNAUTHORIZED.value(),
                     "Unauthorized: " + e.getMessage());
         }

@@ -7,12 +7,17 @@ http:
   method: GET
   url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
   params:
-    - name: status
-      value: PENDING
+    - name: ""
+      value: ""
       type: query
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDEyMzRAbXNhaWwuY29tIiwidWlkIjoxLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3Nzc5MTk1NjAsImV4cCI6MTc3ODAwNTk2MH0.D-8ahFv-lHH8s01b5HZa9mKSi46ZqSMX6kCrIaQu5-A
 
 runtime:
+  variables:
+    - name: DELIVERY_SERVICE_URL
+      value: http://localhost:8084
   scripts:
     - type: tests
       code: |-
