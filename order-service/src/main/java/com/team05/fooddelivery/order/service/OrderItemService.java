@@ -2,6 +2,9 @@ package com.team05.fooddelivery.order.service;
 
 import java.util.List;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +29,7 @@ public class OrderItemService {
     public OrderItem getOrderItemById_Logical(Long orderItemId) {
         return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
-
+    @Cacheable(value = "order-service::orderItem", key = "#orderItemId") // orderID is not being used in cache key since it is not being used in the query.
     public OrderItem getOrderItemById(Long orderId, Long orderItemId) {
         return orderItemRepository.findById(orderItemId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OrderItem not found with id: " + orderItemId));
     }
@@ -37,6 +40,7 @@ public class OrderItemService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::orderItemsByOrderId", key = "#orderId")
     public List<OrderItem> getOrderItemsByOrderId(Long orderId) {
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
         if (orderItems == null || orderItems.isEmpty()) {
@@ -58,6 +62,10 @@ public class OrderItemService {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "order-service::orderItem", key = "#id"),
+        @CacheEvict(value = "order-service::orderItemsByOrderId", allEntries = true)
+    })
     public OrderItem updateOrderItem(Long id, OrderItem orderItem) {
         OrderItem existingOrderItem = getOrderItemById_Logical(id);
 
@@ -97,6 +105,7 @@ public class OrderItemService {
     }
 
     @Transactional
+    @CacheEvict(value = "order-service::orderItem", key = "#id")
     public void deleteOrderItem(Long id) {
         OrderItem existingOrderItem = getOrderItemById_Logical(id);
         orderItemRepository.delete(existingOrderItem);
