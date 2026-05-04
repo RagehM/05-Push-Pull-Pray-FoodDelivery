@@ -89,10 +89,10 @@ public class OrderController {
     }
     // [S3-F10] Get Order Analytics Dashboard (Report DTO)
     @GetMapping("/analytics/dashboard")
-    public OrderAnalyticsDashboardDTO getMethodName(
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return orderService.getOrderAnalyticsDashboard(startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay());
+        return orderService.getOrderAnalyticsDashboard(startDate, endDate);
     } 
     // [CRUD]
     //// Get order by ID

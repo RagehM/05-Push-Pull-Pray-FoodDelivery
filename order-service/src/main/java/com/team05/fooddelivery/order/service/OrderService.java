@@ -324,12 +324,16 @@ public class OrderService {
     }
     // [S3-F10] Get Order Analytics Dashboard (Report DTO)
     // Cached in redis for 10 minutes
-    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(LocalDateTime startDate, LocalDateTime endDate) {
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate query parameters are required");
+        }
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
         if (startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before endDate");
         }
-        System.out.println("Fetching order analytics dashboard for period: " + startDate + " to " + endDate);
-        Object[] result = orderRepository.getOrderCountAndCompletionRateDetails(startDate, endDate)[0];
+        Object[] result = orderRepository.getOrderCountAndCompletionRateDetails(startDateTime, endDateTimeExclusive)[0];
 
         OrderAnalyticsDashboardDTO analyticsDTO = ObjectArrayToOrderAnalyticsDashboardDTOAdapter.adapt(result);
 
