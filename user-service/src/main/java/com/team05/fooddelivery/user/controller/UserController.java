@@ -1,9 +1,6 @@
 package com.team05.fooddelivery.user.controller;
 
-import com.team05.fooddelivery.user.dto.RoleUpdateRequest;
-import com.team05.fooddelivery.user.dto.TopCustomerDTO;
-import com.team05.fooddelivery.user.dto.UserOrderSummaryDTO;
-import com.team05.fooddelivery.user.dto.UserProfileDTO;
+import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
@@ -136,5 +133,11 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public User updateUserRole(@PathVariable long id, @RequestBody RoleUpdateRequest request) {
         return userService.updateUserRole(id, request.role);
+    }
+
+    @GetMapping("/{id}/activity")
+    public ResponseEntity<ActivityFeedDTO> getUserActivityFeed(@PathVariable long id, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size)
+    {
+        return ResponseEntity.ok(userService.getUserActivityFeed(id, page, size));
     }
 }

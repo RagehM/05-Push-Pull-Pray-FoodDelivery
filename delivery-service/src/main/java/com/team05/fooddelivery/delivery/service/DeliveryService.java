@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
 import com.team05.fooddelivery.delivery.dto.*;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
-import com.team05.fooddelivery.delivery.factory.DeliveryEventFactory;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;

@@ -13,9 +13,11 @@ http:
     type: json
     data: |-
       {
-        "UserRole":"ADMIN"
+        "role":"ADMIN"
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBndWMuZWR1LmVnIiwidWlkIjozLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3Nzc5MTUwMzAsImV4cCI6MTc3ODAwMTQzMH0.UuZEJqtb3aEn2zKN3iFwMxAs9RmKvhv15o4RJ8wa2Co
 
 settings:
   encodeUrl: true
