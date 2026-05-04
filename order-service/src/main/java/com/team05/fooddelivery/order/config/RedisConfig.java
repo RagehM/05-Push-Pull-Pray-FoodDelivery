@@ -77,7 +77,7 @@ public class RedisConfig {
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfBaseType(Object.class)
                         .build(),
-                DefaultTyping.EVERYTHING,
+                DefaultTyping.NON_FINAL,
                 JsonTypeInfo.As.PROPERTY
         );
 
