@@ -5,7 +5,7 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8081/api/users/4/role
+  url: http://localhost:8081/api/users/1/role
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjgsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY2OTEyMSwiZXhwIjoxNzc3NzU1NTIxfQ.EUFuiCeHZSxolI1KUNSbPXKtwcg8olAsrkXUdP1EDdk
