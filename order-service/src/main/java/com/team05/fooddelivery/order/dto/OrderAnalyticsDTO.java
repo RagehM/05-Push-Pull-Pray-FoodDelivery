@@ -21,21 +21,19 @@ public class OrderAnalyticsDTO {
     }
 
     @JsonCreator
-    private static OrderAnalyticsDTO fromJson(
+    private OrderAnalyticsDTO(
             @JsonProperty("totalOrders") Long totalOrders,
             @JsonProperty("deliveredOrders") Long deliveredOrders,
             @JsonProperty("cancelledOrders") Long cancelledOrders,
             @JsonProperty("totalRevenue") Double totalRevenue,
             @JsonProperty("averageOrderAmount") Double averageOrderAmount,
             @JsonProperty("deliveryRate") Double deliveryRate) {
-        return OrderAnalyticsDTO.builder()
-                .totalOrders(totalOrders)
-                .deliveredOrders(deliveredOrders)
-                .cancelledOrders(cancelledOrders)
-                .totalRevenue(totalRevenue)
-                .averageOrderAmount(averageOrderAmount)
-                .deliveryRate(deliveryRate)
-                .build();
+        this.totalOrders = totalOrders;
+        this.deliveredOrders = deliveredOrders;
+        this.cancelledOrders = cancelledOrders;
+        this.totalRevenue = totalRevenue;
+        this.averageOrderAmount = averageOrderAmount;
+        this.deliveryRate = deliveryRate;
     }
 
     public Long getTotalOrders() {

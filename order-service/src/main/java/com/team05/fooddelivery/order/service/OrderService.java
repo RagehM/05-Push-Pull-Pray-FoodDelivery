@@ -274,9 +274,8 @@ public class OrderService {
     }
     // [S3-F8] Add items to existing order
     @Transactional
-    @Caching(put = {
-            @CachePut(value = "order-service::order", key = "#orderId"),
-    }, evict = {
+    @Caching(evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
             @CacheEvict(value = "order-service::S3-F1", allEntries = true),
             @CacheEvict(value = "order-service::S3-F3", allEntries = true),
             @CacheEvict(value = "order-service::S3-F6", allEntries = true),
@@ -298,9 +297,11 @@ public class OrderService {
             orderItem.setOrder(existingOrder);
         }
         existingOrder.getOrderItems().addAll(orderItems);
-        orderRepository.save(existingOrder);
+        Order returnObject = orderRepository.save(existingOrder);
 
-        Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
+
+
+
         Map<String, Object> params = new HashMap<>();
         params.put("order", returnObject);
         params.put("orderId", returnObject.getId());
@@ -308,10 +309,11 @@ public class OrderService {
         Map<String, Object> details = new HashMap<>();
         details.put("userId", returnObject.getUserId());
         details.put("restaurantId", returnObject.getRestaurantId());
-        details.put("status", returnObject.getStatus().name());
+        details.put("status", returnObject
+        .getStatus().name());
         details.put("totalItemsAfterAdd",
                 returnObject.getOrderItems() != null ? returnObject.getOrderItems().size() : 0);
-
+        
         params.put("details", details);
 
         notifyObservers(OrderEventActions.ITEMS_ADDED, params);

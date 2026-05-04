@@ -105,6 +105,7 @@ public class OrderItemService {
     }
 
     @Transactional
+    @CacheEvict(value = "order-service::orderItem", key = "#id")
     public void deleteOrderItem(Long id) {
         OrderItem existingOrderItem = getOrderItemById_Logical(id);
         orderItemRepository.delete(existingOrderItem);
