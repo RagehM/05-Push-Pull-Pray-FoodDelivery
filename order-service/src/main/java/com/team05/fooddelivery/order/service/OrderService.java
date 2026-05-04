@@ -75,7 +75,6 @@ public class OrderService {
     }, evict = {
             @CacheEvict(value = "order-service::S3-F1", allEntries = true),
             @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
-            @CacheEvict(value = "order-service::S3-F10", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId")
     })
     public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
@@ -159,7 +158,6 @@ public class OrderService {
             @CacheEvict(value = "order-service::S3-F1", allEntries = true),
             @CacheEvict(value = "order-service::S3-F3", allEntries = true),
             @CacheEvict(value = "order-service::S3-F9", key = "#id"),
-            @CacheEvict(value = "order-service::S3-F10", allEntries = true),
     })
     public Order deliverOrder(Long id) {
         Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -238,7 +236,6 @@ public class OrderService {
             @CacheEvict(value = "order-service::S3-F3", allEntries = true),
             @CacheEvict(value = "order-service::S3-F6", allEntries = true),
             @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
-            @CacheEvict(value = "order-service::S3-F10", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true),
             @CacheEvict(value = "delivery-service::S4-F10", allEntries = true)
     })
@@ -285,7 +282,6 @@ public class OrderService {
             @CacheEvict(value = "order-service::S3-F3", allEntries = true),
             @CacheEvict(value = "order-service::S3-F6", allEntries = true),
             @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
-            @CacheEvict(value = "order-service::S3-F10", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true),
     })
     public Order addItemsToOrder(Long orderId, List<OrderItem> orderItems) {
@@ -372,6 +368,22 @@ public class OrderService {
     }
     // [S3-F10] Get Order Analytics Dashboard (Report DTO)
     // Cached in redis for 10 minutes
+    @Transactional
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboardWrapper(LocalDate startDate, LocalDate endDate) {
+        OrderAnalyticsDashboardDTO dashboard = getOrderAnalyticsDashboard(startDate, endDate);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("orderId", -1L); // Aggregate logs with orderId -1
+        
+        Map<String, Object> details = new HashMap<>();
+        details.put("startDate", startDate);
+        details.put("endDate", endDate);
+        details.put("analyticsDashboard", dashboard);
+
+        notifyObservers("ANALYTICS_VIEWED", params);
+
+        return dashboard;
+    }
     @Transactional(readOnly = true)
     @Cacheable(value = "order-service::S3-F10", key = "{#startDate.toString(), #endDate.toString()}")
     public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(LocalDate startDate, LocalDate endDate) {
@@ -386,16 +398,6 @@ public class OrderService {
         Object[] result = orderRepository.getOrderCountAndCompletionRateDetails(startDateTime, endDateTimeExclusive)[0];
 
         OrderAnalyticsDashboardDTO analyticsDTO = ObjectArrayToOrderAnalyticsDashboardDTOAdapter.adapt(result);
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("orderId", -1L); // Aggregate logs with orderId -1
-        
-        Map<String, Object> details = new HashMap<>();
-        details.put("startDate", startDate);
-        details.put("endDate", endDate);
-        details.put("analyticsDashboard", analyticsDTO);
-
-        notifyObservers("ANALYTICS_VIEWED", params);
 
         return analyticsDTO;
     }

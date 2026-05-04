@@ -92,7 +92,7 @@ public class OrderController {
     public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return orderService.getOrderAnalyticsDashboard(startDate, endDate);
+        return orderService.getOrderAnalyticsDashboardWrapper(startDate, endDate);
     } 
     // [CRUD]
     //// Get order by ID

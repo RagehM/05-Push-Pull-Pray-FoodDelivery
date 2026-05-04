@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import java.util.Map;
 
@@ -10,21 +12,22 @@ public class OrderAnalyticsDashboardDTO {
     private double completionRate;
     private Map<OrderStatusEnum, Long> ordersByStatus;
 
-    public OrderAnalyticsDashboardDTO() {
-        this.totalOrders = 0;
-        this.totalRevenue = 0.0;
-        this.avgOrderValue = 0.0;
-        this.completionRate = 0.0;
-        this.ordersByStatus = Map.of(
-            OrderStatusEnum.DELIVERED, 0L,
-            OrderStatusEnum.CANCELLED, 0L,
-            OrderStatusEnum.PLACED, 0L,
-            OrderStatusEnum.CONFIRMED, 0L,
-            OrderStatusEnum.PREPARING, 0L
-        );
+    private OrderAnalyticsDashboardDTO(Builder builder) {
+        this.totalOrders = builder.totalOrders;
+        this.completionRate = builder.completionRate;
+        this.totalRevenue = builder.totalRevenue;
+        this.avgOrderValue = builder.avgOrderValue;
+        this.ordersByStatus = builder.ordersByStatus;
     }
 
-    public OrderAnalyticsDashboardDTO(long totalOrders, double completionRate, double totalRevenue, double avgOrderValue, Map<OrderStatusEnum, Long> ordersByStatus) {
+    @JsonCreator
+    private OrderAnalyticsDashboardDTO(
+            @JsonProperty("totalOrders") long totalOrders,
+            @JsonProperty("completionRate") double completionRate,
+            @JsonProperty("totalRevenue") double totalRevenue,
+            @JsonProperty("avgOrderValue") double avgOrderValue,
+            @JsonProperty("ordersByStatus") Map<OrderStatusEnum, Long> ordersByStatus
+    ) {
         this.totalOrders = totalOrders;
         this.completionRate = completionRate;
         this.totalRevenue = totalRevenue;
@@ -109,7 +112,7 @@ public class OrderAnalyticsDashboardDTO {
         }
 
         public OrderAnalyticsDashboardDTO build() {
-            return new OrderAnalyticsDashboardDTO(totalOrders, completionRate, totalRevenue, avgOrderValue, ordersByStatus);
+            return new OrderAnalyticsDashboardDTO(this);
         }
     }
 
