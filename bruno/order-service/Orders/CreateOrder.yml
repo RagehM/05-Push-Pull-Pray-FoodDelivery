@@ -13,14 +13,16 @@ http:
     type: json
     data: |-
       {
-        "userId": 1,
+        "userId": 2,
         "status": "DELIVERED",
         "totalAmount": 50.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},
         "orderDate": "2026-09-30T23:59:59.9999"
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3ODMwMjI3LCJleHAiOjE3Nzc5MTY2Mjd9.kfgbdGXggYS0oVrrQo0y6L1aM9a58xZ68xurumiiY0E
 
 settings:
   encodeUrl: true

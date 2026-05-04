@@ -1,7 +1,7 @@
-package com.team05.fooddelivery.user.model.mongo;
+package com.team05.shared.model.mongo;
 
-import com.team05.fooddelivery.user.enums.AuthEventAction;
-import com.team05.shared.model.mongo.MongoEvent;
+import com.team05.shared.enums.AuthEventAction;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;

@@ -15,15 +15,19 @@ import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,25 +38,23 @@ import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.team05.fooddelivery.order.factory.EventFactory;
-
 @Service
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
-    private final EventFactory eventFactory = new EventFactory();
 
     public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.observers.add(
-            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER, eventFactory)
+            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
     }
 
     // [S3-F1] Search Orders by Status and Date Range
+    @Cacheable(value = "order-service::S3-F1", key = "{#status, #startDate.toString(), #endDate.toString()}")
     public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
@@ -68,6 +70,13 @@ public class OrderService {
     }
     // [S3-F2] Confirm Order and Assign Restaurant (Transactional)
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#orderId"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId")
+    })
     public Order confirmOrderAndAssignRestaurant(Long orderId, Long restaurantId) {
         Order order = getOrderById(orderId);
         if (order.getStatus() != OrderStatusEnum.PLACED) {
@@ -91,7 +100,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CONFIRMED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -103,12 +111,13 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CONFIRMED", params);
+        notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
         return savedOrder;
 
     }
     // [S3-F3] Order Cost Estimation (Report DTO)
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F3", key = "{#request.restaurantId(), #request.itemCount(), #request.deliveryDistance()}")
     public OrderCostEstimateDTO estimateOrderCost(OrderEstimateRequest request) {
         if(request == null || request.restaurantId() == null || request.itemCount() == null || request.deliveryDistance() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order estimate request");
@@ -143,6 +152,13 @@ public class OrderService {
     }
     // [S3-F4] Deliver Order
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#id"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#id")
+    })
     public Order deliverOrder(Long id) {
         Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
@@ -161,7 +177,6 @@ public class OrderService {
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
         Order savedOrder = orderRepository.save(foundOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_DELIVERED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -174,13 +189,14 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_DELIVERED", params);
+        notifyObservers(OrderEventActions.ORDER_DELIVERED, params);
         return savedOrder;
 
 
     }
     // [S3-F5] Filter Orders by Metadata
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F5", key = "{#key, #value}")
     public List<Order> searchOrdersByMetadata(String key, String value) {
         if (key == null || key.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Metadata key must not be empty");
@@ -190,14 +206,23 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Metadata value must not be empty");
         }
 
-        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+        List<Order> orders = orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+
+        for (Order order : orders) {// Redis complains about lazy loading of order items when trying to cache the orders, this is suboptimal. but works
+            order.setOrderItems(new ArrayList<>(order.getOrderItems()));
+        }
+
+        // TODO: Add mongoEventLogging for this search action
+
+        return orders;
     }
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
-    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
-        if (startDate.isAfter(endDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before endDate");
-        }
-        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate)[0];
+    @Cacheable(value = "order-service::S3-F6", key = "{#startDate.toString(), #endDate.toString()}")
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
+
+        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDateTime, endDateTimeExclusive)[0];
         
         OrderAnalyticsDTO analyticsObject = orderArrayToOrderAnalyticsDTOAdapter.adapt(analyticsData);
 
@@ -205,6 +230,15 @@ public class OrderService {
     }
     // [S3-F7] Cancel Order
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+            @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true),
+            @CacheEvict(value = "delivery-service::S4-F10", allEntries = true)
+    })
     public void cancelOrder(Long orderId) {
         //Get order through JPA default method findById, if order not found, throw HTTP 404 Not Found
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -215,7 +249,6 @@ public class OrderService {
         //Update status to CANCELLED
         order.setStatus(OrderStatusEnum.CANCELLED);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CANCELLED");
         params.put("order", order);
         params.put("orderId", order.getId());
 
@@ -226,7 +259,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CANCELLED", params);
+        notifyObservers(OrderEventActions.ORDER_CANCELLED, params);
         //Update status of all order items to cancelled through repository
         // // // try {
         // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
@@ -243,6 +276,14 @@ public class OrderService {
     }
     // [S3-F8] Add items to existing order
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+            @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true),
+    })
     public Order addItemsToOrder(Long orderId, List<OrderItem> orderItems) {
         Order existingOrder = getOrderById(orderId);
         int line_item_count = existingOrder.getOrderItems() != null ? existingOrder.getOrderItems().size() : 0;
@@ -258,29 +299,32 @@ public class OrderService {
             orderItem.setOrder(existingOrder);
         }
         existingOrder.getOrderItems().addAll(orderItems);
-        orderRepository.save(existingOrder);
+        Order returnObject = orderRepository.save(existingOrder);
 
-        Order returnObject = orderRepository.getOrderWithOrderItemsById(orderId);
+
+
+
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_ITEMS_ADDED");
         params.put("order", returnObject);
         params.put("orderId", returnObject.getId());
 
         Map<String, Object> details = new HashMap<>();
         details.put("userId", returnObject.getUserId());
         details.put("restaurantId", returnObject.getRestaurantId());
-        details.put("status", returnObject.getStatus().name());
+        details.put("status", returnObject
+        .getStatus().name());
         details.put("totalItemsAfterAdd",
                 returnObject.getOrderItems() != null ? returnObject.getOrderItems().size() : 0);
-
+        
         params.put("details", details);
 
-        notifyObservers("ORDER_ITEMS_ADDED", params);
+        notifyObservers(OrderEventActions.ITEMS_ADDED, params);
 
         return returnObject;
     }
     // [S3-F9] Get Order Details with items (Report DTO)
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F9", key = "#orderId")
     public OrderDetailsDTO getOrderDetails(Long orderId) {
         Order order = orderRepository.findByIdWithItems(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -352,8 +396,11 @@ public class OrderService {
     // [CRUD]
     //// Get order by ID
     @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::order", key = "#orderId")
     public Order getOrderById(Long orderId) {
-        return orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        order.setOrderItems(new ArrayList<>(order.getOrderItems()));
+        return order;
     }
     //// Get all orders
     @Transactional(readOnly = true)
@@ -363,6 +410,7 @@ public class OrderService {
     }
     //// Create order
     @Transactional
+    @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
     public Order createOrder(Order order) {
         boolean userExists = orderRepository.existsByUserId(order.getUserId());
         if (!userExists) {
@@ -378,7 +426,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_CREATED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -391,11 +438,22 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_CREATED", params);
+        notifyObservers(OrderEventActions.ORDER_CREATED, params);
         return savedOrder;
     }
     //// Update order
     @Transactional
+    @Caching(put = {
+            @CachePut(value = "order-service::order", key = "#orderId"),
+    }, evict = {
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+            @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
+
+    })
     public Order updateOrder(Long orderId, Order updatedOrder) {
         Order existingOrder = getOrderById(orderId);
 
@@ -430,7 +488,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(existingOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_UPDATED");
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
 
@@ -442,16 +499,24 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_UPDATED", params);
+        notifyObservers(OrderEventActions.ORDER_UPDATED, params);
         return savedOrder;
     }
     //// Delete order
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
+            @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+            @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+            @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
+    })
     public void deleteOrder(Long orderId) {
         Order existingOrder = getOrderById(orderId);
         orderRepository.delete(existingOrder);
         Map<String, Object> params = new HashMap<>();
-        params.put("action", "ORDER_DELETED");
         params.put("order", existingOrder);
         params.put("orderId", existingOrder.getId());
 
@@ -463,7 +528,7 @@ public class OrderService {
 
         params.put("details", details);
 
-        notifyObservers("ORDER_DELETED", params);
+        notifyObservers(OrderEventActions.ORDER_DELETED, params);
     }
 
     public void registerObserver(EntityObserver observer) {

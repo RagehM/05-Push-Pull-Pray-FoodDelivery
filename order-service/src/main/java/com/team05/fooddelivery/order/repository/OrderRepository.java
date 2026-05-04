@@ -89,7 +89,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                 SUM(CASE WHEN o.status = 'DELIVERED' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(o)
                         ELSE 0.0 END
                 FROM Order o
-                WHERE o.orderDate >= :startDate AND o.orderDate <= :endDate
+                WHERE o.orderDate >= :startDate AND o.orderDate < :endDate
                 """)
         @Transactional(readOnly = true)
         Object[][] getOrderAnalyticsByTimePeriod(@Param("startDate") LocalDateTime startDate,

@@ -3,6 +3,8 @@ package com.team05.fooddelivery.order.dto;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 public class OrderEventDTO {
     private final String id;
     private final Long orderId;
@@ -16,6 +18,21 @@ public class OrderEventDTO {
         this.action = builder.action;
         this.payload = builder.payload;
         this.timestamp = builder.timestamp;
+    }
+
+    @JsonCreator
+    private OrderEventDTO(
+            String id,
+            Long orderId,
+            String action,
+            Map<String, Object> payload,
+            LocalDateTime timestamp
+    ) {
+        this.id = id;
+        this.orderId = orderId;
+        this.action = action;
+        this.payload = payload;
+        this.timestamp = timestamp;
     }
 
     public String getId() {

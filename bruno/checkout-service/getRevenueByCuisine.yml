@@ -1,0 +1,24 @@
+info:
+  name: getRevenueByCuisine
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: http://localhost:8085/api/payments/analytics/methods?startDate=2026-05-02&endDate=2026-05-26
+  params:
+    - name: startDate
+      value: 2026-05-02
+      type: query
+    - name: endDate
+      value: 2026-05-26
+      type: query
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3Nzc5NDMxMCwiZXhwIjoxNzc3ODgwNzEwfQ.uxM0V8s79wtKBfRb9ycBm5clxTSLjpIObAKsJKcRRAg
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
