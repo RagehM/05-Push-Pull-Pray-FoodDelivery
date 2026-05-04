@@ -224,11 +224,12 @@ public class RestaurantService {
         }
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-        if ("SUSPENDED".equals(newStatus)) {
+                // CLOSE added for TC 246
+        if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus) ) { 
             int activeOrders = restaurantRepository.countActiveOrders(id);
             if (activeOrders > 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Cannot suspend restaurant with active orders");
+                        "Cannot suspend or close restaurant with active orders");
             }
         }
         try {
