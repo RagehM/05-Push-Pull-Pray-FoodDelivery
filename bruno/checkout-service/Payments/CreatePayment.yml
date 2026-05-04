@@ -13,16 +13,17 @@ http:
     type: json
     data: |-
       {
-        "orderId": 8,
-        "userId": 1,
-        "amount": 150,
-        "method": "CASH_ON_DELIVERY",
-        "status": "PENDING",
-        "createdAt": "2026-03-25T10:00:00Z",
+        "orderId": 1,
+        "userId": 2,
+        "amount": 100,
+        "method": "CREDIT_CARD",
+        "status": "FAILED",
         "transactionDetails": {},
         "paymentOffers": []
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3ODMwMjI3LCJleHAiOjE3Nzc5MTY2Mjd9.kfgbdGXggYS0oVrrQo0y6L1aM9a58xZ68xurumiiY0E
 
 settings:
   encodeUrl: true

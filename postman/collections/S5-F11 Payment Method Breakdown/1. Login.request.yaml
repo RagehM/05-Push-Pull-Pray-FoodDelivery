@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{authUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"email":"test@example.com","password":"test1234"}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Login 200', () => pm.response.to.have.status(200));
+      const t = pm.response.json().token;
+      pm.collectionVariables.set('token', t);
+    language: text/javascript
+order: 1000
