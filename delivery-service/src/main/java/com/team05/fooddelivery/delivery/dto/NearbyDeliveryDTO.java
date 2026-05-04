@@ -1,8 +1,7 @@
 package com.team05.fooddelivery.delivery.dto;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@JsonDeserialize(builder = NearbyDeliveryDTO.Builder.class)
 public class NearbyDeliveryDTO {
 
     private final Long deliveryId;
@@ -28,13 +27,27 @@ public class NearbyDeliveryDTO {
     public Double getLongitude() { return longitude; }
     public Double getDistanceKm() { return distanceKm; }
 
+    @JsonCreator
+    private NearbyDeliveryDTO(
+            @JsonProperty("deliveryId") Long deliveryId,
+            @JsonProperty("driverName") String driverName,
+            @JsonProperty("orderId") Long orderId,
+            @JsonProperty("latitude") Double latitude,
+            @JsonProperty("longitude") Double longitude,
+            @JsonProperty("distanceKm") Double distanceKm) {
+        this.deliveryId = deliveryId;
+        this.driverName = driverName;
+        this.orderId = orderId;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.distanceKm = distanceKm;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
-    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
-
         private Long deliveryId;
         private String driverName;
         private Long orderId;

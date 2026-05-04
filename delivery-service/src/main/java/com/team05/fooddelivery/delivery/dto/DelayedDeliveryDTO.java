@@ -1,9 +1,9 @@
 package com.team05.fooddelivery.delivery.dto;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.time.LocalDateTime;
 
-@JsonDeserialize(builder = DelayedDeliveryDTO.Builder.class)
 public class DelayedDeliveryDTO {
 
     private final Long deliveryId;
@@ -32,11 +32,28 @@ public class DelayedDeliveryDTO {
     public Double getEstimatedArrival() { return estimatedArrival; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
+    @JsonCreator
+    private DelayedDeliveryDTO(
+            @JsonProperty("deliveryId") Long deliveryId,
+            @JsonProperty("driverName") String driverName,
+            @JsonProperty("orderId") Long orderId,
+            @JsonProperty("latitude") Double latitude,
+            @JsonProperty("longitude") Double longitude,
+            @JsonProperty("estimatedArrival") Double estimatedArrival,
+            @JsonProperty("updatedAt") LocalDateTime updatedAt) {
+        this.deliveryId = deliveryId;
+        this.driverName = driverName;
+        this.orderId = orderId;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.estimatedArrival = estimatedArrival;
+        this.updatedAt = updatedAt;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
-    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
         private Long deliveryId;
