@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class OrderAnalyticsDTO {
     private final Long totalOrders;
     private final Long deliveredOrders;
@@ -15,6 +18,22 @@ public class OrderAnalyticsDTO {
         this.totalRevenue = builder.totalRevenue;
         this.averageOrderAmount = builder.averageOrderAmount;
         this.deliveryRate = builder.deliveryRate;
+    }
+
+    @JsonCreator
+    private OrderAnalyticsDTO(
+            @JsonProperty("totalOrders") Long totalOrders,
+            @JsonProperty("deliveredOrders") Long deliveredOrders,
+            @JsonProperty("cancelledOrders") Long cancelledOrders,
+            @JsonProperty("totalRevenue") Double totalRevenue,
+            @JsonProperty("averageOrderAmount") Double averageOrderAmount,
+            @JsonProperty("deliveryRate") Double deliveryRate) {
+        this.totalOrders = totalOrders;
+        this.deliveredOrders = deliveredOrders;
+        this.cancelledOrders = cancelledOrders;
+        this.totalRevenue = totalRevenue;
+        this.averageOrderAmount = averageOrderAmount;
+        this.deliveryRate = deliveryRate;
     }
 
     public Long getTotalOrders() {
