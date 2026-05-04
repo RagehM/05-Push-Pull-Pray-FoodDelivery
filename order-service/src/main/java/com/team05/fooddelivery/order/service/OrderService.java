@@ -1,7 +1,9 @@
 package com.team05.fooddelivery.order.service;
 
+import com.team05.fooddelivery.order.adapter.ObjectArrayToOrderAnalyticsDashboardDTOAdapter;
 import com.team05.fooddelivery.order.adapter.orderArrayToOrderAnalyticsDTOAdapter;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.dto.OrderAnalyticsDashboardDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
@@ -155,7 +157,7 @@ public class OrderService {
     }, evict = {
             @CacheEvict(value = "order-service::S3-F1", allEntries = true),
             @CacheEvict(value = "order-service::S3-F3", allEntries = true),
-            @CacheEvict(value = "order-service::S3-F9", key = "#id")
+            @CacheEvict(value = "order-service::S3-F9", key = "#id"),
     })
     public Order deliverOrder(Long id) {
         Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -363,6 +365,41 @@ public class OrderService {
                 .totalItems(totalItems)
                 .preparedItems(preparedItems)
                 .build();
+    }
+    // [S3-F10] Get Order Analytics Dashboard (Report DTO)
+    // Cached in redis for 10 minutes
+    @Transactional
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboardWrapper(LocalDate startDate, LocalDate endDate) {
+        OrderAnalyticsDashboardDTO dashboard = getOrderAnalyticsDashboard(startDate, endDate);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("orderId", -1L); // Aggregate logs with orderId -1
+        
+        Map<String, Object> details = new HashMap<>();
+        details.put("startDate", startDate);
+        details.put("endDate", endDate);
+        details.put("analyticsDashboard", dashboard);
+
+        notifyObservers("ANALYTICS_VIEWED", params);
+
+        return dashboard;
+    }
+    @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F10", key = "{#startDate.toString(), #endDate.toString()}")
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate query parameters are required");
+        }
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
+        if (startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate must be before endDate");
+        }
+        Object[] result = orderRepository.getOrderCountAndCompletionRateDetails(startDateTime, endDateTimeExclusive)[0];
+
+        OrderAnalyticsDashboardDTO analyticsDTO = ObjectArrayToOrderAnalyticsDashboardDTOAdapter.adapt(result);
+
+        return analyticsDTO;
     }
     // [CRUD]
     //// Get order by ID

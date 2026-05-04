@@ -3,6 +3,7 @@ package com.team05.fooddelivery.order.controller;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
+import com.team05.fooddelivery.order.dto.OrderAnalyticsDashboardDTO;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+
 
 
 
@@ -85,6 +87,13 @@ public class OrderController {
     public ResponseEntity<OrderDetailsDTO> getOrderDetails(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.getOrderDetails(orderId));
     }
+    // [S3-F10] Get Order Analytics Dashboard (Report DTO)
+    @GetMapping("/analytics/dashboard")
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return orderService.getOrderAnalyticsDashboardWrapper(startDate, endDate);
+    } 
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")

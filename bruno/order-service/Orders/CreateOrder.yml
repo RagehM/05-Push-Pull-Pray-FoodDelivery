@@ -8,7 +8,7 @@ http:
   url: http://localhost:8083/api/orders
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzczOTIxOCwiZXhwIjoxNzc3ODI1NjE4fQ.CfZoeWzo2zUcFnY50DtwNSK3MDnw2BXzVUk2QGgi7no
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzcxMjc3NiwiZXhwIjoxNzc3Nzk5MTc2fQ.jyqcxbHIkFwedaoExZ4kxzdhu8kRDtYepg5KYTbXNt0
   body:
     type: json
     data: |-
@@ -17,7 +17,8 @@ http:
         "status": "DELIVERED",
         "totalAmount": 50.0,
         "deliveryAddress": "Matrouh",
-        "metadata": {}
+        "metadata": {},
+        "orderDate": "2026-09-30T23:59:59.9999"
       }
   auth:
     type: bearer
