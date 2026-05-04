@@ -67,7 +67,7 @@ public class OrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return orderService.getOrderAnalyticsByTimePeriod(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+        return orderService.getOrderAnalyticsByTimePeriod(startDate, endDate);
     }
     // [S3-F7] Cancel Order
     @PutMapping("{id}/cancel")

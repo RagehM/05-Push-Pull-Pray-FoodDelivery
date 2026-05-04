@@ -26,7 +26,6 @@ import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -205,12 +204,23 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Metadata value must not be empty");
         }
 
-        return orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+        List<Order> orders = orderRepository.findByMetadataKeyValue(key.trim(), value.trim());
+
+        for (Order order : orders) {// Redis complains about lazy loading of order items when trying to cache the orders, this is suboptimal. but works
+            order.setOrderItems(new ArrayList<>(order.getOrderItems()));
+        }
+
+        // TODO: Add mongoEventLogging for this search action
+
+        return orders;
     }
     // [S3-F6] - Order Analytics by Time Period (Report DTO)
     @Cacheable(value = "order-service::S3-F6", key = "{#startDate.toString(), #endDate.toString()}")
-    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDateTime startDate, LocalDateTime endDate) {
-        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDate, endDate)[0];
+    public OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTimeExclusive = endDate.plusDays(1).atStartOfDay();
+
+        Object[] analyticsData = orderRepository.getOrderAnalyticsByTimePeriod(startDateTime, endDateTimeExclusive)[0];
         
         OrderAnalyticsDTO analyticsObject = orderArrayToOrderAnalyticsDTOAdapter.adapt(analyticsData);
 
