@@ -7,7 +7,6 @@ import org.springframework.data.neo4j.core.schema.Node;
 @Node("Restaurant")
 public class RestaurantNode {
     @Id
-    @GeneratedValue
     private Long restaurantId;
 
     private String name;
@@ -23,6 +22,7 @@ public class RestaurantNode {
     }
 
     public Long getRestaurantId() { return restaurantId; }
+    public void setRestaurantId(Long restaurantId) { this.restaurantId = restaurantId; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
