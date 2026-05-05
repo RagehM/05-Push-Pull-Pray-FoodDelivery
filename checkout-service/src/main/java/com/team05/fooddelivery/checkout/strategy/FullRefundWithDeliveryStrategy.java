@@ -10,10 +10,10 @@ public class FullRefundWithDeliveryStrategy implements RefundStrategy {
 
     @Override
     public RefundResult calculateRefund(Payment payment, RefundRequest request) {
-        Map<String, Object> transactionDetails = payment.getTransactionDetails();
-        Number deliveryFee = (Number) transactionDetails.get("deliveryFee");
-        Double refundedAmount = payment.getAmount() + deliveryFee.doubleValue();
+//        Map<String, Object> transactionDetails = payment.getTransactionDetails();
+//        Number deliveryFee = (Number) transactionDetails.get("deliveryFee");
+//        Double refundedAmount = payment.getAmount() + deliveryFee.doubleValue();
 
-        return new RefundResult(refundedAmount, "FULL_REFUND_WITH_DELIVERY");
+        return new RefundResult(payment.getAmount(), "FULL_REFUND_WITH_DELIVERY");
     }
 }

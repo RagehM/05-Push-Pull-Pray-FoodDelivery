@@ -78,10 +78,10 @@ public class PaymentService {
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
 
-        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
-        auditDetails.put("status", savedPayment.getStatus().name());
-
-        paymentAuditEvent.put("details", auditDetails);
+//        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
+//        auditDetails.put("status", savedPayment.getStatus().name());
+//
+//        paymentAuditEvent.put("details", auditDetails);
 
         notifyObservers("PAYMENT_CREATED", paymentAuditEvent);
 
@@ -571,13 +571,6 @@ public class PaymentService {
     }
 
     // [S5-F11] Get Payment Method Breakdown
-    //
-    // Reads the payment_audit_trail MongoDB collection, filtered by timestamp in
-    // the inclusive range [startDate T00:00:00, endDate T23:59:59.999] and by
-    // action ∈ {COMPLETED, FAILED}. Groups by `method`, computing per-method
-    // successCount / failureCount / successRate / totalAmount. Auth (USER role)
-    // is enforced at the controller / SecurityConfig level. Result is cached
-    // for 10 minutes under checkout-service::S5-F11::<startDate>:<endDate>.
     @Cacheable(
             value = "checkout-service::S5-F11",
             key = "T(String).valueOf(#startDate) + ':' + T(String).valueOf(#endDate)"
@@ -599,12 +592,9 @@ public class PaymentService {
         LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
 
         // (c) Pull only events whose transactionDetails.status is COMPLETED or FAILED.
-        Set<String> statuses = Set.of(
-                PaymentAuditEvent.Actions.COMPLETED,
-                PaymentAuditEvent.Actions.FAILED
-        );
+        Set<String> actions = Set.of("COMPLETED", "FAILED");
         List<PaymentAuditEvent> events =
-                paymentAuditEventRepository.findByDetailsStatusInAndTimestampBetween(statuses, start, end);
+                paymentAuditEventRepository.findByActionInAndTimestampBetween(actions, start, end);
 
         if (events == null || events.isEmpty()) {
             // (f) Empty list when no data — do NOT 404.
@@ -623,12 +613,11 @@ public class PaymentService {
                 continue;
             }
 
-            // Read status from transactionDetails map stored inside the audit event
-            Object rawStatus = ev.getDetails() != null ? ev.getDetails().get("status") : null;
-            if (rawStatus == null) {
+            // Use the action field directly — that's what was persisted (e.g. "COMPLETED" / "FAILED")
+            String status = ev.getAction();
+            if (status == null) {
                 continue;
             }
-            String status = rawStatus.toString();
 
             PaymentMethod method;
             try {
@@ -725,11 +714,10 @@ public class PaymentService {
 
         Map<String, Object> refundedAuditEvent = new HashMap<>();
         refundedAuditEvent.put("paymentId", savedPayment.getId());
-        refundedAuditEvent.put("action", "REFUNDED");
         refundedAuditEvent.put("method", savedPayment.getMethod().name());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("strategy", strategyName);
+        details.put("strategyName", strategyName);
         details.put("reason", refundRequest.reason());
         details.put("originalAmount", savedPayment.getAmount());
         details.put("refundAmount", refundResult.amount());
@@ -737,7 +725,7 @@ public class PaymentService {
 
         refundedAuditEvent.put("details", details);
 
-        notifyObservers("PAYMENT_AUDIT", refundedAuditEvent);
+        notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
     }
