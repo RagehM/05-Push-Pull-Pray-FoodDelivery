@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
-
+// S2-F10 ES document returned by full-text search
+import com.team05.fooddelivery.restaurant.model.elasticsearch.RestaurantSearchDocument;
 @RestController
 @RequestMapping("/api/restaurants")
 public class RestaurantController {
@@ -156,5 +157,20 @@ public class RestaurantController {
         restaurantService.indexRestaurantForSearch(id);
         return ResponseEntity.ok().build();
     }
-
+    // [S2-F10] Full-Text Restaurant Search via Elasticsearch (Milestone 2 §10.2.1)
+    // Searches on name and description. All filter params are optional.
+    // Auth: JWT required — handled globally by SecurityConfig (returns 401 if missing/invalid).
+    // Response is cached 5 minutes in Redis.
+    // Returns 200 with empty list if no matches — never 404.
+    @GetMapping("/search/full-text") // maps to GET /api/restaurants/search/full-text
+    public ResponseEntity<List<RestaurantSearchDocument>> fullTextSearch(
+            @RequestParam String query,                              // required: the search text
+            @RequestParam(required = false) String cuisineType,      // optional: exact cuisine filter
+            @RequestParam(required = false) String status,           // optional: exact status filter
+            @RequestParam(required = false) Double minRating,        // optional: lower bound on rating
+            @RequestParam(required = false) Double maxRating) {      // optional: upper bound on rating
+        return ResponseEntity.ok(
+                restaurantService.fullTextSearch(query, cuisineType, status, minRating, maxRating)
+        );
+    }
 }
