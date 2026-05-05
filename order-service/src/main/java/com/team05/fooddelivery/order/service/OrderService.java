@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
 public class OrderService {
@@ -57,19 +58,18 @@ public class OrderService {
     private OrderService self; // Self-injection to allow calling methods with caching and transactions
 
     private final OrderRepository orderRepository;
+    private record RecommendationRow(Long restaurantId, Long score) {}
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
-
-    private final UserNodeRepository userNodeRepository;
+    private final Neo4jClient neo4jClient;
 
     public OrderService(
             OrderRepository orderRepository,
-            MongoOrderEventRepository mongoOrderEventRepository,
-            UserNodeRepository userNodeRepository
+            MongoOrderEventRepository mongoOrderEventRepository, Neo4jClient neo4jClient
     ) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
-        this.userNodeRepository = userNodeRepository;
+        this.neo4jClient = neo4jClient;
         this.observers.add(
             new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
@@ -426,12 +426,19 @@ public class OrderService {
 
     //[S3-F12]
     @Transactional(readOnly = true)
-    @Cacheable(value = "order-service::S3-F12", key = "{#userId, #limit}")
+    @Cacheable(value = "order-service::S3-F12", key = "{#userId, (#limit == null || #limit <= 0) ? 5 : #limit}")
     public List<RestaurantRecommendationDTO> getRestaurantRecommendations(Long userId, Integer limit) {
         
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId query parameter is required");
         }
+
+        int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
+
+        if (!orderRepository.existsUserById(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
         // Get userId and Role
         Object[] userIdAndRole = null;
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -453,36 +460,57 @@ public class OrderService {
 
 
         // Fetch restaurant recommendations using Neo4j repository
-        List<UserNodeRepository.RestaurantRecommendationRow> rows = userNodeRepository.findRecommendations(userId, limit);
+        List<RecommendationRow> rows = neo4jClient.query("""
+        MATCH (u:User {userId: $userId})-[:ORDERED_FROM]->(common:Restaurant)<-[:ORDERED_FROM]-(similar:User)
+        MATCH (similar)-[:ORDERED_FROM]->(rec:Restaurant)
+        WHERE NOT (u)-[:ORDERED_FROM]->(rec)
+        RETURN rec.restaurantId AS restaurantId, count(DISTINCT similar) AS score
+        ORDER BY score DESC
+        LIMIT $limit
+        """)
+                .bind(userId).to("userId")
+                .bind(finalLimit).to("limit")
+                .fetchAs(RecommendationRow.class)
+                .mappedBy((typeSystem, record) -> new RecommendationRow(
+                        record.get("restaurantId").asLong(),
+                        record.get("score").asLong()
+                ))
+                .all()
+                .stream()
+                .toList();
 
         // If no recommendations found, return an empty list
         if (rows.isEmpty()) {
-            List<RestaurantRecommendationDTO> empty = List.of();
             // cacheRecommendations(cacheKey, empty);
-            return empty;
+            return new ArrayList<>();
         }
 
-        Set<Long> restaurantIds = rows.stream().map(UserNodeRepository.RestaurantRecommendationRow::getRestaurantId).collect(Collectors.toSet());
+        Set<Long> restaurantIds = rows.stream()
+                .map(RecommendationRow::restaurantId)
+                .collect(Collectors.toSet());
         Map<Long, OrderRepository.RestaurantInfoRow> infoById = orderRepository.findRestaurantInfoByIds(restaurantIds)
                 .stream()
                 .collect(Collectors.toMap(OrderRepository.RestaurantInfoRow::getRestaurantId, r -> r));
 
         List<RestaurantRecommendationDTO> recommendations = rows.stream()
                 .map(r -> {
-                    OrderRepository.RestaurantInfoRow info = infoById.get(r.getRestaurantId());
+                    OrderRepository.RestaurantInfoRow info = infoById.get(r.restaurantId());
                     if (info == null) return null;
                     return new RestaurantRecommendationDTO.Builder()
                             .id(info.getRestaurantId())
                             .name(info.getName())
                             .cuisineType(info.getCuisineType())
-                            .score(r.getScore())
+                            .score(r.score())
                             .build();
                 })
                 .filter(r -> r != null)
                 .toList();
 
+        ArrayList<RestaurantRecommendationDTO> sortedRecommendations = new ArrayList<>(recommendations);
+        sortedRecommendations.sort(Comparator.comparing(RestaurantRecommendationDTO::score).reversed());
+
         // cacheRecommendations(cacheKey, recommendations);
-        return recommendations;
+        return sortedRecommendations;
     }
 
     // private void cacheRecommendations(String key, List<RestaurantRecommendationDTO> recommendations) {
