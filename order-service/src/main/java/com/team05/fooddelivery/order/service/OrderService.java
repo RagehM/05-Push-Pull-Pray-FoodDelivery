@@ -440,7 +440,7 @@ public class OrderService {
 
         boolean isUser = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(role -> role.equals("ROLE_USER") || role.equals("USER") || role.equals("ROLE_CUSTOMER") || role.equals("CUSTOMER"));
+                .anyMatch(role -> role.equals("ROLE_CUSTOMER"));
 
         if (!isUser) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only users can record interactions");
