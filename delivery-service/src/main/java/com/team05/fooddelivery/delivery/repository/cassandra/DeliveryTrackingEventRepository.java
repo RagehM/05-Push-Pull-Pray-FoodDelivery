@@ -19,9 +19,9 @@ import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 @Repository
 public interface DeliveryTrackingEventRepository extends CassandraRepository<DeliveryTrackingEvent, MapId> {
 
-    List<DeliveryTrackingEvent> findByDeliveryIdOrderByTimestampDesc(Long deliveryId);
+    List<DeliveryTrackingEvent> findByDeliveryIdOrderByEventTimeDesc(Long deliveryId);
 
-    @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND timestamp >= ?1 AND timestamp <= ?2 ORDER BY timestamp DESC")
+    @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND event_time >= ?1 AND event_time <= ?2 ORDER BY event_time DESC")
     List<DeliveryTrackingEvent> findByDeliveryIdInTimeRange(Long deliveryId, Instant startTime, Instant endTime);
 
     @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND status = ?1 ALLOW FILTERING")
