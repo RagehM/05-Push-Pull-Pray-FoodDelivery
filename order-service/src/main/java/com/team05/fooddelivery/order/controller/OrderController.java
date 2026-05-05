@@ -100,25 +100,11 @@ public class OrderController {
     } 
     
     // [S3-F12]
-        @GetMapping("/recommendations")
-        public ResponseEntity<List<RestaurantRecommendationDTO>> getRestaurantRecommendations(
-                @RequestParam Long userId,
-                @RequestParam(required = false) Integer limit,
-                Authentication authentication
-        ) {
-            if (!isAdmin(authentication) && !ownsUserId(authentication, userId)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
-            }
-
-            List<RestaurantRecommendationDTO> recommendations = orderService.getRestaurantRecommendations(userId, limit);
-            return ResponseEntity.ok(recommendations);
-        }
-
     private static boolean isAdmin(Authentication authentication) {
         if (authentication == null) return false;
 
-        for (GrantedAuthority a : authentication.getAuthorities()) {
-            String role = a.getAuthority();
+        for (GrantedAuthority authority : authentication.getAuthorities()) {
+            String role = authority.getAuthority();
             if ("ADMIN".equals(role) || "ROLE_ADMIN".equals(role)) {
                 return true;
             }
@@ -131,18 +117,43 @@ public class OrderController {
 
         return false;
     }
-    private static boolean ownsUserId(Authentication authentication, Long userId) {
-        if (authentication == null) return false;
 
-        try {
+    private static boolean ownsUserId(Authentication authentication, Long userId) {
+        if (authentication == null || userId == null) return false;
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof com.team05.fooddelivery.order.security.JwtUserPrincipal jwtUser) {
+            return jwtUser.uid() != null && jwtUser.uid().equals(userId);
+        }
+
+        return false;
+    }
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<RestaurantRecommendationDTO>> getRestaurantRecommendations(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Integer limit,
+            Authentication authentication
+    ) {
+        Long effectiveUserId = userId;
+
+        if (effectiveUserId == null) {
             Object principal = authentication.getPrincipal();
             if (principal instanceof com.team05.fooddelivery.order.security.JwtUserPrincipal jwtUser) {
-                return jwtUser.uid() != null && jwtUser.uid().equals(userId);
+                effectiveUserId = jwtUser.uid();
             }
-        } catch (Exception e) {
-            return false;
         }
-        return false;
+
+        if (effectiveUserId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        if (!isAdmin(authentication) && !ownsUserId(authentication, effectiveUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+        return ResponseEntity.ok(
+                orderService.getRestaurantRecommendations(effectiveUserId, limit)
+        );
     }
     // [CRUD]
     //// Get order by ID
