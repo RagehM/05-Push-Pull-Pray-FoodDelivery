@@ -1,12 +1,11 @@
 package com.team05.fooddelivery.delivery.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
 
 import java.util.Map;
 
-@JsonDeserialize(builder = DeliveryAnalyticsDTO.Builder.class)
 public class DeliveryAnalyticsDTO {
 
     private final long totalDeliveries;
@@ -26,11 +25,21 @@ public class DeliveryAnalyticsDTO {
     public double getOnTimeRate() { return onTimeRate; }
     public Map<DeliveryStatus, Long> getDeliveriesByStatus() { return deliveriesByStatus; }
 
+    @JsonCreator
+    private DeliveryAnalyticsDTO(
+            @JsonProperty("totalDeliveries") long totalDeliveries,
+            @JsonProperty("averageDeliveryTimeMinutes") double averageDeliveryTimeMinutes,
+            @JsonProperty("onTimeRate") double onTimeRate,
+            @JsonProperty("deliveriesByStatus") Map<DeliveryStatus, Long> deliveriesByStatus) {
+        this.totalDeliveries = totalDeliveries;
+        this.averageDeliveryTimeMinutes = averageDeliveryTimeMinutes;
+        this.onTimeRate = onTimeRate;
+        this.deliveriesByStatus = deliveriesByStatus;
+    }
     public static Builder builder() {
         return new Builder();
     }
 
-    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
         private long totalDeliveries;
