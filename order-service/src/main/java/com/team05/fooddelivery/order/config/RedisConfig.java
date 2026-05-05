@@ -46,6 +46,7 @@ public class RedisConfig {
         cacheConfigs.put("order-service::S3-F6", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigs.put("order-service::S3-F9", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigs.put("order-service::S3-F10", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("order-service::S3-F12", defaultConfig.entryTtl(Duration.ofMinutes(5)));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)

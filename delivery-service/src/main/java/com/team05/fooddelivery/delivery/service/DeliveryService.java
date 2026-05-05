@@ -627,6 +627,7 @@ public class DeliveryService {
         details.put("endDate", endDate);
 
         Map<String, Object> payload = new HashMap<>();
+        payload.put("deliveryId", 0L);
         payload.put("details", details);
 
         notifyObservers("ANALYTICS_VIEWED", payload);

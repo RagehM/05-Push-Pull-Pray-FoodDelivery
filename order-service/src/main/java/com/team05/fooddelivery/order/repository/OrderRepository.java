@@ -168,6 +168,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         WHERE u.email = :email
                         """, nativeQuery = true)
         Object[][] verifyUserIsWhoIsMakingRequest(@Param("email") String email);
+
+        @Query(value = "SELECT COUNT(*) > 0 FROM users u WHERE u.id = :userId", nativeQuery = true)
+        boolean existsUserById(@Param("userId") Long userId);
         // [CRUD]
         //// Check for existence of user
         @Query(value = """
