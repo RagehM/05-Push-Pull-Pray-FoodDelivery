@@ -1,0 +1,7 @@
+info:
+  name: S3-F11
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit

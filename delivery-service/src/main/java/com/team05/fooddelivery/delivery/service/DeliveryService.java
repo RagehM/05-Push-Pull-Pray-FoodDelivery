@@ -669,7 +669,7 @@ public class DeliveryService {
                         "Invalid time format — use HH:mm (e.g. 14:10) or ISO-8601 (e.g. 2024-01-01T14:00:00Z)");
             }
         } else {
-            events = trackingEventRepository.findByDeliveryIdOrderByTimestampDesc(deliveryId);
+            events = trackingEventRepository.findByDeliveryIdOrderByEventTimeDesc(deliveryId);
         }
 
         return events.stream().map(cassandraRowAdapter::adapt).toList();
