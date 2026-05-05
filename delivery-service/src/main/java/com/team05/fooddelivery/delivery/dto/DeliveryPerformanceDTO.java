@@ -1,10 +1,10 @@
 package com.team05.fooddelivery.delivery.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 import java.time.LocalDateTime;
 
-public class DeliveryPerformanceSummaryDTO {
+public class DeliveryPerformanceDTO {
 
     private String driverName;
     private long totalDeliveries;
@@ -13,9 +13,9 @@ public class DeliveryPerformanceSummaryDTO {
     private LocalDateTime firstDelivery;
     private LocalDateTime lastDelivery;
 
-    public DeliveryPerformanceSummaryDTO() {}
+    public DeliveryPerformanceDTO() {}
 
-    public DeliveryPerformanceSummaryDTO(Builder builder) {
+    public DeliveryPerformanceDTO(Builder builder) {
         this.driverName = builder.driverName;
         this.totalDeliveries = builder.totalDeliveries;
         this.averageSpeed = builder.averageSpeed;
@@ -49,7 +49,7 @@ public class DeliveryPerformanceSummaryDTO {
     }
 
     @JsonCreator
-    private DeliveryPerformanceSummaryDTO(
+    private DeliveryPerformanceDTO(
             @JsonProperty("driverName") String driverName,
             @JsonProperty("totalDeliveries") long totalDeliveries,
             @JsonProperty("averageSpeed") Double averageSpeed,
@@ -107,8 +107,8 @@ public class DeliveryPerformanceSummaryDTO {
             return this;
         }
 
-        public DeliveryPerformanceSummaryDTO build() {
-            return new DeliveryPerformanceSummaryDTO(this);
+        public DeliveryPerformanceDTO build() {
+            return new DeliveryPerformanceDTO(this);
         }
     }
 }

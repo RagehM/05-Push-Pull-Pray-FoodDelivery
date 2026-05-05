@@ -146,7 +146,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
         WHERE (:start IS NULL OR o.order_date >= :start)
           AND (:end IS NULL OR o.order_date <= :end)
         """, nativeQuery = true)
-	Long countTotalDeliveries(
+	Number countTotalDeliveries(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -167,7 +167,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
               AND (:end IS NULL OR o.order_date <= :end)
         ) x
         """, nativeQuery = true)
-	Double averageDeliveryMinutes(
+	Number averageDeliveryMinutes(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -181,7 +181,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
           AND (:start IS NULL OR o.order_date >= :start)
           AND (:end IS NULL OR o.order_date <= :end)
         """, nativeQuery = true)
-	Long countDeliveredOrders(
+	Number countDeliveredOrders(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -199,7 +199,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
           AND (:start IS NULL OR o.order_date >= :start)
           AND (:end IS NULL OR o.order_date <= :end)
         """, nativeQuery = true)
-	Long countOnTimeDeliveredOrders(
+	Number countOnTimeDeliveredOrders(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
