@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import java.util.Map;
 
@@ -12,12 +14,26 @@ public class OrderItemDetailsDTO {
     private OrderItemStatusEnum status;
     private Map<String, Object> metadata;
 
-    public OrderItemDetailsDTO() {
+    private OrderItemDetailsDTO(Builder builder) {
+        this.id = builder.id;
+        this.lineNumber = builder.lineNumber;
+        this.itemName = builder.itemName;
+        this.quantity = builder.quantity;
+        this.unitPrice = builder.unitPrice;
+        this.status = builder.status;
+        this.metadata = builder.metadata;
     }
 
-    public OrderItemDetailsDTO(Long id, Integer lineNumber, String itemName,
-                               Integer quantity, Double unitPrice,
-                               OrderItemStatusEnum status, Map<String, Object> metadata) {
+    @JsonCreator
+    private OrderItemDetailsDTO(
+            @JsonProperty("id") Long id,
+            @JsonProperty("lineNumber") Integer lineNumber,
+            @JsonProperty("itemName") String itemName,
+            @JsonProperty("quantity") Integer quantity,
+            @JsonProperty("unitPrice") Double unitPrice,
+            @JsonProperty("status") OrderItemStatusEnum status,
+            @JsonProperty("metadata") Map<String, Object> metadata
+    ) {
         this.id = id;
         this.lineNumber = lineNumber;
         this.itemName = itemName;
@@ -132,15 +148,7 @@ public class OrderItemDetailsDTO {
         }
 
         public OrderItemDetailsDTO build() {
-            return new OrderItemDetailsDTO(
-                    id,
-                    lineNumber,
-                    itemName,
-                    quantity,
-                    unitPrice,
-                    status,
-                    metadata
-            );
+            return new OrderItemDetailsDTO(this);
         }
     }
 }

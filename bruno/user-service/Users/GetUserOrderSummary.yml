@@ -6,11 +6,12 @@ info:
 http:
   method: GET
   url: http://localhost:8081/api/users/1/order-summary
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzczMTc5MSwiZXhwIjoxNzc3ODE4MTkxfQ.CCb491KFSwAb_BfiMeTuyNWn_dknhZSjohJyjYw5Uhk
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

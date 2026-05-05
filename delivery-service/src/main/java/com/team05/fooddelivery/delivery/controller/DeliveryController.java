@@ -1,12 +1,13 @@
 package com.team05.fooddelivery.delivery.controller;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
+import com.team05.fooddelivery.delivery.dto.DeliveryTrackingRequestDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
 import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
+import com.team05.fooddelivery.delivery.dto.DeliveryTrackingDTO;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.service.DeliveryService;
 
@@ -42,6 +44,14 @@ public class DeliveryController {
     @PostMapping("/order/{orderId}")
     public ResponseEntity<Delivery> createOrderDelivery(@PathVariable Long orderId, @RequestBody Delivery delivery) {
         return new ResponseEntity<>(deliveryService.createOrderDelivery(orderId, delivery), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/{id}/tracking")
+//    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> recordDeliveryTracking(@PathVariable Long id,
+                                                       @RequestBody DeliveryTrackingRequestDTO request) {
+        deliveryService.recordDeliveryTracking(id, request);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
@@ -113,6 +123,14 @@ public class DeliveryController {
     public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
         return deliveryService.purgeOldDeliveries(olderThanDays);
     }
+    @GetMapping("/{id}/tracking")
+    public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(
+            @PathVariable Long id,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        return deliveryService.getDeliveryTrackingTimeline(id, startTime, endTime);
+    }
+
     @GetMapping("/driver/{driverName}/summary")
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             @PathVariable String driverName,

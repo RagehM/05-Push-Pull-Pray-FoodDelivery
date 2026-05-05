@@ -4,11 +4,16 @@ import com.team05.fooddelivery.checkout.dto.RefundRequest;
 import com.team05.fooddelivery.checkout.dto.RefundResult;
 import com.team05.fooddelivery.checkout.model.Payment;
 
+import java.util.Map;
+
 public class FoodOnlyRefundStrategy implements RefundStrategy {
 
     @Override
     public RefundResult calculateRefund(Payment payment, RefundRequest request) {
-        Double refundedAmount = payment.getAmount() - request.deliveryFee();
+        Map<String, Object> transactionDetails = payment.getTransactionDetails();
+        Number deliveryFee = (Number) transactionDetails.get("deliveryFee");
+        Double refundedAmount = payment.getAmount() - deliveryFee.doubleValue();
+
         return new RefundResult(refundedAmount, "FULL_REFUND_WITHOUT_DELIVERY");
     }
 }

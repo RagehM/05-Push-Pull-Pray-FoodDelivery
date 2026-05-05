@@ -94,7 +94,7 @@ services:
       - redis
 
   elasticsearch:
-    image: elasticsearch:8.19.12
+    image: elasticsearch:9.0.3
     container_name: fooddelivery-elasticsearch
     ports:
       - "9200:9200"
@@ -112,7 +112,7 @@ services:
       start_period: 30s
 
   kibana:
-    image: kibana:8.19.12
+    image: kibana:9.0.3
     container_name: fooddelivery-kibana
     ports:
       - "5601:5601"
@@ -211,6 +211,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    entrypoint: [ "sh", "-c", "sleep 90 && exec java -jar app.jar" ]
 
   user-service:
     build:

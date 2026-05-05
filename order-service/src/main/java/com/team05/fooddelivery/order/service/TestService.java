@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 
-import com.team05.fooddelivery.order.model.mongo.OrderEvent;
+import com.team05.shared.model.mongo.OrderEvent;
 import com.team05.fooddelivery.order.model.neo4j.*;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;

@@ -1,6 +1,5 @@
 package com.team05.fooddelivery.order.model;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -8,7 +7,6 @@ import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
-import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 
 import jakarta.persistence.*;
 
@@ -44,6 +42,7 @@ public class OrderItem {
         if (lineNumber == null && order != null) {
             lineNumber = order.getOrderItems().size() + 1;
         }
+        if (metadata == null) metadata = Map.of();
     }
     
     public OrderItem() {
