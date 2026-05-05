@@ -661,14 +661,14 @@ public class DeliveryService {
         List<DeliveryTrackingEvent> events;
         if (startTime != null && endTime != null) {
             try {
-                events = trackingEventRepository.findByKeyDeliveryIdInTimeRange(
+                events = trackingEventRepository.findByDeliveryIdInTimeRange(
                         deliveryId, parseTimeParam(startTime), parseTimeParam(endTime));
             } catch (DateTimeParseException e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Invalid time format — use HH:mm (e.g. 14:10) or ISO-8601 (e.g. 2024-01-01T14:00:00Z)");
             }
         } else {
-            events = trackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
+            events = trackingEventRepository.findByDeliveryIdOrderByTimestampDesc(deliveryId);
         }
 
         return events.stream().map(cassandraRowAdapter::adapt).toList();
