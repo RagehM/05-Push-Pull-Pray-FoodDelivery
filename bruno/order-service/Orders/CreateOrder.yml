@@ -13,9 +13,10 @@ http:
     type: json
     data: |-
       {
-        "userId": 2,
+        "userId": 1,
+        "restaurantId": 1,
         "status": "DELIVERED",
-        "totalAmount": 50.0,
+        "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},
         "orderDate": "2026-09-30T23:59:59.9999"

@@ -13,17 +13,18 @@ http:
     type: json
     data: |-
       {
-        "id": 0,
-        "name": "sth",
-        "email": "7aga@gmail.com",
-        "phone": "01145010477",
-        "cuisineType": "EGYPTIAN",
+        "name": "italy1",
+        "email": "7agaasasd@gmail.com",
+        "phone": "01145asdasd010477",
+        "cuisineType": "ITALIAN",
         "status": "OPEN",
         "rating": 0,
         "totalRatings": 0,
-        "details": "",
+        "details": {}
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkyNTczLCJleHAiOjE3NzgwNzg5NzN9.itIffX9oCivluS8Zflk7K8ANstvoPipPCx70dj38TQY
 
 settings:
   encodeUrl: true
