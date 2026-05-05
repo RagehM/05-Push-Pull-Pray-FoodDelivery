@@ -37,18 +37,18 @@ public class DeliveryTrackingEventKey implements Serializable {
     /**
      * CLUSTERING KEY (ordinal = 1, type = CLUSTERED)
      * Determines sort order WITHIN the partition.
-     * ordering = DESCENDING: Newest timestamps sort first, so queries return recent events first.
+     * ordering = DESCENDING: Newest event_time sorts first, so queries return recent events first.
      */
-    @PrimaryKeyColumn(name = "timestamp", ordinal = 1, type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
-    private Instant timestamp;
+    @PrimaryKeyColumn(name = "event_time", ordinal = 1, type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
+    private Instant eventTime;
 
     // Constructors
     public DeliveryTrackingEventKey() {
     }
 
-    public DeliveryTrackingEventKey(Long deliveryId, Instant timestamp) {
+    public DeliveryTrackingEventKey(Long deliveryId, Instant eventTime) {
         this.deliveryId = deliveryId;
-        this.timestamp = timestamp;
+        this.eventTime = eventTime;
     }
 
     // Getters and Setters
@@ -60,19 +60,19 @@ public class DeliveryTrackingEventKey implements Serializable {
         this.deliveryId = deliveryId;
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public Instant getEventTime() {
+        return eventTime;
     }
 
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
+    public void setEventTime(Instant eventTime) {
+        this.eventTime = eventTime;
     }
 
     @Override
     public String toString() {
         return "DeliveryTrackingEventKey{" +
                 "deliveryId=" + deliveryId +
-                ", timestamp=" + timestamp +
+                ", eventTime=" + eventTime +
                 '}';
     }
 }

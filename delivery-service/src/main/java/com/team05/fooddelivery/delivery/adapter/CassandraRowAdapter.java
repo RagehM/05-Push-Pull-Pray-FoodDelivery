@@ -7,7 +7,7 @@ public class CassandraRowAdapter {
 
     public DeliveryTrackingDTO adapt(DeliveryTrackingEvent row) {
         return new DeliveryTrackingDTO(
-                row.getTimestamp(),
+                row.getEventTime(),
                 row.getStatus(),
                 row.getDriverName(),
                 row.getLatitude(),

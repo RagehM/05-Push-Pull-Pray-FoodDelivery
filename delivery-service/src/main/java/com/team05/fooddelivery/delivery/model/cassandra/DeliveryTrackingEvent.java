@@ -21,8 +21,8 @@ public class DeliveryTrackingEvent {
     @PrimaryKeyColumn(name = "delivery_id", ordinal = 0, type = PrimaryKeyType.PARTITIONED)
     private Long deliveryId;
 
-    @PrimaryKeyColumn(name = "timestamp", ordinal = 1, type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
-    private Instant timestamp;
+    @PrimaryKeyColumn(name = "event_time", ordinal = 1, type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
+    private Instant eventTime;
 
     @Column("status")
     private String status;
@@ -42,10 +42,10 @@ public class DeliveryTrackingEvent {
     public DeliveryTrackingEvent() {
     }
 
-    public DeliveryTrackingEvent(Long deliveryId, Instant timestamp, String status, String driverName,
+    public DeliveryTrackingEvent(Long deliveryId, Instant eventTime, String status, String driverName,
                                  Double latitude, Double longitude, String notes) {
         this.deliveryId = deliveryId;
-        this.timestamp = timestamp;
+        this.eventTime = eventTime;
         this.status = status;
         this.driverName = driverName;
         this.latitude = latitude;
@@ -61,12 +61,12 @@ public class DeliveryTrackingEvent {
         this.deliveryId = deliveryId;
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public Instant getEventTime() {
+        return eventTime;
     }
 
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
+    public void setEventTime(Instant eventTime) {
+        this.eventTime = eventTime;
     }
 
     public String getStatus() {
