@@ -52,14 +52,14 @@ public class DeliveryPerformanceSummaryDTO {
     private DeliveryPerformanceSummaryDTO(
             @JsonProperty("driverName") String driverName,
             @JsonProperty("totalDeliveries") long totalDeliveries,
-            @JsonProperty("orderId") Long averageSpeed,
-            @JsonProperty("latitude") Double maxSpeed,
-            @JsonProperty("longitude") LocalDateTime firstDelivery,
-            @JsonProperty("distanceKm") LocalDateTime lastDelivery) {
+            @JsonProperty("averageSpeed") Double averageSpeed,
+            @JsonProperty("maxSpeed") Double maxSpeed,
+            @JsonProperty("firstDelivery") LocalDateTime firstDelivery,
+            @JsonProperty("lastDelivery") LocalDateTime lastDelivery) {
         this.driverName = driverName;
         this.totalDeliveries = totalDeliveries;
-        this.averageSpeed = averageSpeed;
-        this.maxSpeed = maxSpeed;
+        this.averageSpeed = averageSpeed != null ? averageSpeed : 0.0;
+        this.maxSpeed = maxSpeed != null ? maxSpeed : 0.0;
         this.firstDelivery = firstDelivery;
         this.lastDelivery = lastDelivery;
     }

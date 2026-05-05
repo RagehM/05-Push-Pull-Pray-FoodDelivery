@@ -9,7 +9,9 @@ http:
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzUwODc0NCwiZXhwIjoxNzc3NTk1MTQ0fQ.2oCOqfAFC5kTpAiZtuUIaxinNNT6tdLi5B5BauEMDoY
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkyNTczLCJleHAiOjE3NzgwNzg5NzN9.itIffX9oCivluS8Zflk7K8ANstvoPipPCx70dj38TQY
 
 settings:
   encodeUrl: true

@@ -13,11 +13,11 @@ public class TopRestaurantAdapter {
         this.row = row;
     }
 
-    public TopRestaurantDTO toDTO() {
-        Long id = ((Number) row[0]).longValue();
-        String name = (String) row[1];
-        Double rating = ((Number) row[2]).doubleValue();
-        Long totalOrders = ((Number) row[3]).longValue();
+    public TopRestaurantDTO adapt(Object[] row) {
+        Long id = ((Number) this.row[0]).longValue();
+        String name = (String) this.row[1];
+        Double rating = ((Number) this.row[2]).doubleValue();
+        Long totalOrders = ((Number) this.row[3]).longValue();
 
         return TopRestaurantDTO.builder()
                 .restaurantId(id)

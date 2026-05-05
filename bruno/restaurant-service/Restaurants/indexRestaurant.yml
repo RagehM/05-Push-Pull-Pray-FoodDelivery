@@ -1,0 +1,15 @@
+info:
+  name: indexRestaurant
+  type: http
+  seq: 15
+
+http:
+  method: POST
+  url: http://localhost:8082/api/restaurants/5/index
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
