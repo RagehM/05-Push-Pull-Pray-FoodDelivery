@@ -422,6 +422,7 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
 
     }
 
+    @Cacheable(value = "user-service::S1-F12", key = "#id")
     public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Optional<User> authenticatedUser = null;
