@@ -5,19 +5,17 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8081/api/users/1/activity
+  url: http://localhost:8081/api/users/1/activity?size=100&page=
   params:
     - name: size
-      value: ""
+      value: "100"
       type: query
-      disabled: true
     - name: page
       value: ""
       type: query
-      disabled: true
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDFAbWFpbC5jb20iLCJ1aWQiOjQsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzkxNDkxNSwiZXhwIjoxNzc4MDAxMzE1fQ.azhCMYbDgRHiM2lWqhN-_8CHR12pek4MDfwy6VK2qQM
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDEyMzRAbXNhaWwuY29tIiwidWlkIjoxLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3Nzc5Mjk5NzAsImV4cCI6MTc3ODAxNjM3MH0.8_hNE-p4jM9d48a2JomXqeGag5sdXTMHJusQ8iABYA4
 
 settings:
   encodeUrl: true
