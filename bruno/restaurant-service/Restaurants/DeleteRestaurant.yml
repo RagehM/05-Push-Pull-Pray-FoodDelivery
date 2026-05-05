@@ -5,11 +5,13 @@ info:
 
 http:
   method: DELETE
-  url: http://localhost:8082/api/restaurants/1
+  url: http://localhost:8082/api/restaurants/2
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzUwODc0NCwiZXhwIjoxNzc3NTk1MTQ0fQ.2oCOqfAFC5kTpAiZtuUIaxinNNT6tdLi5B5BauEMDoY
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6Miwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDAyNDQ2LCJleHAiOjE3NzgwODg4NDZ9.0ULFc-v2paUBsNGAR9G7Xwiygj2hH1BQ7q5WstpeFvI
 
 settings:
   encodeUrl: true

@@ -2,6 +2,7 @@ package com.team05.fooddelivery.restaurant.service;
 
 import com.team05.fooddelivery.restaurant.adapter.RestaurantRevenueAdapter;
 import com.team05.fooddelivery.restaurant.adapter.TopRestaurantAdapter;
+import com.team05.fooddelivery.restaurant.dto.RestaurantDashboardDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
@@ -38,31 +39,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
 @Service
 public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final CacheManager cacheManager;
     private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
-    //S2-F10
-    //to execute native Elasticsearch queries for full-text search
     private final ElasticsearchOperations elasticsearchOperations;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
             MongoRestaurantEventRepository mongoRestaurantEventRepository,
-            //s2-f11
             RestaurantElasticsearchIndexService restaurantElasticsearchIndexService,
-            // S2-F10 Spring injects ElasticsearchOperations automatically
+            CacheManager cacheManager,
             ElasticsearchOperations elasticsearchOperations) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
+        this.cacheManager = cacheManager;
         this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
-        // S2-F10 store the ES operations bean
         this.elasticsearchOperations = elasticsearchOperations;
-        // Register the MongoEventLogger observer — bound to RESTAURANT event type
-        // Section 3.3 + 4.5
         this.observers.add(
                 new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
@@ -117,9 +118,10 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            // S2-F10 clear full-text search cache when restaurant data changes
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id"),
             @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
+
     public Restaurant update(Long id, Restaurant updated) {
         Restaurant existing = getById(id);
         if (updated.getName() != null)
@@ -157,8 +159,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            // S2-F10 clear full-text search cache when a restaurant is deleted
-            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public void delete(Long id) {
         if (!restaurantRepository.existsById(id)) {
@@ -191,8 +193,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            // S2-F10 description is inside details JSONB, so clear search cache on details update
-            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
         Restaurant existing = getById(id);
@@ -220,7 +222,7 @@ public class RestaurantService {
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
         List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
-        return new RestaurantRevenueAdapter(results.get(0), restaurant).toDTO();
+        return new RestaurantRevenueAdapter(results.get(0), restaurant).adapt(results.get(0));
     }
 
     // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
@@ -231,8 +233,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id"),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            // S2-F10 status is a filter field in ES, so clear search cache when it changes
             @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
     public void updateRestaurantStatus(Long id, String newStatus) {
@@ -241,11 +243,12 @@ public class RestaurantService {
         }
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-        if ("SUSPENDED".equals(newStatus)) {
+                // CLOSE added for TC 246
+        if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus) ) {
             int activeOrders = restaurantRepository.countActiveOrders(id);
             if (activeOrders > 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Cannot suspend restaurant with active orders");
+                        "Cannot suspend or close restaurant with active orders");
             }
         }
         try {
@@ -277,7 +280,7 @@ public class RestaurantService {
         List<Object[]> results = restaurantRepository.findTopRatedRestaurants(limit);
         List<TopRestaurantDTO> dtos = new ArrayList<>();
         for (Object[] row : results) {
-            dtos.add(new TopRestaurantAdapter(row).toDTO());
+            dtos.add(new TopRestaurantAdapter(row).adapt(row));
         }
         return dtos;
     }
@@ -291,7 +294,7 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            // S2-F10 rating is a range filter in ES, so clear search cache when it changes
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId"),
             @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
     public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
@@ -421,6 +424,59 @@ public class RestaurantService {
                 .map(hit -> hit.getContent())
                 .collect(Collectors.toList());
     }
+
+        // [S2-F12] Get Restaurant Performance Dashboard
+// Uses CacheManager
+// Section 10.2.3 — cached 10 min
+        public RestaurantDashboardDTO getDashboard(Long id) {
+            // Step 1 — logging ALWAYS runs (even on cache hits)
+            notifyDashboardViewed(id);
+
+            // Step 2 — check cache manually
+            Cache cache = cacheManager.getCache("restaurant-service::S2-F12");
+            if (cache != null) {
+                RestaurantDashboardDTO cached = cache.get(id, RestaurantDashboardDTO.class);
+                if (cached != null) {
+                    return cached; // cache hit
+                }
+            }
+
+            // Step 3 — cache miss — fetch from DB
+            Restaurant restaurant = getById(id);
+            List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
+            Object[] row = stats.get(0);
+            Long totalOrders = ((Number) row[0]).longValue();
+            Double totalRevenue = ((Number) row[1]).doubleValue();
+            Double averageOrderValue = ((Number) row[2]).doubleValue();
+            Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
+
+            RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
+                    .restaurantId(restaurant.getId())
+                    .name(restaurant.getName())
+                    .totalOrders(totalOrders)
+                    .totalRevenue(totalRevenue)
+                    .averageOrderValue(averageOrderValue)
+                    .activeMenuItems(activeMenuItems)
+                    .build();
+
+            // Step 4 — store in cache
+            if (cache != null) {
+                cache.put(id, dto);
+            }
+
+            return dto;
+        }
+
+        // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
+        // including cache hits
+        // Section 10.2.3 — pure observability, does NOT invalidate cache
+        public void notifyDashboardViewed(Long restaurantId) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("action", RestaurantEventActions.DASHBOARD_VIEWED);
+            params.put("restaurantId", restaurantId);
+            params.put("details", new HashMap<>());
+            notifyObservers(RestaurantEventActions.DASHBOARD_VIEWED, params);
+        }
 
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);

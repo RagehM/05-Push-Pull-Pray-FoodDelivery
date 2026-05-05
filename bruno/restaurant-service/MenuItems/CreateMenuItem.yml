@@ -10,17 +10,19 @@ http:
     type: json
     data: |-
       {
-        "name": "Cheeseburger",
+        "name": "Cheeseburge3",
         "description": "Classic cheeseburger with lettuce and tomato",
         "price": 12.5,
         "available": true,
+        "category": "APPETIZER",
         "metadata": {}
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTk2OTk0LCJleHAiOjE3NzgwODMzOTR9.xCxblIhL_1gY66VVUMHTEuAqZHV7k4eBwTz2H7nIjMs
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
