@@ -229,7 +229,12 @@ public class UserService {
     public User updateUserPreferences(Map<String,Object> preferences, Long id){
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         Map<String,Object> currentUserPreferences = updatedUser.getPreferences();
-        currentUserPreferences.putAll(preferences);
+        if (currentUserPreferences == null) {
+            currentUserPreferences = new HashMap<>();
+        }
+        if (preferences != null) {
+            currentUserPreferences.putAll(preferences);
+        }
         updatedUser.setPreferences(currentUserPreferences);
 
         User updatedSaved = userRepository.save(updatedUser);
