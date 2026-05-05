@@ -9,6 +9,7 @@ import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
+import com.team05.shared.model.mongo.AuthEvent;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
@@ -18,8 +19,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -33,21 +40,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.springframework.data.mongodb.repository.Aggregation.*;
+
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
+    private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository,AuthEventRepository authEventRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
+        this.mongoTemplate = mongoTemplate;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -409,5 +420,44 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
 
         return updatedUser;
 
+    }
+
+    @Cacheable(value = "user-service::S1-F12", key = "#id")
+    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+
+
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
+
+        if (size == 0) {
+            size = 10;
+        }
+
+        if (size > 100) {
+            size = 100;
+        }
+
+
+        long documentsToSkip = page * size;
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("userId").eq(id)),
+                Aggregation.sort(Sort.Direction.DESC, "timestamp"),
+                Aggregation.skip(documentsToSkip),
+                Aggregation.limit(size)
+        );
+
+        List<AuthEvent> result = mongoTemplate.aggregate(aggregation, "auth_events", AuthEvent.class).getMappedResults();
+
+        ActivityFeedDTO feed = new ActivityFeedDTO(result, page, size, result.size());
+
+        return feed;
     }
 }
