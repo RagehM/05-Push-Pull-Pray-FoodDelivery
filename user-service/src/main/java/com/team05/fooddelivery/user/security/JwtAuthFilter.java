@@ -93,6 +93,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             AuthHandler userLoaderHandler = new UserLoaderHandler(jwtService, userDetailsService);
             AuthHandler roleAuthorizationHandler = new RoleAuthorizationHandler();
 
+
             tokenExtractionHandler.setNext(signatureValidationHandler);
             signatureValidationHandler.setNext(userLoaderHandler);
             userLoaderHandler.setNext(roleAuthorizationHandler);
@@ -108,6 +109,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             chain.doFilter(request, response);
+        }
+        catch (Exception e) {
+        }
 
         } catch (ResponseStatusException e) {
             String reason = e.getReason() != null ? e.getReason() : e.getMessage();
