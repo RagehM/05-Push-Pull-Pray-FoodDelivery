@@ -584,7 +584,7 @@ public class DeliveryService {
      */
     @Cacheable(cacheNames = "delivery-service::S4-F8", key = "#driverName + ':' + #startDate + ':' + #endDate")
     @Transactional(readOnly = true)
-    public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
+    public DeliveryPerformanceDTO getDeliveryPerformanceSummary(
             String driverName,
             LocalDate startDate,
             LocalDate endDate
@@ -605,7 +605,7 @@ public class DeliveryService {
 
         Object[] row = results.getFirst();
 
-        return DeliveryPerformanceSummaryDTO.builder()
+        return DeliveryPerformanceDTO.builder()
                 .driverName((String) row[0])
                 .totalDeliveries(((Number) row[1]).longValue())
                 .averageSpeed(row[2] != null ? ((Number) row[2]).doubleValue() : 0.0)
@@ -627,6 +627,7 @@ public class DeliveryService {
         details.put("endDate", endDate);
 
         Map<String, Object> payload = new HashMap<>();
+        payload.put("deliveryId", 0L);
         payload.put("details", details);
 
         notifyObservers("ANALYTICS_VIEWED", payload);
@@ -661,14 +662,14 @@ public class DeliveryService {
         List<DeliveryTrackingEvent> events;
         if (startTime != null && endTime != null) {
             try {
-                events = trackingEventRepository.findByKeyDeliveryIdInTimeRange(
+                events = trackingEventRepository.findByDeliveryIdInTimeRange(
                         deliveryId, parseTimeParam(startTime), parseTimeParam(endTime));
             } catch (DateTimeParseException e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Invalid time format — use HH:mm (e.g. 14:10) or ISO-8601 (e.g. 2024-01-01T14:00:00Z)");
             }
         } else {
-            events = trackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
+            events = trackingEventRepository.findByDeliveryIdOrderByTimestampDesc(deliveryId);
         }
 
         return events.stream().map(cassandraRowAdapter::adapt).toList();
@@ -686,16 +687,16 @@ public class DeliveryService {
                 ? null
                 : endDate.atTime(23, 59, 59, 999_000_000);
 
-        long total =
+        Number totalCount =
                 deliveryRepository.countTotalDeliveries(start, end);
 
-        Double avg =
+        Number averageMinutes =
                 deliveryRepository.averageDeliveryMinutes(start, end);
 
-        Long delivered =
+        Number deliveredCount =
                 deliveryRepository.countDeliveredOrders(start, end);
 
-        Long onTime =
+        Number onTimeCount =
                 deliveryRepository.countOnTimeDeliveredOrders(start, end);
 
         Map<DeliveryStatus, Long> grouped =
@@ -706,10 +707,13 @@ public class DeliveryService {
                                 row -> ((Number) row[1]).longValue()
                         ));
 
-        double average = avg == null ? 0.0 : avg;
+        long total = totalCount == null ? 0L : totalCount.longValue();
+        long delivered = deliveredCount == null ? 0L : deliveredCount.longValue();
+        long onTime = onTimeCount == null ? 0L : onTimeCount.longValue();
+        double average = averageMinutes == null ? 0.0 : averageMinutes.doubleValue();
 
         double rate =
-                delivered == null || delivered == 0
+                delivered == 0
                         ? 0.0
                         : (double) onTime / delivered;
 

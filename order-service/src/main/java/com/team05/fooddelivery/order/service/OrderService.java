@@ -2,6 +2,7 @@ package com.team05.fooddelivery.order.service;
 
 import com.team05.fooddelivery.order.adapter.ObjectArrayToOrderAnalyticsDashboardDTOAdapter;
 import com.team05.fooddelivery.order.adapter.orderArrayToOrderAnalyticsDTOAdapter;
+import com.team05.fooddelivery.order.dto.RestaurantRecommendationDTO;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
 import com.team05.fooddelivery.order.dto.OrderAnalyticsDashboardDTO;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
@@ -15,16 +16,24 @@ import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.annotation.Lazy;
+import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
 
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,21 +42,34 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
 public class OrderService {
 
+    @Lazy
+    @Autowired
+    private OrderService self; // Self-injection to allow calling methods with caching and transactions
+
     private final OrderRepository orderRepository;
+    private record RecommendationRow(Long restaurantId, Long score) {}
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
+    private final Neo4jClient neo4jClient;
 
-    public OrderService(OrderRepository orderRepository, MongoOrderEventRepository mongoOrderEventRepository) {
+    public OrderService(
+            OrderRepository orderRepository,
+            MongoOrderEventRepository mongoOrderEventRepository, Neo4jClient neo4jClient
+    ) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
+        this.neo4jClient = neo4jClient;
         this.observers.add(
             new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
@@ -370,7 +392,7 @@ public class OrderService {
     // Cached in redis for 10 minutes
     @Transactional
     public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboardWrapper(LocalDate startDate, LocalDate endDate) {
-        OrderAnalyticsDashboardDTO dashboard = getOrderAnalyticsDashboard(startDate, endDate);
+        OrderAnalyticsDashboardDTO dashboard = self.getOrderAnalyticsDashboard(startDate, endDate);
 
         Map<String, Object> params = new HashMap<>();
         params.put("orderId", -1L); // Aggregate logs with orderId -1
@@ -401,6 +423,104 @@ public class OrderService {
 
         return analyticsDTO;
     }
+
+    //[S3-F12]
+    @Transactional(readOnly = true)
+    @Cacheable(value = "order-service::S3-F12", key = "{#userId, (#limit == null || #limit <= 0) ? 5 : #limit}")
+    public List<RestaurantRecommendationDTO> getRestaurantRecommendations(Long userId, Integer limit) {
+        
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId query parameter is required");
+        }
+
+        int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
+
+        if (!orderRepository.existsUserById(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        // Get userId and Role
+        Object[] userIdAndRole = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
+        }
+        if (userIdAndRole == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
+        String role = (String) userIdAndRole[1];
+
+
+
+        if (fetchedUserId != userId && !role.equalsIgnoreCase("ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+
+        // Fetch restaurant recommendations using Neo4j repository
+        List<RecommendationRow> rows = neo4jClient.query("""
+        MATCH (u:User {userId: $userId})-[:ORDERED_FROM]->(common:Restaurant)<-[:ORDERED_FROM]-(similar:User)
+        MATCH (similar)-[:ORDERED_FROM]->(rec:Restaurant)
+        WHERE NOT (u)-[:ORDERED_FROM]->(rec)
+        RETURN rec.restaurantId AS restaurantId, count(DISTINCT similar) AS score
+        ORDER BY score DESC
+        LIMIT $limit
+        """)
+                .bind(userId).to("userId")
+                .bind(finalLimit).to("limit")
+                .fetchAs(RecommendationRow.class)
+                .mappedBy((typeSystem, record) -> new RecommendationRow(
+                        record.get("restaurantId").asLong(),
+                        record.get("score").asLong()
+                ))
+                .all()
+                .stream()
+                .toList();
+
+        // If no recommendations found, return an empty list
+        if (rows.isEmpty()) {
+            // cacheRecommendations(cacheKey, empty);
+            return new ArrayList<>();
+        }
+
+        Set<Long> restaurantIds = rows.stream()
+                .map(RecommendationRow::restaurantId)
+                .collect(Collectors.toSet());
+        Map<Long, OrderRepository.RestaurantInfoRow> infoById = orderRepository.findRestaurantInfoByIds(restaurantIds)
+                .stream()
+                .collect(Collectors.toMap(OrderRepository.RestaurantInfoRow::getRestaurantId, r -> r));
+
+        List<RestaurantRecommendationDTO> recommendations = rows.stream()
+                .map(r -> {
+                    OrderRepository.RestaurantInfoRow info = infoById.get(r.restaurantId());
+                    if (info == null) return null;
+                    return new RestaurantRecommendationDTO.Builder()
+                            .id(info.getRestaurantId())
+                            .name(info.getName())
+                            .cuisineType(info.getCuisineType())
+                            .score(r.score())
+                            .build();
+                })
+                .filter(r -> r != null)
+                .toList();
+
+        ArrayList<RestaurantRecommendationDTO> sortedRecommendations = new ArrayList<>(recommendations);
+        sortedRecommendations.sort(Comparator.comparing(RestaurantRecommendationDTO::score).reversed());
+
+        // cacheRecommendations(cacheKey, recommendations);
+        return sortedRecommendations;
+    }
+
+    // private void cacheRecommendations(String key, List<RestaurantRecommendationDTO> recommendations) {
+    //     try {
+    //         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(recommendations), Duration.ofMinutes(5));
+    //     } catch (Exception ignored) {
+    //     }
+    // }
+        
+
     // [CRUD]
     //// Get order by ID
     @Transactional(readOnly = true)

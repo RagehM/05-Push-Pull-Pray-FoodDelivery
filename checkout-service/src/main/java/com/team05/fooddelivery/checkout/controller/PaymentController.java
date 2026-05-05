@@ -5,12 +5,18 @@ import com.team05.fooddelivery.checkout.dto.PaymentMethodDTO;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.dto.*;
+import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
+import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
+import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
+import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
+import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -125,6 +131,19 @@ public class PaymentController {
     public ResponseEntity<PaymentDetailsDTO> getPaymentDetails(@PathVariable Long paymentId) {
         PaymentDetailsDTO details = paymentService.getPaymentDetails(paymentId);
         return ResponseEntity.ok(details);
+    }
+
+    // S5-F10: GET /api/payments/analytics/cuisine?startDate={d}&endDate={d}
+    @GetMapping("/analytics/cuisine")
+    public ResponseEntity<List<CuisineRevenueDTO>> getRevenueByCuisine(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        List<CuisineRevenueDTO> result = paymentService.getRevenueByCuisine(start, end);
+        return ResponseEntity.ok(result);
     }
 
     // S5-F11: GET /api/payments/analytics/methods?startDate={d}&endDate={d}

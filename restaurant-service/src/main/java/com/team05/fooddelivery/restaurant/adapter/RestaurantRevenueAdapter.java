@@ -16,10 +16,10 @@ public class RestaurantRevenueAdapter {
         this.restaurant = restaurant;
     }
 
-    public RestaurantRevenueDTO toDTO() {
-        Long totalOrders = ((Number) row[0]).longValue();
-        Double totalRevenue = ((Number) row[1]).doubleValue();
-        Double averageOrderAmount = ((Number) row[2]).doubleValue();
+    public RestaurantRevenueDTO adapt(Object[] row) {
+        Long totalOrders = ((Number) this.row[0]).longValue();
+        Double totalRevenue = ((Number) this.row[1]).doubleValue();
+        Double averageOrderAmount = ((Number) this.row[2]).doubleValue();
 
         return RestaurantRevenueDTO.builder()
                 .restaurantId(restaurant.getId())
