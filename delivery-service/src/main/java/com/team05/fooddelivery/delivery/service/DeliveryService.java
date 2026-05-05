@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
 
 import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
 import com.team05.fooddelivery.delivery.dto.*;
+import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
+import com.team05.fooddelivery.delivery.model.Delivery;
+import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
+import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
 import org.springframework.cache.Cache;
@@ -28,10 +32,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
-import com.team05.fooddelivery.delivery.model.Delivery;
-import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
-import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
@@ -41,17 +41,17 @@ import com.team05.shared.observer.MongoEventLogger;
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final DeliveryTrackingEventRepository trackingEventRepository;
     private final CassandraRowAdapter cassandraRowAdapter = new CassandraRowAdapter();
     private final CacheManager cacheManager;
-    private final DeliveryTrackingEventRepository deliveryTrackingEventRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
 
     public DeliveryService(DeliveryRepository deliveryRepository,CacheManager cacheManager,
-                           DeliveryTrackingEventRepository deliveryTrackingEventRepository,
+                           DeliveryTrackingEventRepository trackingEventRepository,
                            DeliveryEventRepository eventRepository) {
         this.deliveryRepository = deliveryRepository;
         this.cacheManager = cacheManager;
-        this.deliveryTrackingEventRepository = deliveryTrackingEventRepository;
+        this.trackingEventRepository = trackingEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY)
         );
@@ -179,7 +179,7 @@ public class DeliveryService {
                 request.longitude(),
                 request.notes()
         );
-        deliveryTrackingEventRepository.save(trackingEvent);
+        trackingEventRepository.save(trackingEvent);
 
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("status", status.name());
@@ -657,14 +657,14 @@ public class DeliveryService {
         List<DeliveryTrackingEvent> events;
         if (startTime != null && endTime != null) {
             try {
-                events = deliveryTrackingEventRepository.findByKeyDeliveryIdInTimeRange(
+                events = trackingEventRepository.findByKeyDeliveryIdInTimeRange(
                         deliveryId, parseTimeParam(startTime), parseTimeParam(endTime));
             } catch (DateTimeParseException e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Invalid time format — use HH:mm (e.g. 14:10) or ISO-8601 (e.g. 2024-01-01T14:00:00Z)");
             }
         } else {
-            events = deliveryTrackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
+            events = trackingEventRepository.findByKeyDeliveryIdOrderByKeyTimestampDesc(deliveryId);
         }
 
         return events.stream().map(cassandraRowAdapter::adapt).toList();

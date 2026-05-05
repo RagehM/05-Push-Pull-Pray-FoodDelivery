@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class RestaurantRecommendationDTO {
     private final Long id;
     private final String name;
@@ -9,6 +12,17 @@ public class RestaurantRecommendationDTO {
         this.id = builder.id;
         this.name = builder.name;
         this.cuisineType = builder.cuisineType;
+    }
+
+    @JsonCreator
+    private RestaurantRecommendationDTO(
+        @JsonProperty("id") Long id,
+        @JsonProperty("name") String name,
+        @JsonProperty("cuisineType") String cuisineType
+    ) {
+        this.id = id;
+        this.name = name;
+        this.cuisineType = cuisineType;
     }
 
     public Long getId() { return id; }

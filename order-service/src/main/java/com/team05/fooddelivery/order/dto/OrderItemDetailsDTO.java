@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import java.util.Map;
 
@@ -20,6 +22,25 @@ public class OrderItemDetailsDTO {
         this.unitPrice = builder.unitPrice;
         this.status = builder.status;
         this.metadata = builder.metadata;
+    }
+
+    @JsonCreator
+    private OrderItemDetailsDTO(
+            @JsonProperty("id") Long id,
+            @JsonProperty("lineNumber") Integer lineNumber,
+            @JsonProperty("itemName") String itemName,
+            @JsonProperty("quantity") Integer quantity,
+            @JsonProperty("unitPrice") Double unitPrice,
+            @JsonProperty("status") OrderItemStatusEnum status,
+            @JsonProperty("metadata") Map<String, Object> metadata
+    ) {
+        this.id = id;
+        this.lineNumber = lineNumber;
+        this.itemName = itemName;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.status = status;
+        this.metadata = metadata;
     }
 
     public Long getId() {

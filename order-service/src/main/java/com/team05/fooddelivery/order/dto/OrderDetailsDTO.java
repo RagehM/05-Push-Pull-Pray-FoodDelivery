@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +34,29 @@ public class OrderDetailsDTO {
             this.totalItems = builder.totalItems;
         }
         this.preparedItems = builder.preparedItems != null ? builder.preparedItems : 0;
+    }
+
+    @JsonCreator
+    private OrderDetailsDTO(
+            @JsonProperty("orderId") Long orderId,
+            @JsonProperty("userId") Long userId,
+            @JsonProperty("restaurantId") Long restaurantId, 
+            @JsonProperty("status") OrderStatusEnum status,
+            @JsonProperty("totalAmount") Double totalAmount,
+            @JsonProperty("metadata") Map<String, Object> metadata,
+            @JsonProperty("items") List<OrderItemDetailsDTO> items,
+            @JsonProperty("totalItems") Integer totalItems,
+            @JsonProperty("preparedItems") Integer preparedItems
+    ) {
+        this.orderId = orderId;
+        this.userId = userId;
+        this.restaurantId = restaurantId;
+        this.status = status;
+        this.totalAmount = totalAmount;
+        this.metadata = metadata;
+        this.items = items != null ? Collections.unmodifiableList(items) : Collections.emptyList();
+        this.totalItems = totalItems != null ? totalItems : 0;
+        this.preparedItems = preparedItems != null ? preparedItems : 0;
     }
 
     public Long getOrderId() { return orderId; }
