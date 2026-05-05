@@ -5,7 +5,6 @@ import java.time.Instant;
 import org.springframework.data.cassandra.core.mapping.Column;
 import org.springframework.data.cassandra.core.mapping.PrimaryKey;
 import org.springframework.data.cassandra.core.mapping.Table;
-import org.springframework.data.annotation.Transient;
 
 /**
  * Cassandra time-series entity for delivery tracking events.
@@ -22,9 +21,6 @@ public class DeliveryTrackingEvent {
 
     @PrimaryKey
     private DeliveryTrackingEventKey key;
-
-    @Transient
-    private Long deliveryId;
 
     @Column("status")
     private String status;
@@ -48,7 +44,6 @@ public class DeliveryTrackingEvent {
     public DeliveryTrackingEvent(Long deliveryId, Instant timestamp, String status, String driverName,
                                  Double latitude, Double longitude, String notes) {
         this.key = new DeliveryTrackingEventKey(deliveryId, timestamp);
-        this.deliveryId = deliveryId;
         this.status = status;
         this.driverName = driverName;
         this.latitude = latitude;
@@ -63,15 +58,13 @@ public class DeliveryTrackingEvent {
 
     public void setKey(DeliveryTrackingEventKey key) {
         this.key = key;
-        this.deliveryId = key != null ? key.getDeliveryId() : null;
     }
 
     public Long getDeliveryId() {
-        return key != null ? key.getDeliveryId() : deliveryId;
+        return key != null ? key.getDeliveryId() : null;
     }
 
     public void setDeliveryId(Long deliveryId) {
-        this.deliveryId = deliveryId;
         if (key == null) {
             key = new DeliveryTrackingEventKey();
         }
