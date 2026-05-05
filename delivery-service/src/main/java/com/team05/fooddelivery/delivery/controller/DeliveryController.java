@@ -127,7 +127,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/driver/{driverName}/summary")
-    public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
+    public DeliveryPerformanceDTO getDeliveryPerformanceSummary(
             @PathVariable String driverName,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate) {
