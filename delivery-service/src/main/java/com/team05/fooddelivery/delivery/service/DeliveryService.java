@@ -320,7 +320,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true), @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public void deleteDelivery(Long id) {
         if (!deliveryRepository.existsById(id)) {
@@ -352,7 +353,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true), @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public int batchCreate(BatchDeliveryRequestDTO request) {
         if (!deliveryRepository.orderExists(request.getOrderId())) {
@@ -537,7 +539,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true), @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
