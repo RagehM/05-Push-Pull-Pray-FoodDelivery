@@ -170,7 +170,7 @@ public class UserService {
         if(role!=null && role.isEmpty())role = null;
 
         if((name==null||name.isEmpty())&&(email==null||email.isEmpty())&&(role==null||role.isEmpty())){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one search parameter must be provided");
+            return new ArrayList<>();
         }
 
         return userRepository.searchUsers(name, email, role);
