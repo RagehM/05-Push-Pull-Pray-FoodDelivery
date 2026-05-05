@@ -17,13 +17,13 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 	Optional<Delivery> findByOrderId(Long orderId);
 
 	@Query(value = "SELECT * FROM deliveries d WHERE " +
-			"(:status IS NULL OR d.status = status) " +
+			"(CAST(:status AS varchar) IS NULL OR d.status = CAST(:status AS varchar)) " +
 			"ORDER BY d.updated_at DESC",
 		nativeQuery = true)
 	List<Delivery> findByStatus(@Param("status") String status);
 
 	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId AND " +
-			"(:status IS NULL OR d.status = status) " +
+			"(CAST(:status AS varchar) IS NULL OR d.status = CAST(:status AS varchar)) " +
 			"ORDER BY d.updated_at DESC LIMIT 1",
 		nativeQuery = true)
 	Optional<Delivery> findByOrderIdAndStatus(@Param("orderId") Long orderId, @Param("status") String status);
@@ -143,10 +143,10 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
         SELECT COUNT(*)
         FROM deliveries d
         JOIN orders o ON d.order_id = o.id
-        WHERE (:start IS NULL OR o.order_date >= :start)
-          AND (:end IS NULL OR o.order_date <= :end)
+        WHERE (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
+          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
         """, nativeQuery = true)
-	Long countTotalDeliveries(
+	Number countTotalDeliveries(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -163,11 +163,11 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
             JOIN orders o ON d.order_id = o.id
             WHERE o.status = 'DELIVERED'
               AND o.delivered_at IS NOT NULL
-              AND (:start IS NULL OR o.order_date >= :start)
-              AND (:end IS NULL OR o.order_date <= :end)
+              AND (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
+              AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
         ) x
         """, nativeQuery = true)
-	Double averageDeliveryMinutes(
+	Number averageDeliveryMinutes(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -178,10 +178,10 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
         FROM deliveries d
         JOIN orders o ON d.order_id = o.id
         WHERE o.status = 'DELIVERED'
-          AND (:start IS NULL OR o.order_date >= :start)
-          AND (:end IS NULL OR o.order_date <= :end)
+          AND (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
+          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
         """, nativeQuery = true)
-	Long countDeliveredOrders(
+	Number countDeliveredOrders(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -196,10 +196,10 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
           AND EXTRACT(EPOCH FROM
               (o.delivered_at - o.order_date)
           ) / 60.0 <= 45
-          AND (:start IS NULL OR o.order_date >= :start)
-          AND (:end IS NULL OR o.order_date <= :end)
+          AND (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
+          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
         """, nativeQuery = true)
-	Long countOnTimeDeliveredOrders(
+	Number countOnTimeDeliveredOrders(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);
@@ -209,8 +209,8 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
         SELECT d.status, COUNT(*)
         FROM deliveries d
         JOIN orders o ON d.order_id = o.id
-        WHERE (:start IS NULL OR o.order_date >= :start)
-          AND (:end IS NULL OR o.order_date <= :end)
+        WHERE (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
+          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
         GROUP BY d.status
         """, nativeQuery = true)
 	List<Object[]> countByStatus(

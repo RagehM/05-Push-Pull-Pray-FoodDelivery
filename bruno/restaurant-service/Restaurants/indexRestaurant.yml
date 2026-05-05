@@ -5,8 +5,10 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8082/api/restaurants/5/index
-  auth: inherit
+  url: http://localhost:8082/api/restaurants/8/index
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6Miwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDAyNDQ2LCJleHAiOjE3NzgwODg4NDZ9.0ULFc-v2paUBsNGAR9G7Xwiygj2hH1BQ7q5WstpeFvI
 
 settings:
   encodeUrl: true
