@@ -8,7 +8,7 @@ public class JwtConfigurationManager {
     private final long expiration;
 
     private JwtConfigurationManager() {
-        this.secret = System.getenv("JWT_SECRET");
+        this.secret = System.getenv("JWT_SECRET") ;
         String expirationEnv = System.getenv("JWT_EXPIRATION");
         this.expiration = Long.parseLong(expirationEnv);
     }
