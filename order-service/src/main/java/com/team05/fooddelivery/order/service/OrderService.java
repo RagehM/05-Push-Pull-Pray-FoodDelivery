@@ -481,9 +481,8 @@ public class OrderService {
 
         // If no recommendations found, return an empty list
         if (rows.isEmpty()) {
-            List<RestaurantRecommendationDTO> empty = List.of();
             // cacheRecommendations(cacheKey, empty);
-            return empty;
+            return new ArrayList<>();
         }
 
         Set<Long> restaurantIds = rows.stream()
@@ -507,8 +506,11 @@ public class OrderService {
                 .filter(r -> r != null)
                 .toList();
 
+        ArrayList<RestaurantRecommendationDTO> sortedRecommendations = new ArrayList<>(recommendations);
+        sortedRecommendations.sort(Comparator.comparing(RestaurantRecommendationDTO::score).reversed());
+
         // cacheRecommendations(cacheKey, recommendations);
-        return recommendations;
+        return sortedRecommendations;
     }
 
     // private void cacheRecommendations(String key, List<RestaurantRecommendationDTO> recommendations) {
