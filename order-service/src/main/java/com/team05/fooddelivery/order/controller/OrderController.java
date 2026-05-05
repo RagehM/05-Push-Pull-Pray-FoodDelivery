@@ -6,8 +6,13 @@ import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -90,9 +95,21 @@ public class OrderController {
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return orderService.getOrderAnalyticsDashboardWrapper(startDate, endDate);
     }
+    // [S3-F11] Record User-Restaurant Ordering Pattern
     @PostMapping("/{orderId}/record-interaction")
     public ResponseEntity<InteractionRecordingResponseDTO> recordInteraction(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.recordInteraction(orderId));
+    }
+
+    // [S3-F12]
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<RestaurantRecommendationDTO>> getRestaurantRecommendations(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Integer limit) {
+        int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
+
+
+        return ResponseEntity.ok(orderService.getRestaurantRecommendations(userId, finalLimit));
     }
     // [CRUD]
     //// Get order by ID

@@ -1,0 +1,22 @@
+info:
+  name: getRevenueByCuisine
+  type: http
+  seq: 14
+
+http:
+  method: GET
+  url: http://localhost:8085/api/payments/analytics/cuisine?startDate=2025-01-01&endDate=2025-12-31
+  params:
+    - name: startDate
+      value: 2025-01-01
+      type: query
+    - name: endDate
+      value: 2025-12-31
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

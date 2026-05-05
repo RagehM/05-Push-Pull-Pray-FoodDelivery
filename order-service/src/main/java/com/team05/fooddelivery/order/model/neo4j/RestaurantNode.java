@@ -1,6 +1,5 @@
 package com.team05.fooddelivery.order.model.neo4j;
 
-import org.springframework.data.neo4j.core.schema.GeneratedValue;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 
@@ -14,6 +13,12 @@ public class RestaurantNode {
     private String cuisineType;
 
     public RestaurantNode() {
+    }
+
+    public RestaurantNode(Long restaurantId, String name, String cuisineType) {
+        this.restaurantId = restaurantId;
+        this.name = name;
+        this.cuisineType = cuisineType;
     }
 
     public RestaurantNode(String name, String cuisineType) {

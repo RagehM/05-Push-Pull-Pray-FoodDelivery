@@ -2,6 +2,8 @@ package com.team05.fooddelivery.restaurant.controller;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
+import com.team05.fooddelivery.restaurant.dto.RestaurantDashboardDTO;
+import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.service.RestaurantService;
 import org.springframework.http.ResponseEntity;
@@ -10,14 +12,17 @@ import com.team05.fooddelivery.restaurant.service.MenuItemService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
+
+
 
 @RestController
 @RequestMapping("/api/restaurants")
 public class RestaurantController {
 
-    // The RestaurantController class is a REST controller that handles HTTP requests related to restaurant operations.
-    // It uses the RestaurantService to perform business logic and interact with the database.
+    // The RestaurantController class is a REST controller that handles HTTP
+    // requests related to restaurant operations.
+    // It uses the RestaurantService to perform business logic and interact with the
+    // database.
     private final RestaurantService restaurantService;
     private final MenuItemService menuItemService;
 
@@ -58,7 +63,8 @@ public class RestaurantController {
     }
 
     // [S2-F1] Search Restaurants by Cuisine and Rating Range
-    // Filters restaurants by optional cuisine type and a rating range, ordered by rating descending.
+    // Filters restaurants by optional cuisine type and a rating range, ordered by
+    // rating descending.
     // Returns 400 if minRating > maxRating.
     @GetMapping("/search")
     public ResponseEntity<List<Restaurant>> search(
@@ -77,7 +83,8 @@ public class RestaurantController {
     }
 
     // [S2-F3] Get Restaurant Order Revenue Summary
-    // Aggregates delivered orders for a restaurant within a date range and returns a revenue summary DTO.
+    // Aggregates delivered orders for a restaurant within a date range and returns
+    // a revenue summary DTO.
     // Returns 404 if the restaurant is not found.
     @GetMapping("/{id}/revenue")
     public ResponseEntity<RestaurantRevenueDTO> getRevenueSummary(
@@ -102,7 +109,8 @@ public class RestaurantController {
     }
 
     // [S2-F5] Filter Restaurants by Detail Attribute (JSONB)
-    // Returns restaurants whose JSONB details map contains the given key-value pair, with an optional status filter.
+    // Returns restaurants whose JSONB details map contains the given key-value
+    // pair, with an optional status filter.
     @GetMapping("/details/search")
     public ResponseEntity<List<Restaurant>> filterByDetail(
             @RequestParam String key,
@@ -112,7 +120,8 @@ public class RestaurantController {
     }
 
     // [S2-F6] Top Rated Restaurants Report
-    // Returns the top N restaurants ordered by rating descending, along with their total order count.
+    // Returns the top N restaurants ordered by rating descending, along with their
+    // total order count.
     @GetMapping("/reports/top-rated")
     public ResponseEntity<List<TopRestaurantDTO>> getTopRated(
             @RequestParam int limit) {
@@ -120,8 +129,10 @@ public class RestaurantController {
     }
 
     // [S2-F7] Rate a Restaurant After Order (Transactional)
-    // Accepts a rating (1–5) for a delivered order and recalculates the restaurant's running average rating.
-    // Returns 404 if restaurant or order not found; 400 if order is not delivered, doesn't belong to this restaurant, or rating is out of range.
+    // Accepts a rating (1–5) for a delivered order and recalculates the
+    // restaurant's running average rating.
+    // Returns 404 if restaurant or order not found; 400 if order is not delivered,
+    // doesn't belong to this restaurant, or rating is out of range.
     @PostMapping("/{id}/rate")
     public ResponseEntity<Void> rateRestaurant(
             @PathVariable Long id,
@@ -133,7 +144,8 @@ public class RestaurantController {
     }
 
     // [S2-F8] Toggle Menu Item Availability (Transactional)
-    // Toggles a menu item's availability; blocks if pending orders reference the item (400) or toggler is not an admin (403).
+    // Toggles a menu item's availability; blocks if pending orders reference the
+    // item (400) or toggler is not an admin (403).
     // Updates the item's metadata with toggledAt timestamp and toggledBy user ID.
     @PutMapping("/{restaurantId}/menu-items/{menuItemId}/toggle")
     public ResponseEntity<Restaurant> toggleMenuItemAvailability(
@@ -145,7 +157,8 @@ public class RestaurantController {
     }
 
     // [S2-F9] Get Restaurants with Unavailable Menu Items
-    // Returns a list of restaurants that have at least one unavailable menu item, along with those items and their count.
+    // Returns a list of restaurants that have at least one unavailable menu item,
+    // along with those items and their count.
     @GetMapping("/menu-items/unavailable")
     public ResponseEntity<List<RestaurantMenuAlertDTO>> getRestaurantsWithUnavailableItems() {
         return ResponseEntity.ok(restaurantService.getRestaurantsWithUnavailableItems());
@@ -155,6 +168,14 @@ public class RestaurantController {
     public ResponseEntity<Void> indexRestaurant(@PathVariable Long id) {
         restaurantService.indexRestaurantForSearch(id);
         return ResponseEntity.ok().build();
+    }
+
+    // [S2-F12] Get Restaurant Performance Dashboard
+    // Section 10.2.3 — logs DASHBOARD_VIEWED to MongoDB on every call including
+    // cache hits
+    @GetMapping("/{id}/dashboard")
+    public ResponseEntity<RestaurantDashboardDTO> getDashboard(@PathVariable Long id) {
+        return ResponseEntity.ok(restaurantService.getDashboard(id));
     }
 
 }

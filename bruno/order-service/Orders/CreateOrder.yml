@@ -13,16 +13,16 @@ http:
     type: json
     data: |-
       {
-        "userId": 2,
+        "userId": 1,
         "status": "DELIVERED",
-        "totalAmount": 50.0,
+        "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},
         "orderDate": "2026-09-30T23:59:59.9999"
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3ODMwMjI3LCJleHAiOjE3Nzc5MTY2Mjd9.kfgbdGXggYS0oVrrQo0y6L1aM9a58xZ68xurumiiY0E
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6Miwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDAyNDQ2LCJleHAiOjE3NzgwODg4NDZ9.0ULFc-v2paUBsNGAR9G7Xwiygj2hH1BQ7q5WstpeFvI
 
 settings:
   encodeUrl: true

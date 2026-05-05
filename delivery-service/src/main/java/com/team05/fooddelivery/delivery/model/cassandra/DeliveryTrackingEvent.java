@@ -2,25 +2,27 @@ package com.team05.fooddelivery.delivery.model.cassandra;
 
 import java.time.Instant;
 
+import org.springframework.data.cassandra.core.cql.Ordering;
+import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
 import org.springframework.data.cassandra.core.mapping.Column;
-import org.springframework.data.cassandra.core.mapping.PrimaryKey;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 import org.springframework.data.cassandra.core.mapping.Table;
 
 /**
  * Cassandra time-series entity for delivery tracking events.
  * Table: delivery_tracking_events
-
- * Compound Key: DeliveryTrackingEventKey
- * - Partition key: delivery_id (groups all tracking events for a single delivery)
- * - Clustering key: timestamp DESC (orders events newest-first)
-
- * Queries MUST include delivery_id in the WHERE clause (partition key requirement).
+ *
+ * Partition key: delivery_id (groups all tracking events for a single delivery)
+ * Clustering key: timestamp DESC (orders events newest-first)
  */
 @Table("delivery_tracking_events")
 public class DeliveryTrackingEvent {
 
-    @PrimaryKey
-    private DeliveryTrackingEventKey key;
+    @PrimaryKeyColumn(name = "delivery_id", ordinal = 0, type = PrimaryKeyType.PARTITIONED)
+    private Long deliveryId;
+
+    @PrimaryKeyColumn(name = "timestamp", ordinal = 1, type = PrimaryKeyType.CLUSTERED, ordering = Ordering.DESCENDING)
+    private Instant timestamp;
 
     @Column("status")
     private String status;
@@ -37,13 +39,13 @@ public class DeliveryTrackingEvent {
     @Column("notes")
     private String notes;
 
-    // Constructors
     public DeliveryTrackingEvent() {
     }
 
     public DeliveryTrackingEvent(Long deliveryId, Instant timestamp, String status, String driverName,
                                  Double latitude, Double longitude, String notes) {
-        this.key = new DeliveryTrackingEventKey(deliveryId, timestamp);
+        this.deliveryId = deliveryId;
+        this.timestamp = timestamp;
         this.status = status;
         this.driverName = driverName;
         this.latitude = latitude;
@@ -51,35 +53,20 @@ public class DeliveryTrackingEvent {
         this.notes = notes;
     }
 
-    // Getters and Setters
-    public DeliveryTrackingEventKey getKey() {
-        return key;
-    }
-
-    public void setKey(DeliveryTrackingEventKey key) {
-        this.key = key;
-    }
-
     public Long getDeliveryId() {
-        return key != null ? key.getDeliveryId() : null;
+        return deliveryId;
     }
 
     public void setDeliveryId(Long deliveryId) {
-        if (key == null) {
-            key = new DeliveryTrackingEventKey();
-        }
-        key.setDeliveryId(deliveryId);
+        this.deliveryId = deliveryId;
     }
 
     public Instant getTimestamp() {
-        return key != null ? key.getTimestamp() : null;
+        return timestamp;
     }
 
     public void setTimestamp(Instant timestamp) {
-        if (key == null) {
-            key = new DeliveryTrackingEventKey();
-        }
-        key.setTimestamp(timestamp);
+        this.timestamp = timestamp;
     }
 
     public String getStatus() {
@@ -122,10 +109,3 @@ public class DeliveryTrackingEvent {
         this.notes = notes;
     }
 }
-
-
-
-
-
-
-

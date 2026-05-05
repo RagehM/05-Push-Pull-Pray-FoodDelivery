@@ -14,6 +14,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collection;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -160,6 +161,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Transactional(readOnly = true)
         Optional<String> findRestaurantCuisineTypeById(@Param("restaurantId") Long restaurantId);
 
+
+        // [S3-F12] Get Restaurant Recommendations for User (VERIFYING USER IDENTITY)
+        @Query(value = """
+                        SELECT u.id, u.role FROM users u
+                        WHERE u.email = :email
+                        """, nativeQuery = true)
+        Object[][] verifyUserIsWhoIsMakingRequest(@Param("email") String email);
         // [CRUD]
         //// Check for existence of user
         @Query(value = """
@@ -176,4 +184,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         """, nativeQuery = true)
         @Transactional(readOnly = true)
         boolean existsByRestaurantId(@Param("restaurantId") Long restaurantId);
+
+        @Query(value = """
+                        SELECT r.id AS restaurantId, r.name AS name, r.cuisine_type AS cuisineType
+                        FROM restaurants r
+                        WHERE r.id IN (:restaurantIds)
+                        """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        List<RestaurantInfoRow> findRestaurantInfoByIds(@Param("restaurantIds") Collection<Long> restaurantIds);
+
+        interface RestaurantInfoRow {
+                Long getRestaurantId();
+                String getName();
+                String getCuisineType();
+        }
 }
