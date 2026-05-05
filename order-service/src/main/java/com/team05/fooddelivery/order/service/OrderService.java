@@ -15,10 +15,12 @@ import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.team05.shared.observer.EntityObserver;
@@ -40,6 +42,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OrderService {
+
+    @Lazy
+    @Autowired
+    private OrderService self; // Self-injection to allow calling methods with caching and transactions
 
     private final OrderRepository orderRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
@@ -370,7 +376,7 @@ public class OrderService {
     // Cached in redis for 10 minutes
     @Transactional
     public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboardWrapper(LocalDate startDate, LocalDate endDate) {
-        OrderAnalyticsDashboardDTO dashboard = getOrderAnalyticsDashboard(startDate, endDate);
+        OrderAnalyticsDashboardDTO dashboard = self.getOrderAnalyticsDashboard(startDate, endDate);
 
         Map<String, Object> params = new HashMap<>();
         params.put("orderId", -1L); // Aggregate logs with orderId -1
