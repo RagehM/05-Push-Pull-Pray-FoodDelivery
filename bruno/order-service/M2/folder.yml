@@ -1,0 +1,7 @@
+info:
+  name: M2
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit

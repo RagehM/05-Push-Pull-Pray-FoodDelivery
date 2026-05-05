@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/payments/analytics/methods?startDate=2020-01-01&endDate=2020-01-31"
+method: GET
+headers:
+  Authorization: Bearer {{token}}
+queryParams:
+  startDate: 2020-01-01
+  endDate: 2020-01-31
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('200 OK', () => pm.response.to.have.status(200));
+      pm.test('Empty list', () => pm.expect(pm.response.json()).to.eql([]));
+    language: text/javascript
+order: 4000

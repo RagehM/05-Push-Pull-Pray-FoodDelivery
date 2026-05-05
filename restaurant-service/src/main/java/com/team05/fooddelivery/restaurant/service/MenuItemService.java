@@ -1,13 +1,12 @@
 package com.team05.fooddelivery.restaurant.service;
 
-import com.team05.fooddelivery.restaurant.factory.EventFactory;
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.mongo.MongoRestaurantEventRepository;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
@@ -30,7 +29,6 @@ public class MenuItemService {
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
-    private final EventFactory eventFactory = new EventFactory();
 
     public MenuItemService(MenuItemRepository menuItemRepository,
                            RestaurantRepository restaurantRepository,
@@ -40,7 +38,7 @@ public class MenuItemService {
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
-            new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory)
+            new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT)
         );
     }
 
@@ -127,7 +125,6 @@ public class MenuItemService {
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.MENU_ITEM_TOGGLED);
         params.put("restaurantId", restaurantId);
         Map<String, Object> details = new HashMap<>();
         details.put("menuItemId", menuItemId);

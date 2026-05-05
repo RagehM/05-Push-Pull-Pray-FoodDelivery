@@ -1,110 +1,73 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class OrderDetailsDTO {
-    private Long orderId;
-    private Long userId;
-    private Long restaurantId;
-    private OrderStatusEnum status;
-    private Double totalAmount;
-    private Map<String, Object> metadata;
-    private List<OrderItemDetailsDTO> items;
-    private Integer totalItems;
-    private Integer preparedItems;
+    private final Long orderId;
+    private final Long userId;
+    private final Long restaurantId;
+    private final OrderStatusEnum status;
+    private final Double totalAmount;
+    private final Map<String, Object> metadata;
+    private final List<OrderItemDetailsDTO> items;
+    private final Integer totalItems;
+    private final Integer preparedItems;
 
-    public OrderDetailsDTO() {
+    private OrderDetailsDTO(Builder builder) {
+        this.orderId = builder.orderId;
+        this.userId = builder.userId;
+        this.restaurantId = builder.restaurantId;
+        this.status = builder.status;
+        this.totalAmount = builder.totalAmount;
+        this.metadata = builder.metadata;
+        this.items = builder.items != null
+                ? Collections.unmodifiableList(builder.items)
+                : Collections.emptyList();
+        if (builder.totalItems == null) {
+            this.totalItems = builder.items != null ? builder.items.size() : 0;
+        } else {
+            this.totalItems = builder.totalItems;
+        }
+        this.preparedItems = builder.preparedItems != null ? builder.preparedItems : 0;
     }
 
-    public OrderDetailsDTO(Long orderId, Long userId, Long restaurantId,
-                           OrderStatusEnum status, Double totalAmount,
-                           Map<String, Object> metadata,
-                           List<OrderItemDetailsDTO> items,
-                           Integer totalItems, Integer preparedItems) {
+    @JsonCreator
+    private OrderDetailsDTO(
+            @JsonProperty("orderId") Long orderId,
+            @JsonProperty("userId") Long userId,
+            @JsonProperty("restaurantId") Long restaurantId, 
+            @JsonProperty("status") OrderStatusEnum status,
+            @JsonProperty("totalAmount") Double totalAmount,
+            @JsonProperty("metadata") Map<String, Object> metadata,
+            @JsonProperty("items") List<OrderItemDetailsDTO> items,
+            @JsonProperty("totalItems") Integer totalItems,
+            @JsonProperty("preparedItems") Integer preparedItems
+    ) {
         this.orderId = orderId;
         this.userId = userId;
         this.restaurantId = restaurantId;
         this.status = status;
         this.totalAmount = totalAmount;
         this.metadata = metadata;
-        this.items = items;
-        this.totalItems = totalItems;
-        this.preparedItems = preparedItems;
+        this.items = items != null ? Collections.unmodifiableList(items) : Collections.emptyList();
+        this.totalItems = totalItems != null ? totalItems : 0;
+        this.preparedItems = preparedItems != null ? preparedItems : 0;
     }
 
-    public Long getOrderId() {
-        return orderId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public Long getRestaurantId() {
-        return restaurantId;
-    }
-
-    public OrderStatusEnum getStatus() {
-        return status;
-    }
-
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public Map<String, Object> getMetadata() {
-        return metadata;
-    }
-
-    public List<OrderItemDetailsDTO> getItems() {
-        return items;
-    }
-
-    public Integer getTotalItems() {
-        return totalItems;
-    }
-
-    public Integer getPreparedItems() {
-        return preparedItems;
-    }
-
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public void setRestaurantId(Long restaurantId) {
-        this.restaurantId = restaurantId;
-    }
-
-    public void setStatus(OrderStatusEnum status) {
-        this.status = status;
-    }
-
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public void setMetadata(Map<String, Object> metadata) {
-        this.metadata = metadata;
-    }
-
-    public void setItems(List<OrderItemDetailsDTO> items) {
-        this.items = items;
-    }
-
-    public void setTotalItems(Integer totalItems) {
-        this.totalItems = totalItems;
-    }
-
-    public void setPreparedItems(Integer preparedItems) {
-        this.preparedItems = preparedItems;
-    }
+    public Long getOrderId() { return orderId; }
+    public Long getUserId() { return userId; }
+    public Long getRestaurantId() { return restaurantId; }
+    public OrderStatusEnum getStatus() { return status; }
+    public Double getTotalAmount() { return totalAmount; }
+    public Map<String, Object> getMetadata() { return metadata; }
+    public List<OrderItemDetailsDTO> getItems() { return items; }
+    public Integer getTotalItems() { return totalItems; }
+    public Integer getPreparedItems() { return preparedItems; }
 
     public static Builder builder() {
         return new Builder();
@@ -118,8 +81,8 @@ public class OrderDetailsDTO {
         private Double totalAmount;
         private Map<String, Object> metadata;
         private List<OrderItemDetailsDTO> items;
-        private Integer totalItems;
         private Integer preparedItems;
+        private Integer totalItems;
 
         public Builder orderId(Long orderId) {
             this.orderId = orderId;
@@ -156,28 +119,27 @@ public class OrderDetailsDTO {
             return this;
         }
 
-        public Builder totalItems(Integer totalItems) {
-            this.totalItems = totalItems;
-            return this;
-        }
-
         public Builder preparedItems(Integer preparedItems) {
             this.preparedItems = preparedItems;
             return this;
         }
 
+        public Builder totalItems(Integer totalItems) {
+            this.totalItems = totalItems;
+            return this;
+        }
+
         public OrderDetailsDTO build() {
-            return new OrderDetailsDTO(
-                    orderId,
-                    userId,
-                    restaurantId,
-                    status,
-                    totalAmount,
-                    metadata,
-                    items,
-                    totalItems,
-                    preparedItems
-            );
+            if (orderId == null)
+                throw new IllegalStateException("orderId is required");
+            if (userId == null)
+                throw new IllegalStateException("userId is required");
+            if (status == null)
+                throw new IllegalStateException("status is required");
+            if (totalAmount == null || totalAmount < 0)
+                throw new IllegalStateException("totalAmount must be non-negative");
+
+            return new OrderDetailsDTO(this);
         }
     }
 }

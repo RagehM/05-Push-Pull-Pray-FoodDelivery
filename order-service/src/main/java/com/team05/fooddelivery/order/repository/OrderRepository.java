@@ -79,21 +79,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
         // [S3-F6] - Order Analytics by Time Period (Report DTO)
         @Query("""
-                        SELECT new com.team05.fooddelivery.order.dto.OrderAnalyticsDTO(
-                                COUNT(o),
-                                COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN 1L ELSE 0L END), 0L),
-                                COALESCE(SUM(CASE WHEN o.status = 'CANCELLED' THEN 1L ELSE 0L END), 0L),
-                                COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN o.totalAmount ELSE 0.0 END), 0.0),
-                                COALESCE(AVG(CASE WHEN o.status = 'DELIVERED' THEN o.totalAmount END), 0.0),
-                                CASE WHEN COUNT(o) > 0 THEN
-                                        SUM(CASE WHEN o.status = 'DELIVERED' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(o)
-                                ELSE 0.0 END
-                        )
-                        FROM Order o
-                        WHERE o.orderDate >= :startDate AND o.orderDate <= :endDate
-                        """)
+                SELECT
+                        COUNT(o),
+                        COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN 1L ELSE 0L END), 0L),
+                        COALESCE(SUM(CASE WHEN o.status = 'CANCELLED' THEN 1L ELSE 0L END), 0L),
+                        COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN o.totalAmount ELSE 0.0 END), 0.0),
+                        COALESCE(AVG(CASE WHEN o.status = 'DELIVERED' THEN o.totalAmount END), 0.0),
+                        CASE WHEN COUNT(o) > 0 THEN
+                                SUM(CASE WHEN o.status = 'DELIVERED' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(o)
+                        ELSE 0.0 END
+                FROM Order o
+                WHERE o.orderDate >= :startDate AND o.orderDate < :endDate
+                """)
         @Transactional(readOnly = true)
-        OrderAnalyticsDTO getOrderAnalyticsByTimePeriod(@Param("startDate") LocalDateTime startDate,
+        Object[][] getOrderAnalyticsByTimePeriod(@Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
 
         // [S3-F7]
@@ -123,6 +122,24 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         """)
         Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
 
+        // [S3-F10]
+        @Query("""
+                        SELECT 
+                                COUNT(o),
+                                COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN o.totalAmount ELSE 0.0 END), 0.0),      
+                                COALESCE(AVG(CASE WHEN o.status = 'DELIVERED' THEN 1L ELSE 0L END), 0L),
+                                COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN 1L ELSE 0L END), 0L),
+                                COALESCE(SUM(CASE WHEN o.status = 'CANCELLED' THEN 1L ELSE 0L END), 0L),
+                                COALESCE(SUM(CASE WHEN o.status = 'PLACED' THEN 1L ELSE 0L END), 0L),
+                                COALESCE(SUM(CASE WHEN o.status = 'CONFIRMED' THEN 1L ELSE 0L END), 0L),
+                                COALESCE(SUM(CASE WHEN o.status = 'PREPARING' THEN 1L ELSE 0L END), 0L)
+
+                        FROM Order o
+                        WHERE o.orderDate >= :startDate AND o.orderDate < :endDate
+                        """)
+        @Transactional(readOnly = true)
+        Object[][] getOrderCountAndCompletionRateDetails(@Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate);
         // [CRUD]
         //// Check for existence of user
         @Query(value = """
