@@ -43,7 +43,7 @@ public class DeliveryController {
     }
 
     @PostMapping("/{id}/tracking")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Void> recordDeliveryTracking(@PathVariable Long id,
                                                        @RequestBody DeliveryTrackingRequestDTO request) {
         deliveryService.recordDeliveryTracking(id, request);
@@ -121,7 +121,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/{id}/tracking")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('CUSTOMER')")
     public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(
             @PathVariable Long id,
             @RequestParam(required = false) String startTime,
@@ -138,7 +138,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/analytics")
-    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('CUSTOMER')")
     public DeliveryAnalyticsDTO getAnalytics(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
