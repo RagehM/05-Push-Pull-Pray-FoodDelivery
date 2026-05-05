@@ -1,28 +1,40 @@
 package com.team05.fooddelivery.delivery.dto;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@JsonDeserialize(builder = NearbyDeliveryDTO.Builder.class)
 public class NearbyDeliveryDTO {
 
-    private Long deliveryId;
-    private String driverName;
-    private Long orderId;
-    private Double latitude;
-    private Double longitude;
-    private Double distanceKm;
+    private final Long deliveryId;
+    private final String driverName;
+    private final Long orderId;
+    private final Double latitude;
+    private final Double longitude;
+    private final Double distanceKm;
 
-    public NearbyDeliveryDTO() {
+    private NearbyDeliveryDTO(Builder builder) {
+        this.deliveryId = builder.deliveryId;
+        this.driverName = builder.driverName;
+        this.orderId = builder.orderId;
+        this.latitude = builder.latitude;
+        this.longitude = builder.longitude;
+        this.distanceKm = builder.distanceKm;
     }
 
-    public NearbyDeliveryDTO(
-            Long deliveryId,
-            String driverName,
-            Long orderId,
-            Double latitude,
-            Double longitude,
-            Double distanceKm
-    ) {
+    public Long getDeliveryId() { return deliveryId; }
+    public String getDriverName() { return driverName; }
+    public Long getOrderId() { return orderId; }
+    public Double getLatitude() { return latitude; }
+    public Double getLongitude() { return longitude; }
+    public Double getDistanceKm() { return distanceKm; }
+
+    @JsonCreator
+    private NearbyDeliveryDTO(
+            @JsonProperty("deliveryId") Long deliveryId,
+            @JsonProperty("driverName") String driverName,
+            @JsonProperty("orderId") Long orderId,
+            @JsonProperty("latitude") Double latitude,
+            @JsonProperty("longitude") Double longitude,
+            @JsonProperty("distanceKm") Double distanceKm) {
         this.deliveryId = deliveryId;
         this.driverName = driverName;
         this.orderId = orderId;
@@ -31,37 +43,11 @@ public class NearbyDeliveryDTO {
         this.distanceKm = distanceKm;
     }
 
-    public Long getDeliveryId() {
-        return deliveryId;
-    }
-
-    public String getDriverName() {
-        return driverName;
-    }
-
-    public Long getOrderId() {
-        return orderId;
-    }
-
-    public Double getLatitude() {
-        return latitude;
-    }
-
-    public Double getLongitude() {
-        return longitude;
-    }
-
-    public Double getDistanceKm() {
-        return distanceKm;
-    }
-
     public static Builder builder() {
         return new Builder();
     }
 
-    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
-
         private Long deliveryId;
         private String driverName;
         private Long orderId;
@@ -100,14 +86,7 @@ public class NearbyDeliveryDTO {
         }
 
         public NearbyDeliveryDTO build() {
-            return new NearbyDeliveryDTO(
-                    deliveryId,
-                    driverName,
-                    orderId,
-                    latitude,
-                    longitude,
-                    distanceKm
-            );
+            return new NearbyDeliveryDTO(this);
         }
     }
 }

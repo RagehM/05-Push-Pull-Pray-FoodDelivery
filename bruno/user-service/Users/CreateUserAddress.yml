@@ -5,16 +5,22 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8081/api/users/6/addresses
+  url: http://localhost:8081/api/users/1/addresses
   body:
     type: json
     data: |-
       {
-        "street": "123 Main St",
-        "city": "Berlin",
-        "country": "Germany",
-        "postalCode": "10115",
-        "isDefault": false
+        "label": "Home3",
+        "streetAddress": "123 Tahrir Square",
+        "city": "Cairo",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "default": true,
+        "metadata": {
+          "floor": "3",
+          "apartment": "12",
+          "notes": "Ring the bell twice"
+        }
       }
   auth:
     type: bearer

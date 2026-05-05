@@ -57,26 +57,18 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			Double radiusKm
 	);
 
-	// No Date filter
-	List<Delivery> findByOrderIdOrderByUpdatedAtAsc(Long orderId);
-
-	// Only start date filter
-	List<Delivery> findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(
-			Long orderId,
-			LocalDateTime start
-	);
-
-	// Only end date filter
-	List<Delivery> findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(
-			Long orderId,
-			LocalDateTime end
-	);
-
-	// Both start and end date filter
-	List<Delivery> findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(
-			Long orderId,
-			LocalDateTime start,
-			LocalDateTime end
+	@Query("""
+    SELECT d
+    FROM Delivery d
+    WHERE d.orderId = :orderId
+      AND (:start IS NULL OR d.updatedAt >= :start)
+      AND (:end IS NULL OR d.updatedAt <= :end)
+    ORDER BY d.updatedAt ASC
+""")
+	List<Delivery> findOrderDeliveryHistory(
+			@Param("orderId") Long orderId,
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
 	);
 
 	//// Check for the existence of order
@@ -143,6 +135,85 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 """, nativeQuery = true)
 	List<Object[]> findPerformanceSummary(
 			@Param("driverName") String driverName,
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
+	);
+
+	@Query(value = """
+        SELECT COUNT(*)
+        FROM deliveries d
+        JOIN orders o ON d.order_id = o.id
+        WHERE (:start IS NULL OR o.order_date >= :start)
+          AND (:end IS NULL OR o.order_date <= :end)
+        """, nativeQuery = true)
+	Long countTotalDeliveries(
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
+	);
+
+
+	@Query(value = """
+        SELECT AVG(minutes_taken)
+        FROM (
+            SELECT DISTINCT o.id,
+                   EXTRACT(EPOCH FROM
+                      (o.delivered_at - o.order_date)
+                   ) / 60.0 AS minutes_taken
+            FROM deliveries d
+            JOIN orders o ON d.order_id = o.id
+            WHERE o.status = 'DELIVERED'
+              AND o.delivered_at IS NOT NULL
+              AND (:start IS NULL OR o.order_date >= :start)
+              AND (:end IS NULL OR o.order_date <= :end)
+        ) x
+        """, nativeQuery = true)
+	Double averageDeliveryMinutes(
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
+	);
+
+
+	@Query(value = """
+        SELECT COUNT(DISTINCT o.id)
+        FROM deliveries d
+        JOIN orders o ON d.order_id = o.id
+        WHERE o.status = 'DELIVERED'
+          AND (:start IS NULL OR o.order_date >= :start)
+          AND (:end IS NULL OR o.order_date <= :end)
+        """, nativeQuery = true)
+	Long countDeliveredOrders(
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
+	);
+
+
+	@Query(value = """
+        SELECT COUNT(DISTINCT o.id)
+        FROM deliveries d
+        JOIN orders o ON d.order_id = o.id
+        WHERE o.status = 'DELIVERED'
+          AND o.delivered_at IS NOT NULL
+          AND EXTRACT(EPOCH FROM
+              (o.delivered_at - o.order_date)
+          ) / 60.0 <= 45
+          AND (:start IS NULL OR o.order_date >= :start)
+          AND (:end IS NULL OR o.order_date <= :end)
+        """, nativeQuery = true)
+	Long countOnTimeDeliveredOrders(
+			@Param("start") LocalDateTime start,
+			@Param("end") LocalDateTime end
+	);
+
+
+	@Query(value = """
+        SELECT d.status, COUNT(*)
+        FROM deliveries d
+        JOIN orders o ON d.order_id = o.id
+        WHERE (:start IS NULL OR o.order_date >= :start)
+          AND (:end IS NULL OR o.order_date <= :end)
+        GROUP BY d.status
+        """, nativeQuery = true)
+	List<Object[]> countByStatus(
 			@Param("start") LocalDateTime start,
 			@Param("end") LocalDateTime end
 	);

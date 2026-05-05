@@ -650,12 +650,9 @@ public class PaymentService {
         LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
 
         // (c) Pull only events whose transactionDetails.status is COMPLETED or FAILED.
-        Set<String> statuses = Set.of(
-                PaymentAuditEvent.Actions.COMPLETED,
-                PaymentAuditEvent.Actions.FAILED
-        );
+        Set<String> actions = Set.of("COMPLETED", "FAILED");
         List<PaymentAuditEvent> events =
-                paymentAuditEventRepository.findByDetailsStatusInAndTimestampBetween(statuses, start, end);
+                paymentAuditEventRepository.findByActionInAndTimestampBetween(actions, start, end);
 
         if (events == null || events.isEmpty()) {
             // (f) Empty list when no data — do NOT 404.
@@ -674,12 +671,11 @@ public class PaymentService {
                 continue;
             }
 
-            // Read status from transactionDetails map stored inside the audit event
-            Object rawStatus = ev.getDetails() != null ? ev.getDetails().get("status") : null;
-            if (rawStatus == null) {
+            // Use the action field directly — that's what was persisted (e.g. "COMPLETED" / "FAILED")
+            String status = ev.getAction();
+            if (status == null) {
                 continue;
             }
-            String status = rawStatus.toString();
 
             PaymentMethod method;
             try {
@@ -776,11 +772,10 @@ public class PaymentService {
 
         Map<String, Object> refundedAuditEvent = new HashMap<>();
         refundedAuditEvent.put("paymentId", savedPayment.getId());
-        refundedAuditEvent.put("action", "REFUNDED");
         refundedAuditEvent.put("method", savedPayment.getMethod().name());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("strategy", strategyName);
+        details.put("strategyName", strategyName);
         details.put("reason", refundRequest.reason());
         details.put("originalAmount", savedPayment.getAmount());
         details.put("refundAmount", refundResult.amount());
@@ -788,7 +783,7 @@ public class PaymentService {
 
         refundedAuditEvent.put("details", details);
 
-        notifyObservers("PAYMENT_AUDIT", refundedAuditEvent);
+        notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
     }
