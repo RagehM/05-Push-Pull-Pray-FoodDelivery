@@ -6,15 +6,20 @@ info:
 http:
   method: POST
   url: http://localhost:8081/api/auth/register
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3Njg2NjQ5OCwiZXhwIjoxNzc2ODcwMDk4fQ.bRJK8gPNyHO9cIHXqOULIpriuUwPat5VtgIHSTb195k
+      disabled: true
   body:
     type: json
     data: |-
       {
-        "name": "jimmy",
-        "email": "rageh1234@msail.com",
-        "password": 1234656,
-        "phone": "1234567890123"
+        "name": "rageh",
+        "email": "rageh@mail.com",
+        "password": 123,
+        "phone": "010972812026990"
       }
+  auth: inherit
 
 settings:
   encodeUrl: true

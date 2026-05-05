@@ -1,5 +1,8 @@
 package com.team05.fooddelivery.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class OrderCostEstimateDTO {
     private final Double estimatedFoodCost;
     private final Double deliveryFee;
@@ -20,6 +23,20 @@ public class OrderCostEstimateDTO {
     public Double getServiceFee() { return serviceFee; }
     public Double getEstimatedTotal() { return estimatedTotal; }
     public Double getSurgeMultiplier() { return surgeMultiplier; }
+
+    @JsonCreator
+    private OrderCostEstimateDTO(
+    @JsonProperty("estimatedFoodCost") Double estimatedFoodCost,
+    @JsonProperty("deliveryFee") Double deliveryFee,
+    @JsonProperty("serviceFee") Double serviceFee,
+    @JsonProperty("estimatedTotal") Double estimatedTotal,
+    @JsonProperty("surgeMultiplier") Double surgeMultiplier) {
+        this.estimatedFoodCost = estimatedFoodCost;
+        this.deliveryFee = deliveryFee;
+        this.serviceFee = serviceFee;
+        this.estimatedTotal = estimatedTotal;
+        this.surgeMultiplier = surgeMultiplier;
+    }
 
     public static Builder builder() {
         return new Builder();
@@ -70,4 +87,5 @@ public class OrderCostEstimateDTO {
             return new OrderCostEstimateDTO(this);
         }
     }
+
 }

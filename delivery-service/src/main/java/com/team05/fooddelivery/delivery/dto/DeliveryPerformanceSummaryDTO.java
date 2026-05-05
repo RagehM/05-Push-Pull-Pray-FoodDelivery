@@ -1,9 +1,9 @@
 package com.team05.fooddelivery.delivery.dto;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.time.LocalDateTime;
 
-@JsonDeserialize(builder = DeliveryPerformanceSummaryDTO.Builder.class)
 public class DeliveryPerformanceSummaryDTO {
 
     private String driverName;
@@ -15,20 +15,13 @@ public class DeliveryPerformanceSummaryDTO {
 
     public DeliveryPerformanceSummaryDTO() {}
 
-    public DeliveryPerformanceSummaryDTO(
-            String driverName,
-            long totalDeliveries,
-            double averageSpeed,
-            double maxSpeed,
-            LocalDateTime firstDelivery,
-            LocalDateTime lastDelivery
-    ) {
-        this.driverName = driverName;
-        this.totalDeliveries = totalDeliveries;
-        this.averageSpeed = averageSpeed;
-        this.maxSpeed = maxSpeed;
-        this.firstDelivery = firstDelivery;
-        this.lastDelivery = lastDelivery;
+    public DeliveryPerformanceSummaryDTO(Builder builder) {
+        this.driverName = builder.driverName;
+        this.totalDeliveries = builder.totalDeliveries;
+        this.averageSpeed = builder.averageSpeed;
+        this.maxSpeed = builder.maxSpeed;
+        this.firstDelivery = builder.firstDelivery;
+        this.lastDelivery = builder.lastDelivery;
     }
 
     public String getDriverName() {
@@ -55,11 +48,26 @@ public class DeliveryPerformanceSummaryDTO {
         return lastDelivery;
     }
 
+    @JsonCreator
+    private DeliveryPerformanceSummaryDTO(
+            @JsonProperty("driverName") String driverName,
+            @JsonProperty("totalDeliveries") long totalDeliveries,
+            @JsonProperty("orderId") Long averageSpeed,
+            @JsonProperty("latitude") Double maxSpeed,
+            @JsonProperty("longitude") LocalDateTime firstDelivery,
+            @JsonProperty("distanceKm") LocalDateTime lastDelivery) {
+        this.driverName = driverName;
+        this.totalDeliveries = totalDeliveries;
+        this.averageSpeed = averageSpeed;
+        this.maxSpeed = maxSpeed;
+        this.firstDelivery = firstDelivery;
+        this.lastDelivery = lastDelivery;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
-    @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
         private String driverName;
@@ -100,14 +108,7 @@ public class DeliveryPerformanceSummaryDTO {
         }
 
         public DeliveryPerformanceSummaryDTO build() {
-            return new DeliveryPerformanceSummaryDTO(
-                    driverName,
-                    totalDeliveries,
-                    averageSpeed,
-                    maxSpeed,
-                    firstDelivery,
-                    lastDelivery
-            );
+            return new DeliveryPerformanceSummaryDTO(this);
         }
     }
 }
