@@ -94,8 +94,13 @@ public class OrderController {
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return orderService.getOrderAnalyticsDashboardWrapper(startDate, endDate);
-    } 
-    
+    }
+    // [S3-F11] Record User-Restaurant Ordering Pattern
+    @PostMapping("/{orderId}/record-interaction")
+    public ResponseEntity<InteractionRecordingResponseDTO> recordInteraction(@PathVariable Long orderId) {
+        return ResponseEntity.ok(orderService.recordInteraction(orderId));
+    }
+
     // [S3-F12]
     @GetMapping("/recommendations")
     public ResponseEntity<List<RestaurantRecommendationDTO>> getRestaurantRecommendations(

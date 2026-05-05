@@ -142,6 +142,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         Object[][] getOrderCountAndCompletionRateDetails(@Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
 
+        // [S3-F11]
+        @Query(value = """
+                        SELECT u.name FROM users u WHERE u.id = :userId
+                        """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        Optional<String> findUserNameById(@Param("userId") Long userId);
+
+        @Query(value = """
+                        SELECT r.name FROM restaurants r WHERE r.id = :restaurantId
+                        """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        Optional<String> findRestaurantNameById(@Param("restaurantId") Long restaurantId);
+
+        @Query(value = """
+                        SELECT r.cuisine_type FROM restaurants r WHERE r.id = :restaurantId
+                        """, nativeQuery = true)
+        @Transactional(readOnly = true)
+        Optional<String> findRestaurantCuisineTypeById(@Param("restaurantId") Long restaurantId);
+
+
         // [S3-F12] Get Restaurant Recommendations for User (VERIFYING USER IDENTITY)
         @Query(value = """
                         SELECT u.id, u.role FROM users u

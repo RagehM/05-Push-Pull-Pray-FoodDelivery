@@ -8,6 +8,7 @@ import com.team05.fooddelivery.delivery.dto.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,7 +43,7 @@ public class DeliveryController {
     }
 
     @PostMapping("/{id}/tracking")
-//    @PreAuthorize("hasRole('USER')")
+//    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Void> recordDeliveryTracking(@PathVariable Long id,
                                                        @RequestBody DeliveryTrackingRequestDTO request) {
         deliveryService.recordDeliveryTracking(id, request);
@@ -118,7 +119,9 @@ public class DeliveryController {
     public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
         return deliveryService.purgeOldDeliveries(olderThanDays);
     }
+
     @GetMapping("/{id}/tracking")
+//    @PreAuthorize("hasRole('CUSTOMER')")
     public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(
             @PathVariable Long id,
             @RequestParam(required = false) String startTime,
@@ -135,6 +138,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/analytics")
+//    @PreAuthorize("hasRole('CUSTOMER')")
     public DeliveryAnalyticsDTO getAnalytics(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
