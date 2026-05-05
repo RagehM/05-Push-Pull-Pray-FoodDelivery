@@ -30,6 +30,8 @@ import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -420,26 +422,32 @@ public class OrderService {
     @Transactional(readOnly = true)
     @Cacheable(value = "order-service::S3-F12", key = "{#userId, #limit}")
     public List<RestaurantRecommendationDTO> getRestaurantRecommendations(Long userId, Integer limit) {
-        // Default to 5 recommendations if limit is not provided
-        int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
-
-        // String cacheKey = "order-service::S3-F12::" + userId + ":" + finalLimit;
-        // String cached = redisTemplate.opsForValue().get(cacheKey);
-        // if (cached != null) {
-        //     try {
-        //         return objectMapper.readValue(cached, new TypeReference<List<RestaurantRecommendationDTO>>() {});
-        //     } catch (Exception e) {
-        //         // ignore cache parsing errors and fallback to DB
-        //     }
-        // }
-
-        // Validate user existence
-        if (!orderRepository.existsByUserId(userId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId query parameter is required");
+        }
+        // Get userId and Role
+        Object[] userIdAndRole = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
+        }
+        if (userIdAndRole == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
 
+        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
+        String role = (String) userIdAndRole[1];
+
+
+
+        if (fetchedUserId != userId && !role.equalsIgnoreCase("ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+
         // Fetch restaurant recommendations using Neo4j repository
-        List<UserNodeRepository.RestaurantRecommendationRow> rows = userNodeRepository.findRecommendations(userId, finalLimit);
+        List<UserNodeRepository.RestaurantRecommendationRow> rows = userNodeRepository.findRecommendations(userId, limit);
 
         // If no recommendations found, return an empty list
         if (rows.isEmpty()) {

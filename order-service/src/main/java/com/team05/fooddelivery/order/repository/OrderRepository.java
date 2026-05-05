@@ -141,6 +141,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Transactional(readOnly = true)
         Object[][] getOrderCountAndCompletionRateDetails(@Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
+
+        // [S3-F12] Get Restaurant Recommendations for User (VERIFYING USER IDENTITY)
+        @Query(value = """
+                        SELECT u.id, u.role FROM users u
+                        WHERE u.email = :email
+                        """, nativeQuery = true)
+        Object[][] verifyUserIsWhoIsMakingRequest(@Param("email") String email);
         // [CRUD]
         //// Check for existence of user
         @Query(value = """
