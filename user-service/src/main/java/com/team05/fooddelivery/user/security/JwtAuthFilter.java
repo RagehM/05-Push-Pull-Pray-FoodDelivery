@@ -110,10 +110,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             chain.doFilter(request, response);
         }
-        catch (Exception e) {
-        }
-
-        } catch (ResponseStatusException e) {
+        catch (ResponseStatusException e) {
             String reason = e.getReason() != null ? e.getReason() : e.getMessage();
             writeErrorResponse(response, e.getStatusCode().value(), reason);
 
