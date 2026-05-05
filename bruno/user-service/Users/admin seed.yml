@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: ""
+  url: http://localhost:8081/api/seed
   auth: inherit
 
 settings:

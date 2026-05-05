@@ -13,17 +13,19 @@ http:
     type: json
     data: |-
       {
-        "orderId": 1,
-        "userId": 2,
-        "amount": 100,
+        "orderId": 3,
+        "userId": 1,
+        "amount": 200,
         "method": "CREDIT_CARD",
-        "status": "FAILED",
-        "transactionDetails": {},
+        "status": "COMPLETED",
+        "transactionDetails": {
+          "deliveryFee": 20
+        },
         "paymentOffers": []
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3ODMwMjI3LCJleHAiOjE3Nzc5MTY2Mjd9.kfgbdGXggYS0oVrrQo0y6L1aM9a58xZ68xurumiiY0E
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkxMzgyLCJleHAiOjE3NzgwNzc3ODJ9.uTtYXus_q0k9PfclPj8vxCcbHqN3DeS4m_JSQjjhD5w
 
 settings:
   encodeUrl: true

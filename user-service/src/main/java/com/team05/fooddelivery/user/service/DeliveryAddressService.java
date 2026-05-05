@@ -49,11 +49,23 @@ public class DeliveryAddressService {
 
     public DeliveryAddress createDeliveryAddress(DeliveryAddress deliveryAddress)
     {
+        deliveryAddressRepository.findUserById(deliveryAddress.getUser().getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
         if (deliveryAddress.getCreatedAt() == null || deliveryAddress.getCreatedAt().equals("") || deliveryAddress.getCreatedAt().equals("null"))
         {
             deliveryAddress.setCreatedAt(LocalDateTime.now());
         }
-        deliveryAddressRepository.findUserById(deliveryAddress.getUser().getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
+
+        if(deliveryAddress.getDefault() != null && deliveryAddress.getDefault())
+        {
+            List<DeliveryAddress> deliveryAddresses = deliveryAddressRepository.findAllByUserId(deliveryAddress.getUser().getId());
+            for (DeliveryAddress da : deliveryAddresses) {
+                da.setDefault(false);
+                deliveryAddressRepository.save(da);
+            }
+        }
+
+
+
         return deliveryAddressRepository.save(deliveryAddress);
     }
 
@@ -64,11 +76,20 @@ public class DeliveryAddressService {
     }
 
     public DeliveryAddress createDeliveryAddressForUser(DeliveryAddress deliveryAddress, long userId) {
+        User user= deliveryAddressRepository.findUserById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
         if (deliveryAddress.getCreatedAt() == null || deliveryAddress.getCreatedAt().equals("") || deliveryAddress.getCreatedAt().equals("null"))
         {
             deliveryAddress.setCreatedAt(LocalDateTime.now());
         }
-       User user= deliveryAddressRepository.findUserById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"User not found"));
+        if(deliveryAddress.getDefault() != null && deliveryAddress.getDefault())
+        {
+            List<DeliveryAddress> deliveryAddresses = deliveryAddressRepository.findAllByUserId(userId);
+            for (DeliveryAddress da : deliveryAddresses) {
+                da.setDefault(false);
+                deliveryAddressRepository.save(da);
+            }
+        }
+
         deliveryAddress.setUser(user);
         return deliveryAddressRepository.save(deliveryAddress);
     }
