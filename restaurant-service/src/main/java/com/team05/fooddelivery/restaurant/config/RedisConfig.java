@@ -25,75 +25,77 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 @Configuration
 public class RedisConfig {
 
-    @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
+        @Bean
+        public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
 
-        RedisSerializationContext.SerializationPair<Object> jsonSerializer =
-                RedisSerializationContext.SerializationPair.fromSerializer(
-                        new GenericJackson2JsonRedisSerializer(redisObjectMapper()));
+                RedisSerializationContext.SerializationPair<Object> jsonSerializer = RedisSerializationContext.SerializationPair
+                                .fromSerializer(
+                                                new GenericJackson2JsonRedisSerializer(redisObjectMapper()));
 
-        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .serializeValuesWith(jsonSerializer)
-                .disableCachingNullValues();
+                RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                                .serializeValuesWith(jsonSerializer)
+                                .disableCachingNullValues();
 
-        Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+                Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
-        cacheConfigs.put("restaurant-service::S2-F1",
-                defaultConfig.entryTtl(Duration.ofMinutes(5)));
+                cacheConfigs.put("restaurant-service::S2-F1",
+                                defaultConfig.entryTtl(Duration.ofMinutes(5)));
 
-        cacheConfigs.put("restaurant-service::S2-F5",
-                defaultConfig.entryTtl(Duration.ofMinutes(5)));
+                cacheConfigs.put("restaurant-service::S2-F5",
+                                defaultConfig.entryTtl(Duration.ofMinutes(5)));
 
-        cacheConfigs.put("restaurant-service::S2-F3",
-                defaultConfig.entryTtl(Duration.ofMinutes(10)));
+                cacheConfigs.put("restaurant-service::S2-F3",
+                                defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
-        cacheConfigs.put("restaurant-service::S2-F6",
-                defaultConfig.entryTtl(Duration.ofMinutes(10)));
+                cacheConfigs.put("restaurant-service::S2-F6",
+                                defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
-        cacheConfigs.put("restaurant-service::S2-F9",
-                defaultConfig.entryTtl(Duration.ofMinutes(10)));
+                cacheConfigs.put("restaurant-service::S2-F9",
+                                defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
-        cacheConfigs.put("restaurant-service::restaurant",
-                defaultConfig.entryTtl(Duration.ofMinutes(15)));
+                cacheConfigs.put("restaurant-service::S2-F12",
+                                defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
-        cacheConfigs.put("restaurant-service::menu-item",
-                defaultConfig.entryTtl(Duration.ofMinutes(15)));
+                cacheConfigs.put("restaurant-service::restaurant",
+                                defaultConfig.entryTtl(Duration.ofMinutes(15)));
 
-        return RedisCacheManager.builder(factory)
-                .cacheDefaults(defaultConfig)
-                .withInitialCacheConfigurations(cacheConfigs)
-                .build();
-    }
+                cacheConfigs.put("restaurant-service::menu-item",
+                                defaultConfig.entryTtl(Duration.ofMinutes(15)));
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
+                return RedisCacheManager.builder(factory)
+                                .cacheDefaults(defaultConfig)
+                                .withInitialCacheConfigurations(cacheConfigs)
+                                .build();
+        }
 
-        template.setConnectionFactory(factory);
+        @Bean
+        public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+                RedisTemplate<String, Object> template = new RedisTemplate<>();
 
-        template.setKeySerializer(new StringRedisSerializer());
+                template.setConnectionFactory(factory);
 
-        template.setValueSerializer(
-                new GenericJackson2JsonRedisSerializer(redisObjectMapper()));
+                template.setKeySerializer(new StringRedisSerializer());
 
-        return template;
-    }
+                template.setValueSerializer(
+                                new GenericJackson2JsonRedisSerializer(redisObjectMapper()));
 
-    private ObjectMapper redisObjectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
+                return template;
+        }
 
-        mapper.registerModule(new JavaTimeModule());
+        private ObjectMapper redisObjectMapper() {
+                ObjectMapper mapper = new ObjectMapper();
 
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                mapper.registerModule(new JavaTimeModule());
 
-        mapper.activateDefaultTyping(
-                BasicPolymorphicTypeValidator.builder()
-                        .allowIfBaseType(Object.class)
-                        .build(),
-                DefaultTyping.EVERYTHING,
-                JsonTypeInfo.As.PROPERTY
-        );
+                mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        return mapper;
-    }
+                mapper.activateDefaultTyping(
+                                BasicPolymorphicTypeValidator.builder()
+                                                .allowIfBaseType(Object.class)
+                                                .build(),
+                                DefaultTyping.EVERYTHING,
+                                JsonTypeInfo.As.PROPERTY);
+
+                return mapper;
+        }
 }

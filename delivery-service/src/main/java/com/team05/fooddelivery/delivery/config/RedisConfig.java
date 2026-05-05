@@ -98,7 +98,7 @@ public class RedisConfig {
                         .allowIfBaseType(Object.class)
                         .build(),
                 DefaultTyping.EVERYTHING,
-                JsonTypeInfo.As.PROPERTY
+                JsonTypeInfo.As.WRAPPER_ARRAY
         );
         return mapper;
     }
