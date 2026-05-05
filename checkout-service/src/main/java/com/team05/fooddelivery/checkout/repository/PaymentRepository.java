@@ -69,9 +69,30 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             nativeQuery = true)
     String findOrderStatusById(@Param("orderId") Long orderId);
 
+    // S5-F4: Fetch delivery fee inputs: order metadata.deliveryType, total_amount, and restaurant details.deliveryFee
+    @Query(value = "SELECT o.metadata->>'deliveryType', o.total_amount, r.details->>'deliveryFee' " +
+                   "FROM orders o " +
+                   "LEFT JOIN restaurants r ON r.id = o.restaurant_id " +
+                   "WHERE o.id = :orderId",
+           nativeQuery = true)
+    List<Object[]> findOrderDeliveryData(@Param("orderId") Long orderId);
 
     // S5-F8:The findByIdWithOffers JPQL query (added in S5-F4 section) uses LEFT JOIN FETCH to eagerly load the paymentOffers collection
     // and the nested offer in a single round-trip, avoiding LazyInitializationException:
     @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
     Optional<Payment> findByIdWithOffers(@Param("id") Long id);
+
+    // S5-F10: Revenue by cuisine type with delivery fee breakdown (cross-service native SQL JOIN)
+    @Query(value = "SELECT r.cuisine_type, COUNT(DISTINCT p.order_id), SUM(p.amount), " +
+            "SUM(COALESCE(CAST(p.transaction_details->>'deliveryFee' AS NUMERIC), p.amount * 0.10)) " + //is a JSONB column and deliveryFee may not be present for all payments. When absent, 10% of the payment amount is used as a fallback estimate.
+            "FROM payments p " +
+            "JOIN orders o ON o.id = p.order_id " +
+            "JOIN restaurants r ON r.id = o.restaurant_id " +
+            "WHERE o.order_date >= :startDate AND o.order_date <= :endDate AND p.status = 'COMPLETED' " +
+            "GROUP BY r.cuisine_type",
+            nativeQuery = true)
+    List<Object[]> findRevenueByCuisineAndDateRange(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

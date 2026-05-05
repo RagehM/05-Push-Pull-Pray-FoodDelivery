@@ -18,6 +18,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+  cassandra:
+    contact-points: "cassandra:9042"
+    local-datacenter: datacenter1
+    keyspace-name: fooddeliveryks
+    schema-action: create-if-not-exists
 #  cassandra:
 #    contact-points: cassandra
 #    port: 9042
@@ -31,8 +36,8 @@ spring:
       port: 6379
       password: redispass
 
-    mongodb:
-      uri: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
+  mongodb:
+    uri: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
 
 jwt:
   secret: ${JWT_SECRET}

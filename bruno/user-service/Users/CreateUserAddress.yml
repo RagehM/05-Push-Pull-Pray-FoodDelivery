@@ -10,17 +10,24 @@ http:
     type: json
     data: |-
       {
-        "street": "123 Main St",
-        "city": "Berlin",
-        "country": "Germany",
-        "postalCode": "10115",
-        "isDefault": false
+        "label": "Home3",
+        "streetAddress": "123 Tahrir Square",
+        "city": "Cairo",
+        "latitude": 30.0444,
+        "longitude": 31.2357,
+        "default": true,
+        "metadata": {
+          "floor": "3",
+          "apartment": "12",
+          "notes": "Ring the bell twice"
+        }
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzcyMzE5NSwiZXhwIjoxNzc3ODA5NTk1fQ.wsZGOkPNZcEPUtogrBIQiGw5N8dF0l73jB5o_PJdcK0
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

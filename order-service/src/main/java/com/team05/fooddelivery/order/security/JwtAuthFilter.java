@@ -1,6 +1,6 @@
 package com.team05.fooddelivery.order.security;
 
-import com.team05.fooddelivery.order.config.JwtConfig;
+import com.team05.fooddelivery.order.config.JwtConfigurationManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -21,10 +21,10 @@ import java.util.List;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtConfig jwtConfig;
+    private final JwtConfigurationManager jwtConfig;
 
-    public JwtAuthFilter(JwtConfig jwtConfig) {
-        this.jwtConfig = jwtConfig;
+    public JwtAuthFilter() {
+        this.jwtConfig = JwtConfigurationManager.getInstance();
     }
 
     @Override
@@ -64,4 +64,3 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 }
-

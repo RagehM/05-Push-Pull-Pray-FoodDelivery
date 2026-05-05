@@ -46,6 +46,8 @@ public class RedisConfig {
         cacheConfigs.put("checkout-service::S5-F6", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         cacheConfigs.put("checkout-service::S5-F8", defaultConfig.entryTtl(Duration.ofMinutes(15)));
         cacheConfigs.put("checkout-service::S5-F9", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("checkout-service::S5-F10", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("checkout-service::S5-F11", defaultConfig.entryTtl(Duration.ofMinutes(10)));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)

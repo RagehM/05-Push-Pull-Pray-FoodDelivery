@@ -7,14 +7,13 @@ import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
 import com.team05.fooddelivery.restaurant.enums.RestaurantStatusEnum;
-import com.team05.fooddelivery.restaurant.factory.EventFactory;
 import com.team05.fooddelivery.restaurant.model.MenuItem;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
-import com.team05.fooddelivery.restaurant.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.mongo.MongoRestaurantEventRepository;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
+import com.team05.shared.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import org.springframework.cache.annotation.CacheEvict;
@@ -40,21 +39,25 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
-    private final EventFactory eventFactory = new EventFactory();
+//    private final EventFactory eventFactory = new EventFactory();
     private final CacheManager cacheManager;
+    private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
-            MongoRestaurantEventRepository mongoRestaurantEventRepository , 
+            MongoRestaurantEventRepository mongoRestaurantEventRepository,
+            RestaurantElasticsearchIndexService restaurantElasticsearchIndexService, {
+            MongoRestaurantEventRepository mongoRestaurantEventRepository,
             CacheManager cacheManager) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         this.cacheManager = cacheManager;
 
+        this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
         // Register the MongoEventLogger observer — bound to RESTAURANT event type
         // Section 3.3 + 4.5
         this.observers.add(
-                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT, eventFactory));
+                new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
 
     // CRUD create — no cache eviction (spec Section 4.4.4)
@@ -75,13 +78,14 @@ public class RestaurantService {
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.RESTAURANT_CREATED);
         params.put("restaurantId", saved.getId());
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("name", saved.getName());
         eventDetails.put("cuisineType", saved.getCuisineType());
         params.put("details", eventDetails);
         notifyObservers(RestaurantEventActions.RESTAURANT_CREATED, params);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         return saved;
     }
@@ -133,7 +137,8 @@ public class RestaurantService {
         details.put("status", saved.getStatus());
         params.put("details", details);
         notifyObservers(RestaurantEventActions.UPDATED, params);
-
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
         return saved;
     }
 
@@ -152,9 +157,10 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         restaurantRepository.deleteById(id);
+        //s2-f11
+        restaurantElasticsearchIndexService.deleteByRestaurantId(id);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.RESTAURANT_DELETED);
         params.put("restaurantId", id);
         params.put("details", new HashMap<>());
         notifyObservers(RestaurantEventActions.RESTAURANT_DELETED, params);
@@ -189,9 +195,10 @@ public class RestaurantService {
             existing.setDetails(currentDetails);
         }
         Restaurant saved = restaurantRepository.save(existing);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.DETAILS_UPDATED);
         params.put("restaurantId", saved.getId());
         params.put("details", newDetails);
         notifyObservers(RestaurantEventActions.DETAILS_UPDATED, params);
@@ -225,7 +232,7 @@ public class RestaurantService {
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
                 // CLOSE added for TC 246
-        if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus) ) { 
+        if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus) ) {
             int activeOrders = restaurantRepository.countActiveOrders(id);
             if (activeOrders > 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -238,9 +245,10 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.STATUS_CHANGED);
         params.put("restaurantId", id);
         Map<String, Object> details = new HashMap<>();
         details.put("newStatus", newStatus);
@@ -303,9 +311,10 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
+        //s2-f11
+        restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
         Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.REVIEW_ADDED);
         params.put("restaurantId", restaurantId);
         Map<String, Object> details = new HashMap<>();
         details.put("rating", rating);
@@ -331,60 +340,65 @@ public class RestaurantService {
         }
         return dtos;
     }
+    //s2-f11
+    public void indexRestaurantForSearch(Long id) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+        restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
+    }
 
-
-// [S2-F12] Get Restaurant Performance Dashboard
-// Uses CacheManager 
+        // [S2-F12] Get Restaurant Performance Dashboard
+// Uses CacheManager
 // Section 10.2.3 — cached 10 min
-public RestaurantDashboardDTO getDashboard(Long id) {
-    // Step 1 — logging ALWAYS runs (even on cache hits)
-    notifyDashboardViewed(id);
+        public RestaurantDashboardDTO getDashboard(Long id) {
+            // Step 1 — logging ALWAYS runs (even on cache hits)
+            notifyDashboardViewed(id);
 
-    // Step 2 — check cache manually
-    Cache cache = cacheManager.getCache("restaurant-service::S2-F12");
-    if (cache != null) {
-        RestaurantDashboardDTO cached = cache.get(id, RestaurantDashboardDTO.class);
-        if (cached != null) {
-            return cached; // cache hit
+            // Step 2 — check cache manually
+            Cache cache = cacheManager.getCache("restaurant-service::S2-F12");
+            if (cache != null) {
+                RestaurantDashboardDTO cached = cache.get(id, RestaurantDashboardDTO.class);
+                if (cached != null) {
+                    return cached; // cache hit
+                }
+            }
+
+            // Step 3 — cache miss — fetch from DB
+            Restaurant restaurant = getById(id);
+            List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
+            Object[] row = stats.get(0);
+            Long totalOrders = ((Number) row[0]).longValue();
+            Double totalRevenue = ((Number) row[1]).doubleValue();
+            Double averageOrderValue = ((Number) row[2]).doubleValue();
+            Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
+
+            RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
+                    .restaurantId(restaurant.getId())
+                    .name(restaurant.getName())
+                    .totalOrders(totalOrders)
+                    .totalRevenue(totalRevenue)
+                    .averageOrderValue(averageOrderValue)
+                    .activeMenuItems(activeMenuItems)
+                    .build();
+
+            // Step 4 — store in cache
+            if (cache != null) {
+                cache.put(id, dto);
+            }
+
+            return dto;
         }
-    }
 
-    // Step 3 — cache miss — fetch from DB
-    Restaurant restaurant = getById(id);
-    List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
-    Object[] row = stats.get(0);
-    Long totalOrders = ((Number) row[0]).longValue();
-    Double totalRevenue = ((Number) row[1]).doubleValue();
-    Double averageOrderValue = ((Number) row[2]).doubleValue();
-    Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
-
-    RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
-            .restaurantId(restaurant.getId())
-            .name(restaurant.getName())
-            .totalOrders(totalOrders)
-            .totalRevenue(totalRevenue)
-            .averageOrderValue(averageOrderValue)
-            .activeMenuItems(activeMenuItems)
-            .build();
-
-    // Step 4 — store in cache
-    if (cache != null) {
-        cache.put(id, dto);
-    }
-
-    return dto;
-}
-
-    // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
-    // including cache hits
-    // Section 10.2.3 — pure observability, does NOT invalidate cache
-    public void notifyDashboardViewed(Long restaurantId) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("action", RestaurantEventActions.DASHBOARD_VIEWED);
-        params.put("restaurantId", restaurantId);
-        params.put("details", new HashMap<>());
-        notifyObservers(RestaurantEventActions.DASHBOARD_VIEWED, params);
-    }
+        // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
+        // including cache hits
+        // Section 10.2.3 — pure observability, does NOT invalidate cache
+        public void notifyDashboardViewed(Long restaurantId) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("action", RestaurantEventActions.DASHBOARD_VIEWED);
+            params.put("restaurantId", restaurantId);
+            params.put("details", new HashMap<>());
+            notifyObservers(RestaurantEventActions.DASHBOARD_VIEWED, params);
+        }
 
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
@@ -399,4 +413,6 @@ public RestaurantDashboardDTO getDashboard(Long id) {
             observer.onEvent(eventType, payload);
         }
     }
+
+
 }

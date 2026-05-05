@@ -1,0 +1,30 @@
+info:
+  name: CreatePayment
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: http://localhost:8085/api/payments
+  body:
+    type: json
+    data: |-
+      {
+        "orderId": 1,
+        "userId": 1,
+        "amount": 130,
+        "method": "CREDIT_CARD",
+        "status": "COMPLETED",
+        "transactionDetails": {
+          "deliveryFee": 20
+        }
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY3MDU4MSwiZXhwIjoxNzc3NzU2OTgxfQ.HWBXDk-oA0KevlQbGFaFxFvWESCux5yyCsYVgOk01ok
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,36 @@
+info:
+  name: "[S4-F4] Batch Delivery Updates (Transactional)"
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries/batch"
+  body:
+    type: json
+    data: |-
+      {
+        "deliveries": [
+          {
+            "orderId": 1,
+            "driverName": "John Doe",
+            "status": "PENDING",
+            "estimatedArrival": 30.0,
+            "metadata": {}
+          },
+          {
+            "orderId": 2,
+            "driverName": "Jane Smith",
+            "status": "PENDING",
+            "estimatedArrival": 25.0,
+            "metadata": {}
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

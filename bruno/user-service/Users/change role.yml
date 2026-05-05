@@ -1,0 +1,26 @@
+info:
+  name: change role
+  type: http
+  seq: 18
+
+http:
+  method: PUT
+  url: http://localhost:8081/api/users/1/role
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjgsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY2OTEyMSwiZXhwIjoxNzc3NzU1NTIxfQ.EUFuiCeHZSxolI1KUNSbPXKtwcg8olAsrkXUdP1EDdk
+  body:
+    type: json
+    data: |-
+      {
+        "role":"ADMIN"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDEyMzRAbXNhaWwuY29tIiwidWlkIjoxLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3Nzc5Mjk5NzAsImV4cCI6MTc3ODAxNjM3MH0.8_hNE-p4jM9d48a2JomXqeGag5sdXTMHJusQ8iABYA4
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
