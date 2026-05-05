@@ -368,7 +368,7 @@ public class RestaurantService {
     // Cached for 5 minutes in Redis (cache key includes all params).
     @Cacheable(
             value = "restaurant-service::S2-F10",
-            key = "#query + ':' + #cuisineType + ':' + #status + ':' + #minRating + ':' + #maxRating"
+            key = "'f10:' + #query + '|' + (#cuisineType != null ? #cuisineType : '_') + '|' + (#status != null ? #status : '_') + '|' + (#minRating != null ? #minRating.toString() : '_') + '|' + (#maxRating != null ? #maxRating.toString() : '_')"
     )
     public List<RestaurantSearchDocument> fullTextSearch(
             String query,
