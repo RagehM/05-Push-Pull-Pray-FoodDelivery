@@ -15,6 +15,12 @@ import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
+import com.team05.fooddelivery.order.repository.neo4j.RestaurantNodeRepository;
+import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
+import com.team05.fooddelivery.order.model.neo4j.OrderedFrom;
+import com.team05.fooddelivery.order.model.neo4j.RestaurantNode;
+import com.team05.fooddelivery.order.model.neo4j.UserNode;
+import com.team05.fooddelivery.order.dto.InteractionRecordingResponseDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,7 +38,6 @@ import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
@@ -48,6 +53,9 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
@@ -63,18 +71,23 @@ public class OrderService {
     private final MongoOrderEventRepository mongoOrderEventRepository;
     private final Neo4jClient neo4jClient;
 
-    public OrderService(
-            OrderRepository orderRepository,
-            MongoOrderEventRepository mongoOrderEventRepository, Neo4jClient neo4jClient
-    ) {
+    private final UserNodeRepository userNodeRepository;
+    private final OrderInteractionGraphService orderInteractionGraphService;
+
+    public OrderService(OrderRepository orderRepository,
+                        MongoOrderEventRepository mongoOrderEventRepository,
+                        UserNodeRepository userNodeRepository,
+                        OrderInteractionGraphService orderInteractionGraphService,
+                        Neo4jClient neo4jClient) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
+        this.userNodeRepository = userNodeRepository;
+        this.orderInteractionGraphService = orderInteractionGraphService;
         this.neo4jClient = neo4jClient;
         this.observers.add(
-            new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
+                new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
     }
-
     // [S3-F1] Search Orders by Status and Date Range
     @Cacheable(value = "order-service::S3-F1", key = "{#status, #startDate.toString(), #endDate.toString()}")
     public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
@@ -423,12 +436,101 @@ public class OrderService {
 
         return analyticsDTO;
     }
+    // [S3-F11] Record User-Restaurant Ordering Pattern
+    public InteractionRecordingResponseDTO recordInteraction(Long orderId) {
+        // (a) Validate JWT + USER role
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+
+        // Get userId and Role
+        Object[] userIdAndRole = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
+        }
+        if (userIdAndRole == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
+        String role = (String) userIdAndRole[1];
+
+        // boolean isUser = auth.getAuthorities().stream()
+        //         .map(GrantedAuthority::getAuthority)
+        //         .anyMatch(role -> role.equals("ROLE_CUSTOMER"));
+
+        // if (!isUser) {
+        //     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only users can record interactions");
+        // }
+
+        // (b)
+        Order order = getOrderById(orderId);
+
+        if (fetchedUserId != order.getUserId() && !role.equalsIgnoreCase("ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+        if (order.getStatus() != OrderStatusEnum.DELIVERED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Interactions can only be recorded for Delivered orders");
+        }
+
+        Long userId = order.getUserId();
+        Long restaurantId = order.getRestaurantId();
+        if (userId == null || restaurantId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Order is missing user or restaurant association");
+        }
+        // (d)
+        if (userNodeRepository.isOrderRecordedInRelationship(userId, restaurantId, orderId)) {
+            return new InteractionRecordingResponseDTO(
+                    orderId, userId, restaurantId,
+                    "Interaction already recorded; no-op", true);
+        }
+
+        // (e)
+        String userName = orderRepository.findUserNameById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        String restaurantName = orderRepository.findRestaurantNameById(restaurantId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+        String cuisineType = orderRepository.findRestaurantCuisineTypeById(restaurantId).orElse(null);
+
+        // (f)
+        boolean lostIdempotencyRace = orderInteractionGraphService.upsertOrderedFromEdge(
+                orderId, userId, userName, restaurantId, restaurantName, cuisineType);
+        if (lostIdempotencyRace) {
+            return new InteractionRecordingResponseDTO(
+                    orderId, userId, restaurantId,
+                    "Interaction already recorded; no-op", true);
+        }
+
+        // (g)
+        Map<String, Object> params = new HashMap<>();
+        params.put("orderId", orderId);
+        Map<String, Object> details = new HashMap<>();
+        details.put("orderId", orderId);
+        details.put("userId", userId);
+        details.put("restaurantId", restaurantId);
+        params.put("details", details);
+        notifyObservers(OrderEventActions.INTERACTION_RECORDED, params);
+
+        // (h)
+        return new InteractionRecordingResponseDTO(
+                orderId, userId, restaurantId,
+                "Interaction recorded", false);
+
+    }
+
 
     //[S3-F12]
     @Transactional(readOnly = true)
     @Cacheable(value = "order-service::S3-F12", key = "{#userId, (#limit == null || #limit <= 0) ? 5 : #limit}")
     public List<RestaurantRecommendationDTO> getRestaurantRecommendations(Long userId, Integer limit) {
-        
+
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId query parameter is required");
         }
@@ -507,7 +609,6 @@ public class OrderService {
                 .toList();
 
         ArrayList<RestaurantRecommendationDTO> sortedRecommendations = new ArrayList<>(recommendations);
-        sortedRecommendations.sort(Comparator.comparing(RestaurantRecommendationDTO::score).reversed());
 
         // cacheRecommendations(cacheKey, recommendations);
         return sortedRecommendations;
@@ -519,7 +620,7 @@ public class OrderService {
     //     } catch (Exception ignored) {
     //     }
     // }
-        
+
 
     // [CRUD]
     //// Get order by ID
@@ -571,9 +672,9 @@ public class OrderService {
     }
     //// Update order
     @Transactional
-    @Caching(put = {
-            @CachePut(value = "order-service::order", key = "#orderId"),
-    }, evict = {
+    @Caching(
+        evict = {
+            @CacheEvict(value = "order-service::order", key = "#orderId"),
             @CacheEvict(value = "order-service::S3-F1", allEntries = true),
             @CacheEvict(value = "order-service::S3-F3", allEntries = true),
             @CacheEvict(value = "order-service::S3-F5", allEntries = true),
