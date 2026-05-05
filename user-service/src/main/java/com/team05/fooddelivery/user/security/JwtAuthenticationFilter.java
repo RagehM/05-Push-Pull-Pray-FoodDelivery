@@ -24,14 +24,13 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class JwtAuthFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /** Endpoint patterns that require a specific role to be enforced at the filter level. */
     private static final Map<String, Map<String, UserRole>> ROLE_REQUIREMENTS = new LinkedHashMap<>();
 
     static {
@@ -47,7 +46,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/api/seed"
     );
 
-    public JwtAuthFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
     }
@@ -88,19 +87,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         try {
-            AuthHandler tokenExtractionHandler = new TokenExtractionHandler();
+            AuthHandler head = new TokenExtractionHandler();
             AuthHandler signatureValidationHandler = new SignatureValidationHandler(jwtService);
             AuthHandler userLoaderHandler = new UserLoaderHandler(jwtService, userDetailsService);
             AuthHandler roleAuthorizationHandler = new RoleAuthorizationHandler();
 
 
-            tokenExtractionHandler.setNext(signatureValidationHandler);
+            head.setNext(signatureValidationHandler);
             signatureValidationHandler.setNext(userLoaderHandler);
             userLoaderHandler.setNext(roleAuthorizationHandler);
 
             UserRole requiredRole = resolveRequiredRole(request);
 
-            AuthContext ctx = tokenExtractionHandler.handle(new AuthContext(request, null, null, requiredRole));
+            AuthContext ctx = head.handle(new AuthContext(request, null, null, requiredRole));
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     ctx.user(),
