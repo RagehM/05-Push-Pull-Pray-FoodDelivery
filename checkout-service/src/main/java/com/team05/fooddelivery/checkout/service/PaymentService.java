@@ -747,8 +747,8 @@ public class PaymentService {
 
             Cache f10 = cacheManager.getCache("checkout-service::S5-F10");
             Cache f11 = cacheManager.getCache("checkout-service::S5-F11");
-            if (f10 != null) f10.clear();
-            if (f11 != null) f11.clear();
+            if (f10 != null) f10.evict(paymentId);
+            if (f11 != null) f11.evict(paymentId);
 
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refund window expired");
         }
