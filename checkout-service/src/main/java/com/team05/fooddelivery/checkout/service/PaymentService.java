@@ -736,20 +736,19 @@ public class PaymentService {
             Map<String, Object> denialAuditEvent = new HashMap<>();
 
             denialAuditEvent.put("paymentId", payment.getId());
-            denialAuditEvent.put("action", "REFUND_DENIED");
             denialAuditEvent.put("method", payment.getMethod().name());
             denialAuditEvent.put("amount", payment.getAmount());
             Map<String, Object> details = new HashMap<>();
-            details.put("strategy", strategyName);
+            details.put("strategyName", strategyName);
             details.put("reason", "refund window expired");
             denialAuditEvent.put("details", details);
 
-            notifyObservers("PAYMENT_AUDIT", denialAuditEvent);
+            notifyObservers("REFUND_DENIED", denialAuditEvent);
 
             Cache f10 = cacheManager.getCache("checkout-service::S5-F10");
             Cache f11 = cacheManager.getCache("checkout-service::S5-F11");
-            if (f10 != null) f10.clear();
-            if (f11 != null) f11.clear();
+            if (f10 != null) f10.evict(paymentId);
+            if (f11 != null) f11.evict(paymentId);
 
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refund window expired");
         }

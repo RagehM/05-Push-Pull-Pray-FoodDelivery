@@ -13,18 +13,20 @@ http:
     type: json
     data: |-
       {
-        "name": "italy1",
-        "email": "7agaasasd@gmail.com",
-        "phone": "01145asdasd010477",
-        "cuisineType": "ITALIAN",
+        "name": "pizza1",
+        "email": "7agasdaaassasd@gmail.com",
+        "phone": "01145asddaasdsd010477",
+        "cuisineType": "CHINESE",
         "status": "OPEN",
         "rating": 0,
         "totalRatings": 0,
-        "details": {}
+        "details": {
+          "description": "Italian pizza"
+        }
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkyNTczLCJleHAiOjE3NzgwNzg5NzN9.itIffX9oCivluS8Zflk7K8ANstvoPipPCx70dj38TQY
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6Miwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDAyNDQ2LCJleHAiOjE3NzgwODg4NDZ9.0ULFc-v2paUBsNGAR9G7Xwiygj2hH1BQ7q5WstpeFvI
 
 settings:
   encodeUrl: true

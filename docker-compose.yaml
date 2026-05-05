@@ -153,6 +153,7 @@ services:
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 128M
       JVM_OPTS: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
+
     volumes:
       - cassandra-data:/var/lib/cassandra
     command: >
@@ -250,3 +251,5 @@ volumes:
     es-data:
     neo4j-data:
     cassandra-data:
+
+

@@ -7,7 +7,7 @@ import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 @Document(indexName = "restaurants", createIndex = false)
-public class RestaurantSearchDocument {
+ public class RestaurantSearchDocument {
 
     @Id
     private Long id;

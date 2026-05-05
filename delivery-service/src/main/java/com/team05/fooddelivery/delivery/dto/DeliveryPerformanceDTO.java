@@ -1,10 +1,10 @@
 package com.team05.fooddelivery.delivery.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 import java.time.LocalDateTime;
 
-public class DeliveryPerformanceSummaryDTO {
+public class DeliveryPerformanceDTO {
 
     private String driverName;
     private long totalDeliveries;
@@ -13,9 +13,9 @@ public class DeliveryPerformanceSummaryDTO {
     private LocalDateTime firstDelivery;
     private LocalDateTime lastDelivery;
 
-    public DeliveryPerformanceSummaryDTO() {}
+    public DeliveryPerformanceDTO() {}
 
-    public DeliveryPerformanceSummaryDTO(Builder builder) {
+    public DeliveryPerformanceDTO(Builder builder) {
         this.driverName = builder.driverName;
         this.totalDeliveries = builder.totalDeliveries;
         this.averageSpeed = builder.averageSpeed;
@@ -49,17 +49,17 @@ public class DeliveryPerformanceSummaryDTO {
     }
 
     @JsonCreator
-    private DeliveryPerformanceSummaryDTO(
+    private DeliveryPerformanceDTO(
             @JsonProperty("driverName") String driverName,
             @JsonProperty("totalDeliveries") long totalDeliveries,
-            @JsonProperty("orderId") Long averageSpeed,
-            @JsonProperty("latitude") Double maxSpeed,
-            @JsonProperty("longitude") LocalDateTime firstDelivery,
-            @JsonProperty("distanceKm") LocalDateTime lastDelivery) {
+            @JsonProperty("averageSpeed") Double averageSpeed,
+            @JsonProperty("maxSpeed") Double maxSpeed,
+            @JsonProperty("firstDelivery") LocalDateTime firstDelivery,
+            @JsonProperty("lastDelivery") LocalDateTime lastDelivery) {
         this.driverName = driverName;
         this.totalDeliveries = totalDeliveries;
-        this.averageSpeed = averageSpeed;
-        this.maxSpeed = maxSpeed;
+        this.averageSpeed = averageSpeed != null ? averageSpeed : 0.0;
+        this.maxSpeed = maxSpeed != null ? maxSpeed : 0.0;
         this.firstDelivery = firstDelivery;
         this.lastDelivery = lastDelivery;
     }
@@ -107,8 +107,8 @@ public class DeliveryPerformanceSummaryDTO {
             return this;
         }
 
-        public DeliveryPerformanceSummaryDTO build() {
-            return new DeliveryPerformanceSummaryDTO(this);
+        public DeliveryPerformanceDTO build() {
+            return new DeliveryPerformanceDTO(this);
         }
     }
 }
