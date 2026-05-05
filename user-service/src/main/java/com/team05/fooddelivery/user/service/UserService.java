@@ -4,12 +4,12 @@ import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
-import com.team05.fooddelivery.user.factory.AuthEventFactory;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
+import com.team05.shared.model.mongo.AuthEvent;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
@@ -19,8 +19,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,22 +40,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.springframework.data.mongodb.repository.Aggregation.*;
+
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
-    private final AuthEventFactory authEventFactory = new AuthEventFactory();
+    private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository,AuthEventRepository authEventRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
+                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
+        this.mongoTemplate = mongoTemplate;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -72,9 +81,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-@Cacheable(value = "user-service::user", key = "#id")
+    @Cacheable(value = "user-service::user", key = "#id")
     public User findUserById(long id)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
         return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -122,12 +139,20 @@ public class UserService {
     )
     public User updateUser(User user, Long id)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
-        if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())){
+        if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())&& user.getEmail().equals(updatedUser.getEmail())==false){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
-        if(user.getPhone()!=null && userRepository.existsByPhone(user.getPhone())){
+        if(user.getPhone()!=null && userRepository.existsByPhone(user.getPhone())&& user.getPhone().equals(updatedUser.getPhone())==false){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
         }
         updatedUser.setEmail(user.getEmail() == null ? updatedUser.getEmail() : user.getEmail());
@@ -145,17 +170,25 @@ public class UserService {
         notifyObservers("USER_UPDATED", authEvent);
         return updatedSaved;
     }
-@Caching(evict = {
-    @CacheEvict(value = "user-service::user", key = "#id"),
-    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F3", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F6", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F8", key = "#id"),
-    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "user-service::user", key = "#id"),
+            @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F3", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F6", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F8", key = "#id"),
+            @CacheEvict(value = "user-service::S1-F9", allEntries = true)
     })
     public void deleteUser(Long id)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
 
@@ -164,7 +197,7 @@ public class UserService {
         authEvent.put("action", "USER_DELETED");
         notifyObservers("USER_DELETED", authEvent);
     }
-@Cacheable(value = "user-service::S1-F1", key = "#name + '-' + #email + '-' + #role")
+    @Cacheable(value = "user-service::S1-F1", key = "#name + '-' + #email + '-' + #role")
     public List<User> searchUsers(String name, String email, String role)
     {
         if(name!=null && name.isEmpty())name = null;
@@ -172,7 +205,7 @@ public class UserService {
         if(role!=null && role.isEmpty())role = null;
 
         if((name==null||name.isEmpty())&&(email==null||email.isEmpty())&&(role==null||role.isEmpty())){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one search parameter must be provided");
+            return new ArrayList<>();
         }
 
         return userRepository.searchUsers(name, email, role);
@@ -207,7 +240,7 @@ public class UserService {
         notifyObservers("USER_UPDATED", authEvent);
         return updatedSaved;
     }
-  
+
     @Transactional
     @Caching(
             put = {
@@ -238,7 +271,7 @@ public class UserService {
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
 
-@Cacheable(value = "user-service::S1-F6", key = "#startDate + '-' + #endDate + '-' + #limit")
+    @Cacheable(value = "user-service::S1-F6", key = "#startDate + '-' + #endDate + '-' + #limit")
     public List<TopCustomerDTO> topCustomersBySpending(LocalDate startDate, LocalDate endDate, Integer limit)
     {
         if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
@@ -259,7 +292,7 @@ public class UserService {
                     .build();
         }).toList();
     }
-@Cacheable(value = "user-service::S1-F5", key = "#key + '-' + #value")
+    @Cacheable(value = "user-service::S1-F5", key = "#key + '-' + #value")
     public List<User> filterUsersByPreferences(String key, String value)
     {
         if(key == null || key.isEmpty() || value == null || value.isEmpty()
@@ -270,8 +303,8 @@ public class UserService {
         }
         return userRepository.findUserByPreferencesContaining(key,value);
     }
-@Cacheable(value = "user-service::S1-F3", key = "#userId")
-public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
+    @Cacheable(value = "user-service::S1-F3", key = "#userId")
+    public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object[]> orders = userRepository.findTotalOrders(userId);
         List<Object[]> deliveredOrders = userRepository.findDeliveredOrders(userId);
@@ -411,5 +444,44 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
 
         return updatedUser;
 
+    }
+
+    @Cacheable(value = "user-service::S1-F12", key = "#id")
+    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+
+
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
+
+        if (size == 0) {
+            size = 10;
+        }
+
+        if (size > 100) {
+            size = 100;
+        }
+
+
+        long documentsToSkip = page * size;
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("userId").eq(id)),
+                Aggregation.sort(Sort.Direction.DESC, "timestamp"),
+                Aggregation.skip(documentsToSkip),
+                Aggregation.limit(size)
+        );
+
+        List<AuthEvent> result = mongoTemplate.aggregate(aggregation, "auth_events", AuthEvent.class).getMappedResults();
+
+        ActivityFeedDTO feed = new ActivityFeedDTO(result, page, size, result.size());
+
+        return feed;
     }
 }

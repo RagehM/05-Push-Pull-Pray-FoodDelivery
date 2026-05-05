@@ -94,7 +94,7 @@ services:
       - redis
 
   elasticsearch:
-    image: elasticsearch:8.19.12
+    image: elasticsearch:9.0.3
     container_name: fooddelivery-elasticsearch
     ports:
       - "9200:9200"
@@ -112,7 +112,7 @@ services:
       start_period: 30s
 
   kibana:
-    image: kibana:8.19.12
+    image: kibana:9.0.3
     container_name: fooddelivery-kibana
     ports:
       - "5601:5601"
@@ -152,6 +152,8 @@ services:
       CASSANDRA_KEYSPACE: fooddeliveryks
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 128M
+      JVM_OPTS: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
+
     volumes:
       - cassandra-data:/var/lib/cassandra
     command: >
@@ -249,3 +251,5 @@ volumes:
     es-data:
     neo4j-data:
     cassandra-data:
+
+
