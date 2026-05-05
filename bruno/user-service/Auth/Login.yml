@@ -12,6 +12,8 @@ http:
       {
         "email": "rageh@mail.com",
         "password": 123
+        "email": "admin@guc.edu.eg",
+        "password": "admin123"
       }
   auth: inherit
 
