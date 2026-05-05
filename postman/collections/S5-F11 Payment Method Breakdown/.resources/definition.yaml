@@ -1,0 +1,10 @@
+$kind: collection
+variables:
+  baseUrl: http://localhost:8085
+  authUrl: http://localhost:8081
+  token: ""
+  today: ""
+scripts:
+  - type: http:beforeRequest
+    code: pm.collectionVariables.set('today', new Date().toISOString().slice(0,10));
+    language: text/javascript

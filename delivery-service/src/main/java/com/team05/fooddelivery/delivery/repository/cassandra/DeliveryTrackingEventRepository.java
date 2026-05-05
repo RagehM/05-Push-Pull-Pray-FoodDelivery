@@ -19,31 +19,18 @@ import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEventKey
 @Repository
 public interface DeliveryTrackingEventRepository extends CassandraRepository<DeliveryTrackingEvent, DeliveryTrackingEventKey> {
 
-    /**
-     * Find all tracking events for a delivery, ordered by timestamp (newest first).
-     * Cassandra partition key required: delivery_id.
-     */
-    List<DeliveryTrackingEvent> findByKeyDeliveryId(Long deliveryId);
+    // Explicit DESC ordering on both paths — sort order is independent of native table clustering schema
+    List<DeliveryTrackingEvent> findByKeyDeliveryIdOrderByKeyTimestampDesc(Long deliveryId);
 
-    /**
-     * Find all tracking events for a delivery within a timestamp range.
-     * Returns events ordered by timestamp descending (newest first).
-     */
-    @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND timestamp >= ?1 AND timestamp <= ?2 ALLOW FILTERING")
-    List<DeliveryTrackingEvent> findByKeyDeliveryIdAndKeyTimestampBetween(Long deliveryId, Instant startTime, Instant endTime);
+    // Explicit CQL avoids Spring Data's Between bound-reversal bug on DESC clustering keys
+    @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND timestamp >= ?1 AND timestamp <= ?2 ORDER BY timestamp DESC")
+    List<DeliveryTrackingEvent> findByKeyDeliveryIdInTimeRange(Long deliveryId, Instant startTime, Instant endTime);
 
-    /**
-     * Find all tracking events for a delivery with a specific status.
-     * Uses ALLOW FILTERING for secondary column query.
-     */
+    // status is a non-key column → requires ALLOW FILTERING
     @Query("SELECT * FROM delivery_tracking_events WHERE delivery_id = ?0 AND status = ?1 ALLOW FILTERING")
-    List<DeliveryTrackingEvent> findBykeyDeliveryIdAndStatus(Long deliveryId, String status);
+    List<DeliveryTrackingEvent> findByKeyDeliveryIdAndStatus(Long deliveryId, String status);
 
     long countByKeyDeliveryId(Long deliveryId);
-
-    // Returns rows for the partition ordered by event_time DESC.
-// This matches the table's required CLUSTERING ORDER BY (event_time DESC).
-    List<DeliveryTrackingEvent> findByKeyDeliveryIdOrderByKeyTimestampDesc(Long deliveryId);
 }
 
 
