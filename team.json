@@ -1,17 +1,20 @@
-[
-  {"studentId":"55-3936","name":"Mohamad Elsayed Rageh","githubUsername":"RagehM","service":"checkout-service"},
-  {"studentId":"55-7165","name":"Youssef Nasser Mohamed","githubUsername":"Nasseryoyo","service":"delivery-service"},
-  {"studentId":"55-25730","name":"Khaled Ashmawy","githubUsername":"DottierDark","service":"delivery-service"},
-  {"studentId":"55-24778","name":"Ali Khaled Koheil","githubUsername":"itsXrgon","service":"delivery-service"},
-  {"studentId":"55-16508","name":"Mariam Mohamed","githubUsername":"Mariamm168","service":"order-service"},
-  {"studentId":"55-12064","name":"Mohamed Gamal","githubUsername":"MohamedGamal6606","service":"user-service"},
-  {"studentId":"55-13845","name":"Mahmoud Hegazy","githubUsername":"MahmoudHegazy-01","service":"user-service"},
-  {"studentId":"55-20836","name":"Marawan Salah Abdelrahman","githubUsername":"MaroSalah02","service":"order-service"},
-  {"studentId":"56-29265","name":"Omar Mohamed Farouk","githubUsername":"Omar-Farouk123","service":"user-service"},
-  {"studentId":"55-15850","name":"Hazem Essam Brekaa","githubUsername":"HazemEssam13","service":"checkout-service"},
-  {"studentId":"55-16204","name":"Omar Tamer Samy Ahmed Riad","githubUsername":"RiadOmar","service":"order-service"},
-  {"studentId":"55-11063","name":"Habiba Moustafa Elguindy","githubUsername":"Helguindy","service":"restaurant-service"},
-  {"studentId":"55-12559","name":"Mohamed Elsaeed Elmenshawy","githubUsername":"MohamedElsaeed424","service":"checkout-service"},
-  {"studentId":"55-15053","name":"Demiana Reffaat Fahmy","githubUsername":"demiana27","service":"restaurant-service"},
-  {"studentId":"55-11289","name":"Fareeda Saad","githubUsername":"fareedasaad2710","service":"restaurant-service"}
-]
+{
+  "theme": "Talabat",
+  "team": [
+    { "name": "Mohamad Elsayed Rageh", "id": "55-3936" },
+    { "name": "Youssef Nasser Mohamed", "id": "55-7165" },
+    { "name": "Khaled Ashmawy", "id": "55-25730" },
+    { "name": "Ali Khaled Koheil", "id": "55-24778" },
+    { "name": "Mariam Mohamed", "id": "55-16508" },
+    { "name": "Mohamed Gamal", "id": "55-12064" },
+    { "name": "Mahmoud Hegazy", "id": "55-13845" },
+    { "name": "Marawan Salah Abdelrahman", "id": "55-20836" },
+    { "name": "Omar Mohamed Farouk", "id": "56-29265" },
+    { "name": "Hazem Essam Brekaa", "id": "55-15850" },
+    { "name": "Omar Tamer Samy Ahmed Riad", "id": "55-16204" },
+    { "name": "Habiba Moustafa Elguindy", "id": "55-11063" },
+    { "name": "Mohamed Elsaeed Elmenshawy", "id": "55-12559" },
+    { "name": "Demiana Reffaat Fahmy", "id": "55-15053" },
+    { "name": "Fareeda Saad", "id": "55-11289" }
+  ]
+}

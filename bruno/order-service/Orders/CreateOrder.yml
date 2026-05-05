@@ -13,16 +13,17 @@ http:
     type: json
     data: |-
       {
-        "userId": 2,
+        "userId": 1,
+        "restaurantId": 1,
         "status": "DELIVERED",
-        "totalAmount": 50.0,
+        "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},
         "orderDate": "2026-09-30T23:59:59.9999"
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3ODMwMjI3LCJleHAiOjE3Nzc5MTY2Mjd9.kfgbdGXggYS0oVrrQo0y6L1aM9a58xZ68xurumiiY0E
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkxMzgyLCJleHAiOjE3NzgwNzc3ODJ9.uTtYXus_q0k9PfclPj8vxCcbHqN3DeS4m_JSQjjhD5w
 
 settings:
   encodeUrl: true

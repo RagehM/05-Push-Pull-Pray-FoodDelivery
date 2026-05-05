@@ -21,10 +21,9 @@ import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
-import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
-import com.team05.shared.observer.EntityObserver;
-import com.team05.shared.observer.MongoEventLogger;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -33,6 +32,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.team05.fooddelivery.delivery.repository.mongo.DeliveryEventRepository;
+import com.team05.shared.observer.EntityObserver;
+import com.team05.shared.observer.MongoEventLogger;
+
 @Service
 @Transactional
 public class DeliveryService {
@@ -40,12 +43,14 @@ public class DeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryTrackingEventRepository trackingEventRepository;
     private final CassandraRowAdapter cassandraRowAdapter = new CassandraRowAdapter();
+    private final CacheManager cacheManager;
     private final List<EntityObserver> observers = new ArrayList<>();
 
-    public DeliveryService(DeliveryRepository deliveryRepository,
+    public DeliveryService(DeliveryRepository deliveryRepository,CacheManager cacheManager,
                            DeliveryTrackingEventRepository trackingEventRepository,
                            DeliveryEventRepository eventRepository) {
         this.deliveryRepository = deliveryRepository;
+        this.cacheManager = cacheManager;
         this.trackingEventRepository = trackingEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY)
@@ -61,7 +66,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F1", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
         if (!deliveryRepository.orderExists(orderId)) {
@@ -194,7 +200,7 @@ public class DeliveryService {
 
     /**
      * [CRUD Read] Get Delivery by ID
-     * Retrieve single delivery record
+     * Retrieve a single delivery record
      */
     @Cacheable(cacheNames = "delivery-service::delivery", key = "#id")
     @Transactional(readOnly = true)
@@ -258,7 +264,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public Delivery updateDelivery(Long id, Delivery delivery) {
         Delivery existingDelivery = getDeliveryById(id);
@@ -313,7 +320,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public void deleteDelivery(Long id) {
         if (!deliveryRepository.existsById(id)) {
@@ -345,7 +353,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F3", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public int batchCreate(BatchDeliveryRequestDTO request) {
         if (!deliveryRepository.orderExists(request.getOrderId())) {
@@ -441,40 +450,34 @@ public class DeliveryService {
      * Verify order (throws 404 if not found). Create a date range query on updatedAt. Order by updatedAt ascending.
      */
     @Cacheable(cacheNames = "delivery-service::S4-F6", key = "#orderId + ':' + #startDate + ':' + #endDate")
-    public List<Delivery> getOrderDeliveryHistory(Long orderId, LocalDate startDate, LocalDate endDate) {
+    public List<Delivery> getOrderDeliveryHistory(
+            Long orderId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
         validateOrder(orderId);
+        validateDates(startDate, endDate);
 
-        // No Date filter
-        if (startDate == null && endDate == null) {
-            return deliveryRepository.findByOrderIdOrderByUpdatedAtAsc(orderId);
-        }
+        LocalDateTime start = startDate == null
+                ? null
+                : startDate.atStartOfDay();
 
-        // Only start date filter
-        if (startDate != null && endDate == null) {
-            LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
-            return deliveryRepository
-                    .findByOrderIdAndUpdatedAtAfterOrderByUpdatedAtAsc(orderId, start);
-        }
+        LocalDateTime end = endDate == null
+                ? null
+                : endDate.atTime(LocalTime.MAX);
 
-        // Only end date filter
-        if (startDate == null) {
-            LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
-            return deliveryRepository
-                    .findByOrderIdAndUpdatedAtBeforeOrderByUpdatedAtAsc(orderId, end);
-        }
-
-        LocalDateTime start = startDate.atStartOfDay(); // 00:00:00 of the start day
-        LocalDateTime end = endDate.atTime(LocalTime.MAX); // 23:59:59 of the end day
-
-        return deliveryRepository
-                .findByOrderIdAndUpdatedAtBetweenOrderByUpdatedAtAsc(orderId, start, end);
+        return deliveryRepository.findOrderDeliveryHistory(
+                orderId,
+                start,
+                end
+        );
     }
 
     /**
      * [S4-F3] Find Nearby Deliveries (DTO with Distance)
      * Endpoint: GET /api/deliveries/nearby?lat={lat}&lon={lon}&radiusKm={r}
      * Find active deliveries (status IN ASSIGNED, PICKED_UP, IN_TRANSIT).
-     * Calculate distance (euclidean distance * 111), filter by radius, sort ascending by distance.
+     * Calculate distance (Euclidean distance * 111), filter by radius, sort ascending by distance.
      * Response DTO: deliveryId, driverName, orderId, latitude, longitude, distanceKm.
      */
     @Cacheable(cacheNames = "delivery-service::S4-F3", key = "#lat + ',' + #lon + ',' + #radiusKm")
@@ -536,7 +539,8 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F5", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F6", allEntries = true),
         @CacheEvict(cacheNames = "delivery-service::S4-F8", allEntries = true),
-        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true)
+        @CacheEvict(cacheNames = "delivery-service::S4-F9", allEntries = true),
+        @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public Map<String, Integer> purgeOldDeliveries(Integer olderThanDays) {
         if (olderThanDays == null || olderThanDays <= 0) {
@@ -561,7 +565,7 @@ public class DeliveryService {
             eventDetails.put("deletedCount", deletedCount);
 
             Map<String, Object> eventPayload = new HashMap<>();
-            eventPayload.put("deliveryId", 0L); // System-wide purge; use 0 as placeholder
+            eventPayload.put("deliveryId", 0L); // System-wide purge; use 0 as a placeholder
             eventPayload.put("details", eventDetails);
 
             notifyObservers("OLD_DATA_PURGED", eventPayload);
@@ -585,6 +589,7 @@ public class DeliveryService {
             LocalDate startDate,
             LocalDate endDate
     ) {
+        validateDates(startDate, endDate);
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
@@ -610,6 +615,44 @@ public class DeliveryService {
                 .build();
     }
 
+    public DeliveryAnalyticsDTO getDeliveryAnalytics(
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        validateDates(startDate, endDate);
+
+        // always run event logging even if cache hit
+        Map<String, Object> details = new HashMap<>();
+        details.put("startDate", startDate);
+        details.put("endDate", endDate);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("details", details);
+
+        notifyObservers("ANALYTICS_VIEWED", payload);
+
+        String key = startDate + ":" + endDate;
+
+        Cache cache = cacheManager.getCache("delivery-service::S4-F10");
+
+        if (cache != null) {
+            DeliveryAnalyticsDTO cached =
+                    cache.get(key, DeliveryAnalyticsDTO.class);
+
+            if (cached != null) {
+                return cached;
+            }
+        }
+
+        DeliveryAnalyticsDTO dto =
+                buildDeliveryAnalytics(startDate, endDate);
+
+        if (cache != null) {
+            cache.put(key, dto);
+        }
+
+        return dto;
+    }
     @Cacheable(cacheNames = "delivery-service::S4-F12", key = "#deliveryId + ':' + #startTime + ':' + #endTime")
     @Transactional(readOnly = true)
     public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(Long deliveryId, String startTime, String endTime) {
@@ -631,4 +674,61 @@ public class DeliveryService {
         return events.stream().map(cassandraRowAdapter::adapt).toList();
     }
 
+    private DeliveryAnalyticsDTO buildDeliveryAnalytics(
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        LocalDateTime start = startDate == null
+                ? null
+                : startDate.atStartOfDay();
+
+        LocalDateTime end = endDate == null
+                ? null
+                : endDate.atTime(23, 59, 59, 999_000_000);
+
+        long total =
+                deliveryRepository.countTotalDeliveries(start, end);
+
+        Double avg =
+                deliveryRepository.averageDeliveryMinutes(start, end);
+
+        Long delivered =
+                deliveryRepository.countDeliveredOrders(start, end);
+
+        Long onTime =
+                deliveryRepository.countOnTimeDeliveredOrders(start, end);
+
+        Map<DeliveryStatus, Long> grouped =
+                deliveryRepository.countByStatus(start, end)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                row -> DeliveryStatus.valueOf(row[0].toString()),
+                                row -> ((Number) row[1]).longValue()
+                        ));
+
+        double average = avg == null ? 0.0 : avg;
+
+        double rate =
+                delivered == null || delivered == 0
+                        ? 0.0
+                        : (double) onTime / delivered;
+
+        return DeliveryAnalyticsDTO.builder()
+                .totalDeliveries(total)
+                .averageDeliveryTimeMinutes(average)
+                .onTimeRate(rate)
+                .deliveriesByStatus(grouped)
+                .build();
+    }
+
+    private void validateDates(LocalDate startDate, LocalDate endDate) {
+        if (startDate != null && endDate != null &&
+                startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid date range"
+            );
+        }
+    }
 }
+

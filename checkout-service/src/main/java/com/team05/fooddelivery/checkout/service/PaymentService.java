@@ -1,5 +1,10 @@
 package com.team05.fooddelivery.checkout.service;
 import com.team05.fooddelivery.checkout.dto.*;
+import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
+import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
+import com.team05.fooddelivery.checkout.dto.AppliedOfferDTO;
+import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
+import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
@@ -63,11 +68,15 @@ public class PaymentService {
     }
 
     // Payment CRUD
+    @Caching(evict = {
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
+    })
     public Payment createPayment(Payment payment) {
-        if (paymentRepository.userExists(payment.getUserId()) == false) {
+        if(paymentRepository.userExists(payment.getUserId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        if (paymentRepository.orderExists(payment.getOrderId()) == false) {
+        if(paymentRepository.orderExists(payment.getOrderId()) == false) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
 
@@ -78,10 +87,10 @@ public class PaymentService {
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
 
-        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
-        auditDetails.put("status", savedPayment.getStatus().name());
-
-        paymentAuditEvent.put("details", auditDetails);
+//        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
+//        auditDetails.put("status", savedPayment.getStatus().name());
+//
+//        paymentAuditEvent.put("details", auditDetails);
 
         notifyObservers("PAYMENT_CREATED", paymentAuditEvent);
 
@@ -104,8 +113,9 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F9", key = "#id"),
-                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
             }
     )
     public Payment updatePayment(Long id, Payment updatedPayment) {
@@ -137,6 +147,7 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
             @CacheEvict(value = "checkout-service::S5-F9", key = "#id"),
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public void deletePaymentById(Long id) {
@@ -188,8 +199,9 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
-                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
     )
     public Payment refundPayment(Long id, String reason) {
@@ -265,6 +277,7 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto, boolean simulateFailure) {
@@ -363,7 +376,8 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
             @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
-            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
+            @CacheEvict(value = "checkout-service::S5-F11", allEntries = true),
+            @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
     })
     public Payment applyOfferToPayment(Long paymentId, Long offerId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "cannot apply offer to a completed/cancelled payment"));
@@ -374,13 +388,13 @@ public class PaymentService {
 
         Offer offer = offerRepository.findById(offerId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "offer not found"));
 
-        if (offer.getActive() == false) {
+        if(offer.getActive() == false) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offer not active");
         }
-        if (offer.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if(offer.getExpiryDate().isBefore(LocalDateTime.now()) ) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offer expired");
         }
-        if (offer.getCurrentUses() >= offer.getMaxUses()) {
+        if(offer.getCurrentUses() >= offer.getMaxUses()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "offer usage limit reached");
         }
 
@@ -392,13 +406,13 @@ public class PaymentService {
 
         OfferDiscountType discountType = offer.getDiscountType();
         Double discount = 0.0;
-        if (discountType == OfferDiscountType.PERCENTAGE) {
+        if(discountType == OfferDiscountType.PERCENTAGE) {
             discount = payment.getAmount() * (offer.getDiscountValue() / 100);
         }
-        if (discountType == OfferDiscountType.FIXED) {
+        if(discountType == OfferDiscountType.FIXED) {
             discount = offer.getDiscountValue();
         }
-        if (discount > payment.getAmount()) {
+        if(discount > payment.getAmount()) {
             discount = payment.getAmount();
         }
 
@@ -428,7 +442,7 @@ public class PaymentService {
     // [S5-F6] Revenue Report by Date Range (Report DTO)
     @Cacheable(value = "checkout-service::S5-F6", key = "#startDate.toString() + ':' + #endDate.toString()")
     public RevenueReportDTO generateRevenueReport(LocalDateTime startDate, LocalDateTime endDate) {
-        if (endDate.isBefore(startDate)) {
+        if(endDate.isBefore(startDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
         }
         List<Payment> paymentsList = paymentRepository.findByDateRange(startDate, endDate);
@@ -464,6 +478,7 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#id"),
                     @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
             }
@@ -570,14 +585,50 @@ public class PaymentService {
                 .build();
     }
 
+    // [S5-F10] Get Revenue by Cuisine with Delivery Fee Breakdown
+    public List<CuisineRevenueDTO> getRevenueByCuisine(LocalDateTime startDate, LocalDateTime endDate) {
+        Map<String, Object> queryDetails = new HashMap<>();
+        queryDetails.put("startDate", startDate != null ? startDate.toString() : null);
+        queryDetails.put("endDate", endDate != null ? endDate.toString() : null);
+
+        Map<String, Object> auditPayload = new HashMap<>();
+        auditPayload.put("paymentId", -1L);
+        auditPayload.put("details", queryDetails);
+        notifyObservers("ANALYTICS_VIEWED", auditPayload);
+
+        String cacheKey = startDate.toString() + ':' + endDate.toString();
+        org.springframework.cache.Cache cache = cacheManager.getCache("checkout-service::S5-F10");
+        if (cache != null) {
+            List<CuisineRevenueDTO> cached = cache.get(cacheKey, List.class);
+            if (cached != null) return cached;
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
+        }
+        List<Object[]> rows = paymentRepository.findRevenueByCuisineAndDateRange(startDate, endDate);
+
+        List<CuisineRevenueDTO> result = rows.stream().map(row -> {
+            String cuisineType = (String) row[0];
+            Long orderCount = ((Number) row[1]).longValue();
+            Double totalRevenue = ((Number) row[2]).doubleValue();
+            Double deliveryFeeRevenue = ((Number) row[3]).doubleValue();
+            Double foodRevenue = totalRevenue - deliveryFeeRevenue;
+
+            return CuisineRevenueDTO.builder()
+                    .cuisineType(cuisineType)
+                    .foodRevenue(foodRevenue)
+                    .deliveryFeeRevenue(deliveryFeeRevenue)
+                    .totalRevenue(totalRevenue)
+                    .orderCount(orderCount)
+                    .build();
+        }).toList();
+
+        if (cache != null) cache.put(cacheKey, result);
+        return result;
+    }
+
     // [S5-F11] Get Payment Method Breakdown
-    //
-    // Reads the payment_audit_trail MongoDB collection, filtered by timestamp in
-    // the inclusive range [startDate T00:00:00, endDate T23:59:59.999] and by
-    // action ∈ {COMPLETED, FAILED}. Groups by `method`, computing per-method
-    // successCount / failureCount / successRate / totalAmount. Auth (USER role)
-    // is enforced at the controller / SecurityConfig level. Result is cached
-    // for 10 minutes under checkout-service::S5-F11::<startDate>:<endDate>.
     @Cacheable(
             value = "checkout-service::S5-F11",
             key = "T(String).valueOf(#startDate) + ':' + T(String).valueOf(#endDate)"
@@ -599,12 +650,9 @@ public class PaymentService {
         LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
 
         // (c) Pull only events whose transactionDetails.status is COMPLETED or FAILED.
-        Set<String> statuses = Set.of(
-                PaymentAuditEvent.Actions.COMPLETED,
-                PaymentAuditEvent.Actions.FAILED
-        );
+        Set<String> actions = Set.of("COMPLETED", "FAILED");
         List<PaymentAuditEvent> events =
-                paymentAuditEventRepository.findByDetailsStatusInAndTimestampBetween(statuses, start, end);
+                paymentAuditEventRepository.findByActionInAndTimestampBetween(actions, start, end);
 
         if (events == null || events.isEmpty()) {
             // (f) Empty list when no data — do NOT 404.
@@ -623,12 +671,11 @@ public class PaymentService {
                 continue;
             }
 
-            // Read status from transactionDetails map stored inside the audit event
-            Object rawStatus = ev.getDetails() != null ? ev.getDetails().get("status") : null;
-            if (rawStatus == null) {
+            // Use the action field directly — that's what was persisted (e.g. "COMPLETED" / "FAILED")
+            String status = ev.getAction();
+            if (status == null) {
                 continue;
             }
-            String status = rawStatus.toString();
 
             PaymentMethod method;
             try {
@@ -725,11 +772,10 @@ public class PaymentService {
 
         Map<String, Object> refundedAuditEvent = new HashMap<>();
         refundedAuditEvent.put("paymentId", savedPayment.getId());
-        refundedAuditEvent.put("action", "REFUNDED");
         refundedAuditEvent.put("method", savedPayment.getMethod().name());
 
         Map<String, Object> details = new HashMap<>();
-        details.put("strategy", strategyName);
+        details.put("strategyName", strategyName);
         details.put("reason", refundRequest.reason());
         details.put("originalAmount", savedPayment.getAmount());
         details.put("refundAmount", refundResult.amount());
@@ -737,7 +783,7 @@ public class PaymentService {
 
         refundedAuditEvent.put("details", details);
 
-        notifyObservers("PAYMENT_AUDIT", refundedAuditEvent);
+        notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
     }

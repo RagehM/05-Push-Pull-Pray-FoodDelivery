@@ -150,8 +150,10 @@ services:
       CASSANDRA_CLUSTER_NAME: fooddeliverycluster
       CASSANDRA_DC: datacenter1
       CASSANDRA_KEYSPACE: fooddeliveryks
+      JVM_OPTS: "-Xms256M -Xmx512M"
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 128M
+      JVM_OPTS: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
     volumes:
       - cassandra-data:/var/lib/cassandra
     command: >

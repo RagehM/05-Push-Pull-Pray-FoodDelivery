@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8085/api/payments/49/refund-with-fee-handling
+  url: http://localhost:8085/api/payments/4/refund-with-fee-handling
   body:
     type: json
     data: |-
@@ -15,7 +15,7 @@ http:
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzY3MDU4MSwiZXhwIjoxNzc3NzU2OTgxfQ.HWBXDk-oA0KevlQbGFaFxFvWESCux5yyCsYVgOk01ok
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkxMzgyLCJleHAiOjE3NzgwNzc3ODJ9.uTtYXus_q0k9PfclPj8vxCcbHqN3DeS4m_JSQjjhD5w
 
 settings:
   encodeUrl: true
