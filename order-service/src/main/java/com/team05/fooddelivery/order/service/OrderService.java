@@ -609,6 +609,7 @@ public class OrderService {
                 .toList();
 
         ArrayList<RestaurantRecommendationDTO> sortedRecommendations = new ArrayList<>(recommendations);
+        sortedRecommendations.sort(Comparator.comparing(RestaurantRecommendationDTO::getScore).reversed());
 
         // cacheRecommendations(cacheKey, recommendations);
         return sortedRecommendations;
