@@ -4,12 +4,12 @@ import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
-import com.team05.fooddelivery.user.factory.AuthEventFactory;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
+import com.team05.shared.model.mongo.AuthEvent;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
@@ -19,8 +19,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,28 +40,39 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.springframework.data.mongodb.repository.Aggregation.*;
+
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
-    private final AuthEventFactory authEventFactory = new AuthEventFactory();
+    private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository,AuthEventRepository authEventRepository) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
+                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
+        this.mongoTemplate = mongoTemplate;
     }
 
     private void notifyObservers(String eventType, Object payload) {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
         }
+    }
+
+    public void registerObserver(EntityObserver observer) {
+        observers.add(observer);
+    }
+
+    public void unregisterObserver(EntityObserver observer) {
+        observers.remove(observer);
     }
 
 
@@ -103,12 +120,13 @@ public class UserService {
     @Caching(
             put = {
                     @CachePut(value = "user-service::user", key = "#id"),
-                    @CachePut(value = "user-service::S1-F8", key = "#id")
             },
             evict = {
                     @CacheEvict(value = "user-service::S1-F1", allEntries = true),
                     @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-                    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+
             }
     )
     public User updateUser(User user, Long id)
@@ -163,7 +181,7 @@ public class UserService {
         if(role!=null && role.isEmpty())role = null;
 
         if((name==null||name.isEmpty())&&(email==null||email.isEmpty())&&(role==null||role.isEmpty())){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one search parameter must be provided");
+            return new ArrayList<>();
         }
 
         return userRepository.searchUsers(name, email, role);
@@ -174,13 +192,14 @@ public class UserService {
     //Service responsible for feature 1.2
     @Caching(
             put = {
-                    @CachePut(value = "user-service::S1-F8", key = "#id"),
                     @CachePut(value = "user-service::user", key = "#id")
             },
             evict = {
                     @CacheEvict(value = "user-service::S1-F1", allEntries = true),
                     @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-                    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+
             }
     )
     public User updateUserPreferences(Map<String,Object> preferences, Long id){
@@ -202,12 +221,13 @@ public class UserService {
     @Caching(
             put = {
                     @CachePut(value = "user-service::user", key = "#id"),
-                    @CachePut(value = "user-service::S1-F8", key = "#id")
             },
             evict = {
                     @CacheEvict(value = "user-service::S1-F1", allEntries = true),
                     @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-                    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+
             }
     )    public ResponseStatusException deactivateUserAccount(Long id){
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -235,15 +255,18 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
         }
         List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
-        List<TopCustomerDTO> topCustomerDTOs = new ArrayList<TopCustomerDTO>();
-        result.forEach(object -> {
-            Long userID = (Long) object[0];
-            String userName = (String) object[1];
-            Double totalSpent = (Double) object[2];
-            Integer orderCount = Math.toIntExact((Long) object[3]);
-            topCustomerDTOs.add(new TopCustomerDTO(userID,userName, totalSpent, orderCount ));
-        });
-        return topCustomerDTOs;
+        return result.stream().map(row -> {
+            Long userID = ((Number) row[0]).longValue();
+            String userName = (String) row[1];
+            Double totalSpent =  ((Number) row[2]).doubleValue();
+            Integer orderCount = ((Number) row[3]).intValue();
+            return TopCustomerDTO.builder()
+                    .userId(userID)
+                    .name(userName)
+                    .totalSpent(totalSpent)
+                    .orderCount(orderCount)
+                    .build();
+        }).toList();
     }
 @Cacheable(value = "user-service::S1-F5", key = "#key + '-' + #value")
     public List<User> filterUsersByPreferences(String key, String value)
@@ -276,15 +299,15 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
 
 
 
-        return new UserOrderSummaryDTO(
-                user.getId(),
-                user.getName(),
-                orders.size(),
-                deliveredOrders.size(),
-                cancelledOrders.size(),
-                totalSpent,
-                averageOrderAmount
-        );
+        return UserOrderSummaryDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .totalOrders(orders.size())
+                .deliveredOrders(deliveredOrders.size())
+                .cancelledOrders(cancelledOrders.size())
+                .totalSpent(totalSpent)
+                .averageOrderAmount(averageOrderAmount)
+                .build();
     }
 
     @Cacheable(value = "user-service::S1-F9", key = "#diet + '-' + #minimumOrders")
@@ -304,13 +327,14 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
     @Transactional
     @Caching(
             put = {
-                    @CachePut(value = "user-service::user", key = "#id"),
-                    @CachePut(value = "user-service::S1-F8", key = "#id")
+                    @CachePut(value = "user-service::user", key = "#userId"),
             },
             evict = {
                     @CacheEvict(value = "user-service::S1-F1", allEntries = true),
                     @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-                    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#userId")
+
             }
     )
     public User setDefaultDeliveryAddress(long userId, long addressId) {
@@ -359,13 +383,81 @@ public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
                         addr.getMetadata(),
                         addr.getCreatedAt())).collect(Collectors.toList());
 
-        return new UserProfileDTO(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getPreferences(),
-                addressDtos,
-                addressDtos.size());
+
+        return UserProfileDTO.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .preferences(user.getPreferences())
+                .deliveryAddresses(addressDtos)
+                .totalAddresses(addressDtos.size())
+                .build();
+    }
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+                    @CacheEvict(value = "user-service::S1-F9", allEntries = true),
+                    @CacheEvict(value = "user-service::user", key = "#id"),
+                    @CacheEvict(value = "user-service::S1-F8", key = "#id")
+            }
+    )
+    public User updateUserRole(long id, UserRole role) {
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        UserRole oldRole=user.getUserRole();
+        user.setRole(role);
+        User updatedUser = userRepository.save(user);
+
+        Map<String, Object> authEvent = new HashMap<>();
+        authEvent.put("userId", user.getId());
+        authEvent.put("action", "ROLE_CHANGED");
+        Map<String, Object> details = new HashMap<>();
+        details.put("old Role", oldRole);
+        details.put("new Role", role);
+        authEvent.put("details", details);
+        notifyObservers("ROLE_CHANGED", authEvent);
+
+        return updatedUser;
+
+    }
+
+    @Cacheable(value = "user-service::S1-F12", key = "#id")
+    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+
+
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
+
+        if (size == 0) {
+            size = 10;
+        }
+
+        if (size > 100) {
+            size = 100;
+        }
+
+
+        long documentsToSkip = page * size;
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("userId").eq(id)),
+                Aggregation.sort(Sort.Direction.DESC, "timestamp"),
+                Aggregation.skip(documentsToSkip),
+                Aggregation.limit(size)
+        );
+
+        List<AuthEvent> result = mongoTemplate.aggregate(aggregation, "auth_events", AuthEvent.class).getMappedResults();
+
+        ActivityFeedDTO feed = new ActivityFeedDTO(result, page, size, result.size());
+
+        return feed;
     }
 }

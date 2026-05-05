@@ -27,11 +27,11 @@ runtime:
   scripts:
     - type: tests
       code: |-
-        test("create delivery returns 200 and has id", function () {
+        test("create delivery returns 201 and has id", function () {
           expect(res.getStatus()).to.equal(201);
           const body = res.getBody();
           expect(body).to.have.property('id');
-          bru.setVar('lastDeliveryId', body.id);
+          bru.setEnvVar('Last_Delivery_Id', String(body.id)); // writes to env
         });
 
 settings:

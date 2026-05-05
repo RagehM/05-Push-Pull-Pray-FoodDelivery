@@ -1,12 +1,11 @@
 package com.team05.fooddelivery.delivery.controller;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import com.team05.fooddelivery.delivery.dto.DelayedDeliveryDTO;
-import com.team05.fooddelivery.delivery.dto.NearbyDeliveryDTO;
+import com.team05.fooddelivery.delivery.dto.*;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,8 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.team05.fooddelivery.delivery.dto.BatchDeliveryRequestDTO;
-import com.team05.fooddelivery.delivery.dto.DeliveryPerformanceSummaryDTO;
 import com.team05.fooddelivery.delivery.model.Delivery;
 import com.team05.fooddelivery.delivery.service.DeliveryService;
 
@@ -44,6 +41,14 @@ public class DeliveryController {
         return new ResponseEntity<>(deliveryService.createOrderDelivery(orderId, delivery), HttpStatus.CREATED);
     }
 
+    @PostMapping("/{id}/tracking")
+//    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> recordDeliveryTracking(@PathVariable Long id,
+                                                       @RequestBody DeliveryTrackingRequestDTO request) {
+        deliveryService.recordDeliveryTracking(id, request);
+        return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
     @GetMapping("/{id}")
     public Delivery getDeliveryById(@PathVariable Long id) {
         return deliveryService.getDeliveryById(id);
@@ -52,8 +57,8 @@ public class DeliveryController {
     @GetMapping("/order/{orderId}/history")
     public List<Delivery> getOrderDeliveryHistory(
             @PathVariable Long orderId,
-            @RequestParam(required = false) LocalDate startDate,
-            @RequestParam(required = false) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
         return deliveryService.getOrderDeliveryHistory(orderId, startDate, endDate);
     }
@@ -113,12 +118,33 @@ public class DeliveryController {
     public Map<String, Integer> purgeOldDeliveries(@RequestParam Integer olderThanDays) {
         return deliveryService.purgeOldDeliveries(olderThanDays);
     }
+    @GetMapping("/{id}/tracking")
+    public List<DeliveryTrackingDTO> getDeliveryTrackingTimeline(
+            @PathVariable Long id,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        return deliveryService.getDeliveryTrackingTimeline(id, startTime, endTime);
+    }
+
     @GetMapping("/driver/{driverName}/summary")
     public DeliveryPerformanceSummaryDTO getDeliveryPerformanceSummary(
             @PathVariable String driverName,
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate) {
         return deliveryService.getDeliveryPerformanceSummary(driverName, startDate, endDate);
+    }
+
+    @GetMapping("/analytics")
+    public DeliveryAnalyticsDTO getAnalytics(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate
+    ) {
+
+        return deliveryService.getDeliveryAnalytics(startDate, endDate);
     }
 }
 

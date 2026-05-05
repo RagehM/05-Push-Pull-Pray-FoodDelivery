@@ -1,20 +1,23 @@
 package com.team05.fooddelivery.order.controller;
 
-import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
+import com.team05.fooddelivery.order.dto.*;
 import com.team05.fooddelivery.order.model.Order;
-import com.team05.fooddelivery.order.dto.OrderAnalyticsDTO;
-import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
-import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+
 
 
 
@@ -67,7 +70,7 @@ public class OrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return orderService.getOrderAnalyticsByTimePeriod(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+        return orderService.getOrderAnalyticsByTimePeriod(startDate, endDate);
     }
     // [S3-F7] Cancel Order
     @PutMapping("{id}/cancel")
@@ -84,6 +87,24 @@ public class OrderController {
     @GetMapping("/{orderId}/details")
     public ResponseEntity<OrderDetailsDTO> getOrderDetails(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.getOrderDetails(orderId));
+    }
+    // [S3-F10] Get Order Analytics Dashboard (Report DTO)
+    @GetMapping("/analytics/dashboard")
+    public OrderAnalyticsDashboardDTO getOrderAnalyticsDashboard(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return orderService.getOrderAnalyticsDashboardWrapper(startDate, endDate);
+    } 
+    
+    // [S3-F12]
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<RestaurantRecommendationDTO>> getRestaurantRecommendations(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Integer limit) {
+        int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
+
+
+        return ResponseEntity.ok(orderService.getRestaurantRecommendations(userId, finalLimit));
     }
     // [CRUD]
     //// Get order by ID

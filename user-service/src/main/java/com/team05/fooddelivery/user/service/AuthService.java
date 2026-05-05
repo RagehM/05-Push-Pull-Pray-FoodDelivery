@@ -4,7 +4,6 @@ import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.dto.AuthResponse;
 import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
-import com.team05.fooddelivery.user.factory.AuthEventFactory;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
@@ -30,7 +29,6 @@ public class AuthService {
     private final JwtConfigurationManager jwtConfig;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
-    private final AuthEventFactory authEventFactory = new AuthEventFactory();
 
     public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService,AuthEventRepository authEventRepository) {
         this.userRepository = userRepository;
@@ -39,7 +37,7 @@ public class AuthService {
         this.jwtConfig = JwtConfigurationManager.getInstance();
         this.authEventRepository = authEventRepository;
         this.observers.add(
-                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH, authEventFactory)
+                new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
     }
 
@@ -64,7 +62,7 @@ public class AuthService {
         authEvent.put("userId", user.getId());
         authEvent.put("action", "LOGGED_IN");
 
-        notifyObservers("AUTH", authEvent);
+        notifyObservers("LOGGED_IN", authEvent);
 
         return new AuthResponse(token, jwtConfig.getExpiration());
     }

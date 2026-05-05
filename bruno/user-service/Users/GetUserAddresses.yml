@@ -6,11 +6,12 @@ info:
 http:
   method: GET
   url: http://localhost:8081/api/users/1/addresses
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzczMjMxNywiZXhwIjoxNzc3ODE4NzE3fQ.YnnS2MOJRcavaogomcnIuXsnIjLCKMfWjOTowapfCIQ
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
