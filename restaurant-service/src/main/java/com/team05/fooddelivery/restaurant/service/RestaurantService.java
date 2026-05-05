@@ -23,12 +23,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+// [S2-F10] ES document class returned by full-text search
+import com.team05.fooddelivery.restaurant.model.elasticsearch.RestaurantSearchDocument;
+// [S2-F10] Spring Data ES operations for building native queries
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHits;
+// [S2-F10] Elastic client query DSL types for bool/multiMatch/term/range
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -39,20 +49,21 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
-//    private final EventFactory eventFactory = new EventFactory();
     private final CacheManager cacheManager;
     private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
+    private final ElasticsearchOperations elasticsearchOperations;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
             MongoRestaurantEventRepository mongoRestaurantEventRepository,
             RestaurantElasticsearchIndexService restaurantElasticsearchIndexService,
-            CacheManager cacheManager) {
+            CacheManager cacheManager,
+            ElasticsearchOperations elasticsearchOperations) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         this.cacheManager = cacheManager;
-
         this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
+        this.elasticsearchOperations = elasticsearchOperations;
         this.observers.add(
                 new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
@@ -107,7 +118,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id"),
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
 
     public Restaurant update(Long id, Restaurant updated) {
@@ -147,6 +159,7 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public void delete(Long id) {
@@ -180,6 +193,7 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
     })
     public Restaurant updateDetails(Long id, Map<String, Object> newDetails) {
@@ -219,8 +233,9 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F3", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id"),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F12", key = "#id")
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
     public void updateRestaurantStatus(Long id, String newStatus) {
         if (newStatus == null || newStatus.isBlank()) {
@@ -279,7 +294,8 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F5", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F6", allEntries = true),
             @CacheEvict(value = "restaurant-service::S2-F9", allEntries = true),
-            @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId")
+            @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId"),
+            @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
     public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
         if (rating == null) {
@@ -342,6 +358,71 @@ public class RestaurantService {
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
+    }
+    // S2-F10 Full-Text Restaurant Search — spec §10.2.1
+    // Searches Elasticsearch on name and description with optional filters.
+    // Cached for 5 minutes in Redis (cache key includes all params).
+    @Cacheable(
+            value = "restaurant-service::S2-F10",
+            key = "'f10:' + #query + '|' + (#cuisineType != null ? #cuisineType : '_') + '|' + (#status != null ? #status : '_') + '|' + (#minRating != null ? #minRating.toString() : '_') + '|' + (#maxRating != null ? #maxRating.toString() : '_')"
+    )
+    public List<RestaurantSearchDocument> fullTextSearch(
+            String query,
+            String cuisineType,
+            String status,
+            Double minRating,
+            Double maxRating) {
+
+        // Start building a bool query — all filters go as "filter" clauses (do not affect score)
+        BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+
+        // must clause: full-text match on both name and description fields
+        // fuzziness AUTO handles partial matches and case-insensitivity
+        boolQuery.must(Query.of(q -> q
+                .multiMatch(m -> m
+                        .query(query)       // the search text provided by the user
+                        .fields("name", "description") // search across both text fields
+                        .fuzziness("AUTO")  // AUTO fuzziness enables partial/case-insensitive matching
+                )
+        ));
+        // optional filter: cuisineType exact match (keyword field — case-sensitive enum value)
+        if (cuisineType != null && !cuisineType.isBlank()) {
+            boolQuery.filter(Query.of(q -> q
+                    .term(t -> t.field("cuisineType.keyword").value(cuisineType))
+            ));
+        }
+        // optional filter: status exact match (keyword field — OPEN / CLOSED / SUSPENDED)
+        if (status != null && !status.isBlank()) {
+            boolQuery.filter(Query.of(q -> q
+                    .term(t -> t.field("status.keyword").value(status))
+            ));
+        }
+        // optional filter: rating range (double field — min and/or max, both optional)
+        if (minRating != null || maxRating != null) {
+            boolQuery.filter(Query.of(q -> q
+                    .range(r -> {
+                        r.number(n -> {
+                            n.field("rating"); // target the rating double field
+                            if (minRating != null) n.gte(minRating); // greater than or equal
+                            if (maxRating != null) n.lte(maxRating); // less than or equal
+                            return n;
+                        });
+                        return r;
+                    })
+            ));
+        }
+
+        // Wrap the bool query inside a NativeQuery that Spring Data ES can execute
+        NativeQuery nativeQuery = NativeQuery.builder()
+                .withQuery(Query.of(q -> q.bool(boolQuery.build())))
+                .build();
+        // Execute the query — returns SearchHits ordered by relevance score (highest first)
+        SearchHits<RestaurantSearchDocument> hits =
+                elasticsearchOperations.search(nativeQuery, RestaurantSearchDocument.class);
+        // Map each SearchHit wrapper to the inner document and collect to a plain list
+        return hits.stream()
+                .map(hit -> hit.getContent())
+                .collect(Collectors.toList());
     }
 
         // [S2-F12] Get Restaurant Performance Dashboard

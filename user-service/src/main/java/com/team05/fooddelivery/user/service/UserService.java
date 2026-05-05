@@ -81,9 +81,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-@Cacheable(value = "user-service::user", key = "#id")
+    @Cacheable(value = "user-service::user", key = "#id")
     public User findUserById(long id)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
         return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -131,12 +139,20 @@ public class UserService {
     )
     public User updateUser(User user, Long id)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
-        if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())){
+        if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())&& user.getEmail().equals(updatedUser.getEmail())==false){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
-        if(user.getPhone()!=null && userRepository.existsByPhone(user.getPhone())){
+        if(user.getPhone()!=null && userRepository.existsByPhone(user.getPhone())&& user.getPhone().equals(updatedUser.getPhone())==false){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
         }
         updatedUser.setEmail(user.getEmail() == null ? updatedUser.getEmail() : user.getEmail());
@@ -154,17 +170,25 @@ public class UserService {
         notifyObservers("USER_UPDATED", authEvent);
         return updatedSaved;
     }
-@Caching(evict = {
-    @CacheEvict(value = "user-service::user", key = "#id"),
-    @CacheEvict(value = "user-service::S1-F1", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F3", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F5", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F6", allEntries = true),
-    @CacheEvict(value = "user-service::S1-F8", key = "#id"),
-    @CacheEvict(value = "user-service::S1-F9", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "user-service::user", key = "#id"),
+            @CacheEvict(value = "user-service::S1-F1", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F3", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F5", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F6", allEntries = true),
+            @CacheEvict(value = "user-service::S1-F8", key = "#id"),
+            @CacheEvict(value = "user-service::S1-F9", allEntries = true)
     })
     public void deleteUser(Long id)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Optional<User> authenticatedUser = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            authenticatedUser = userRepository.findByEmail(authentication.getName());
+        }
+        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
+        }
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
 
@@ -173,7 +197,7 @@ public class UserService {
         authEvent.put("action", "USER_DELETED");
         notifyObservers("USER_DELETED", authEvent);
     }
-@Cacheable(value = "user-service::S1-F1", key = "#name + '-' + #email + '-' + #role")
+    @Cacheable(value = "user-service::S1-F1", key = "#name + '-' + #email + '-' + #role")
     public List<User> searchUsers(String name, String email, String role)
     {
         if(name!=null && name.isEmpty())name = null;
@@ -216,7 +240,7 @@ public class UserService {
         notifyObservers("USER_UPDATED", authEvent);
         return updatedSaved;
     }
-  
+
     @Transactional
     @Caching(
             put = {
@@ -247,7 +271,7 @@ public class UserService {
         return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
     }
 
-@Cacheable(value = "user-service::S1-F6", key = "#startDate + '-' + #endDate + '-' + #limit")
+    @Cacheable(value = "user-service::S1-F6", key = "#startDate + '-' + #endDate + '-' + #limit")
     public List<TopCustomerDTO> topCustomersBySpending(LocalDate startDate, LocalDate endDate, Integer limit)
     {
         if(startDate==null || startDate.equals("") || startDate.equals("null") || startDate.isAfter(endDate))
@@ -268,7 +292,7 @@ public class UserService {
                     .build();
         }).toList();
     }
-@Cacheable(value = "user-service::S1-F5", key = "#key + '-' + #value")
+    @Cacheable(value = "user-service::S1-F5", key = "#key + '-' + #value")
     public List<User> filterUsersByPreferences(String key, String value)
     {
         if(key == null || key.isEmpty() || value == null || value.isEmpty()
@@ -279,8 +303,8 @@ public class UserService {
         }
         return userRepository.findUserByPreferencesContaining(key,value);
     }
-@Cacheable(value = "user-service::S1-F3", key = "#userId")
-public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
+    @Cacheable(value = "user-service::S1-F3", key = "#userId")
+    public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         List<Object[]> orders = userRepository.findTotalOrders(userId);
         List<Object[]> deliveredOrders = userRepository.findDeliveredOrders(userId);
