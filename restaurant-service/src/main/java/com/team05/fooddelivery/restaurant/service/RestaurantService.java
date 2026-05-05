@@ -46,16 +46,13 @@ public class RestaurantService {
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
             MongoRestaurantEventRepository mongoRestaurantEventRepository,
-            RestaurantElasticsearchIndexService restaurantElasticsearchIndexService, {
-            MongoRestaurantEventRepository mongoRestaurantEventRepository,
+            RestaurantElasticsearchIndexService restaurantElasticsearchIndexService,
             CacheManager cacheManager) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         this.cacheManager = cacheManager;
 
         this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
-        // Register the MongoEventLogger observer — bound to RESTAURANT event type
-        // Section 3.3 + 4.5
         this.observers.add(
                 new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
