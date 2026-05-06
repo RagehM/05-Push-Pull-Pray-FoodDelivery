@@ -716,6 +716,8 @@ public class PaymentService {
                     @CacheEvict(value = "checkout-service::S5-F6", allEntries = true),
                     @CacheEvict(value = "checkout-service::S5-F8", key = "#paymentId"),
                     @CacheEvict(value = "checkout-service::S5-F9", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F10", allEntries = true),
+                    @CacheEvict(value = "checkout-service::S5-F11", allEntries = true),
             }
     )
     public ResponseEntity<Payment> processOrderRefundWithDeliveryFeeHandling(Long paymentId, RefundRequest refundRequest) {
@@ -772,6 +774,7 @@ public class PaymentService {
         Map<String, Object> refundedAuditEvent = new HashMap<>();
         refundedAuditEvent.put("paymentId", savedPayment.getId());
         refundedAuditEvent.put("method", savedPayment.getMethod().name());
+        refundedAuditEvent.put("amount", refundResult.amount());
 
         Map<String, Object> details = new HashMap<>();
         details.put("strategyName", strategyName);

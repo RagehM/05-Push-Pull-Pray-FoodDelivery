@@ -11,8 +11,9 @@ public class FoodOnlyRefundStrategy implements RefundStrategy {
     @Override
     public RefundResult calculateRefund(Payment payment, RefundRequest request) {
         Map<String, Object> transactionDetails = payment.getTransactionDetails();
-        Number deliveryFee = (Number) transactionDetails.get("deliveryFee");
-        Double refundedAmount = payment.getAmount() - deliveryFee.doubleValue();
+        Number deliveryFeeNum = (transactionDetails != null) ? (Number) transactionDetails.get("deliveryFee") : null;
+        double deliveryFee = (deliveryFeeNum != null) ? deliveryFeeNum.doubleValue() : 0.0;
+        Double refundedAmount = Math.max(0.0, payment.getAmount() - deliveryFee);
 
         return new RefundResult(refundedAmount, "FULL_REFUND_WITHOUT_DELIVERY");
     }
