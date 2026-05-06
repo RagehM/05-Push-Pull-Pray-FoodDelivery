@@ -30,7 +30,7 @@ public class OrderInteractionGraphService {
             return true;
         }
 
-        UserNode user = userNodeRepository.findByUserId(userId)
+        UserNode user = userNodeRepository.findByUserIdWithRelationships(userId)
                 .orElseGet(() -> {
                     UserNode u = new UserNode(userName);
                     u.setUserId(userId);
@@ -47,22 +47,22 @@ public class OrderInteractionGraphService {
         if (restaurant.getName() == null) restaurant.setName(restaurantName);
         if (restaurant.getCuisineType() == null) restaurant.setCuisineType(cuisineType);
 
-        OrderedFrom edge = user.getOrderedFroms().stream()
+        OrderedFrom orderedFrom = user.getOrderedFroms().stream()
                 .filter(of -> of.getRestaurant() != null
                         && restaurantId.equals(of.getRestaurant().getRestaurantId()))
                 .findFirst()
                 .orElse(null);
 
-        if (edge == null) {
-            edge = new OrderedFrom(restaurant);
-            edge.setOrderCount(1);
-            edge.setLastOrderDate(LocalDateTime.now());
-            edge.recordOrderId(orderId);
-            user.getOrderedFroms().add(edge);
+        if (orderedFrom == null) {
+            orderedFrom = new OrderedFrom(restaurant);
+            orderedFrom.setOrderCount(1);
+            orderedFrom.setLastOrderDate(LocalDateTime.now());
+            orderedFrom.recordOrderId(orderId);
+            user.getOrderedFroms().add(orderedFrom);
         } else {
-            edge.setOrderCount(edge.getOrderCount() + 1);
-            edge.setLastOrderDate(LocalDateTime.now());
-            edge.recordOrderId(orderId);
+            orderedFrom.setOrderCount(orderedFrom.getOrderCount() + 1);
+            orderedFrom.setLastOrderDate(LocalDateTime.now());
+            orderedFrom.recordOrderId(orderId);
         }
 
         userNodeRepository.save(user);

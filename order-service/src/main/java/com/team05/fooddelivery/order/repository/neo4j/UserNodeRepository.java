@@ -17,10 +17,11 @@ public interface UserNodeRepository extends Neo4jRepository<UserNode, Long> {
 
     // [S3-F11] Find user by PostgreSQL user ID
     @Query(value = """
-        MATCH (u:User) WHERE u.userId = $userId
-        RETURN u
-        """)
-    Optional<UserNode> findByUserId(@Param("userId") Long userId);
+        MATCH (u:User {userId: $userId})
+        OPTIONAL MATCH (u)-[rel:ORDERED_FROM]->(r:Restaurant)
+        RETURN u, collect(rel), collect(r)
+    """)
+    Optional<UserNode> findByUserIdWithRelationships(@Param("userId") Long userId);
 
     // [S3-F11] Check idempotency: does the relationship already have this orderId recorded?
     @Query(value = """
