@@ -203,11 +203,12 @@ public class OrderService {
         foundOrder.setStatus(OrderStatusEnum.DELIVERED);
         foundOrder.setDeliveredAt(LocalDateTime.now());
 
-        if (foundOrder.getTotalAmount() == null) {
+        if (foundOrder.getTotalAmount() == null || foundOrder.getTotalAmount() == 0) {
             List<OrderItem> orderItems = foundOrder.getOrderItems();
             double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
             foundOrder.setTotalAmount(total);
         }
+
         // Create payment record with status PENDING. Save order. Return the order after the update.
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
         Order savedOrder = orderRepository.save(foundOrder);
