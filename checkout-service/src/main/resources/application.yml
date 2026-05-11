@@ -6,7 +6,7 @@ spring:
     name: checkout-service
 
   datasource:
-    url: jdbc:postgresql://postgres:5432/fooddeliverydb
+    url: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
     username: postgres
     password: postgres
 
@@ -27,9 +27,42 @@ spring:
   mongodb:
     uri: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
 
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-retries: 3
+#          max-attempts: 3
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}
+
+feign:
+  user-service:
+    url: http://user-service:8080
+  order-service:
+    url: http://order-service:8080
+  restaurant-service:
+    url: http://restaurant-service:8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus,health,info"
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 #spring.application.name=checkout-service
 #server.port=8080
