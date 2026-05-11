@@ -6,7 +6,7 @@ spring:
     name: order-service
 
   datasource:
-    url: jdbc:postgresql://postgres:5432/fooddeliverydb
+    url: jdbc:postgresql://order-postgres:5432/talabatdb-orders
     username: postgres
     password: postgres
 
@@ -25,7 +25,7 @@ spring:
       password: redispass
 
   mongodb:
-    uri: mongodb://root:rootpass@localhost:27017/fooddeliverymongo?authSource=admin
+    uri: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
 
   neo4j:
     uri: bolt://neo4j:7687
@@ -33,9 +33,42 @@ spring:
       username: neo4j
       password: neo4jpass
 
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-retries: 3
+  #          max-attempts: 3
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}
+
+feign:
+  restaurant-service:
+    url: http://restaurant-service:8080
+  user-service:
+    url: http://user-service:8080
+  delivery-service:
+    url: http://delivery-service:8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus,health,info"
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 #spring.application.name=order-service
 #server.port=8080
