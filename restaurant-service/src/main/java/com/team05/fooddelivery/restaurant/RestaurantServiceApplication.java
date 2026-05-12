@@ -5,12 +5,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 //s2-f11
 import com.team05.fooddelivery.restaurant.repository.elasticsearch.RestaurantSearchRepository;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 
 @SpringBootApplication
 @EnableCaching
 //s2-f11
 @EnableElasticsearchRepositories(basePackageClasses = RestaurantSearchRepository.class)
+@EnableFeignClients
 public class RestaurantServiceApplication {
 
     public static void main(String[] args) {

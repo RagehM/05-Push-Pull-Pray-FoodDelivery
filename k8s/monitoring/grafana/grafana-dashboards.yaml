@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  # S1-INFRA owner needs to fill this
+  user-service-dashboard.json: |
+    {}
+  # S2-INFRA owner needs to fill this
+  restaurant-service-dashboard.json: |
+    {}
+  # S3-INFRA owner needs to fill this
+  order-service-dashboard.json: |
+    {}
+  # S4-INFRA owner needs to fill this
+  delivery-service-dashboard.json: |
+    {}
+  # S5-INFRA owner needs to fill this
+  checkout-service-dashboard.json: |
+    {}

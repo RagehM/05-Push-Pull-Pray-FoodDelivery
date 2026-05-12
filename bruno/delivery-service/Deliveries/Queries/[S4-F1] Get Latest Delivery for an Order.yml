@@ -9,6 +9,9 @@ http:
   auth: inherit
 
 runtime:
+  variables:
+    - name: DELIVERY_SERVICE_URL
+      value: http://localhost:8084
   scripts:
     - type: tests
       code: |-

@@ -7,7 +7,6 @@ public class JwtConfigurationManager {
     private final String secret;
     private JwtConfigurationManager() {
         this.secret = System.getenv("JWT_SECRET");
-
     }
 
     public static synchronized JwtConfigurationManager getInstance() {
