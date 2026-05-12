@@ -2,6 +2,7 @@ package com.team05.fooddelivery.restaurant.controller;
 
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
 import com.team05.fooddelivery.restaurant.dto.TopRestaurantDTO;
+import com.team05.fooddelivery.contracts.dto.AvgPriceDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantDashboardDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.model.Restaurant;
@@ -12,14 +13,16 @@ import com.team05.fooddelivery.restaurant.service.MenuItemService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.model.elasticsearch.RestaurantSearchDocument;
+
 @RestController
 @RequestMapping("/api/restaurants")
 public class RestaurantController {
 
-    // The RestaurantController class is a REST controller that handles HTTP requests related to restaurant operations.
-    // It uses the RestaurantService to perform business logic and interact with the database.
+    // The RestaurantController class is a REST controller that handles HTTP
+    // requests related to restaurant operations.
+    // It uses the RestaurantService to perform business logic and interact with the
+    // database.
     private final RestaurantService restaurantService;
     private final MenuItemService menuItemService;
 
@@ -147,8 +150,7 @@ public class RestaurantController {
             @RequestParam(required = false) Double minRating,
             @RequestParam(required = false) Double maxRating) {
         return ResponseEntity.ok(
-                restaurantService.fullTextSearch(query, cuisineType, status, minRating, maxRating)
-        );
+                restaurantService.fullTextSearch(query, cuisineType, status, minRating, maxRating));
     }
 
     // [S2-F11] Index restaurant for search (Milestone 2 §10.2.2)
@@ -162,5 +164,12 @@ public class RestaurantController {
     @GetMapping("/{id}/dashboard")
     public ResponseEntity<RestaurantDashboardDTO> getDashboard(@PathVariable Long id) {
         return ResponseEntity.ok(restaurantService.getDashboard(id));
+    }
+
+    // [S2-READ-DB] 
+    // Returns AvgPriceDTO {"avgPrice": BigDecimal}
+    @GetMapping("/{id}/menu-items/avg-price")
+    public ResponseEntity<AvgPriceDTO> getMenuItemsAvgPrice(@PathVariable Long id) {
+        return ResponseEntity.ok(restaurantService.getMenuItemsAvgPrice(id));
     }
 }

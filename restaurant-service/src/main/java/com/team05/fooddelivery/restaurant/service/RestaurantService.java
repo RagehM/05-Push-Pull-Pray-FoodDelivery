@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.restaurant.service;
 
+import com.team05.fooddelivery.contracts.dto.AvgPriceDTO;
 import com.team05.fooddelivery.restaurant.adapter.RestaurantRevenueAdapter;
 import com.team05.fooddelivery.restaurant.adapter.TopRestaurantAdapter;
 import com.team05.fooddelivery.restaurant.dto.RestaurantDashboardDTO;
@@ -33,6 +34,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,7 +94,7 @@ public class RestaurantService {
         eventDetails.put("cuisineType", saved.getCuisineType());
         params.put("details", eventDetails);
         notifyObservers(RestaurantEventActions.RESTAURANT_CREATED, params);
-        //s2-f11
+        // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         return saved;
@@ -146,7 +148,7 @@ public class RestaurantService {
         details.put("status", saved.getStatus());
         params.put("details", details);
         notifyObservers(RestaurantEventActions.UPDATED, params);
-        //s2-f11
+        // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
         return saved;
     }
@@ -167,7 +169,7 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         restaurantRepository.deleteById(id);
-        //s2-f11
+        // s2-f11
         restaurantElasticsearchIndexService.deleteByRestaurantId(id);
 
         Map<String, Object> params = new HashMap<>();
@@ -206,7 +208,7 @@ public class RestaurantService {
             existing.setDetails(currentDetails);
         }
         Restaurant saved = restaurantRepository.save(existing);
-        //s2-f11
+        // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
         Map<String, Object> params = new HashMap<>();
@@ -243,8 +245,8 @@ public class RestaurantService {
         }
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-                // CLOSE added for TC 246
-        if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus) ) {
+        // CLOSE added for TC 246
+        if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus)) {
             int activeOrders = restaurantRepository.countActiveOrders(id);
             if (activeOrders > 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -257,7 +259,7 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
-        //s2-f11
+        // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
         Map<String, Object> params = new HashMap<>();
@@ -324,7 +326,7 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
-        //s2-f11
+        // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
         Map<String, Object> params = new HashMap<>();
@@ -353,19 +355,18 @@ public class RestaurantService {
         }
         return dtos;
     }
-    //s2-f11
+
+    // s2-f11
     public void indexRestaurantForSearch(Long id) {
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
     }
+
     // S2-F10 Full-Text Restaurant Search — spec §10.2.1
     // Searches Elasticsearch on name and description with optional filters.
     // Cached for 5 minutes in Redis (cache key includes all params).
-    @Cacheable(
-            value = "restaurant-service::S2-F10",
-            key = "'f10:' + #query + '|' + (#cuisineType != null ? #cuisineType : '_') + '|' + (#status != null ? #status : '_') + '|' + (#minRating != null ? #minRating.toString() : '_') + '|' + (#maxRating != null ? #maxRating.toString() : '_')"
-    )
+    @Cacheable(value = "restaurant-service::S2-F10", key = "'f10:' + #query + '|' + (#cuisineType != null ? #cuisineType : '_') + '|' + (#status != null ? #status : '_') + '|' + (#minRating != null ? #minRating.toString() : '_') + '|' + (#maxRating != null ? #maxRating.toString() : '_')")
     public List<RestaurantSearchDocument> fullTextSearch(
             String query,
             String cuisineType,
@@ -373,29 +374,29 @@ public class RestaurantService {
             Double minRating,
             Double maxRating) {
 
-        // Start building a bool query — all filters go as "filter" clauses (do not affect score)
+        // Start building a bool query — all filters go as "filter" clauses (do not
+        // affect score)
         BoolQuery.Builder boolQuery = new BoolQuery.Builder();
 
         // must clause: full-text match on both name and description fields
         // fuzziness AUTO handles partial matches and case-insensitivity
         boolQuery.must(Query.of(q -> q
                 .multiMatch(m -> m
-                        .query(query)       // the search text provided by the user
+                        .query(query) // the search text provided by the user
                         .fields("name", "description") // search across both text fields
-                        .fuzziness("AUTO")  // AUTO fuzziness enables partial/case-insensitive matching
-                )
-        ));
-        // optional filter: cuisineType exact match (keyword field — case-sensitive enum value)
+                        .fuzziness("AUTO") // AUTO fuzziness enables partial/case-insensitive matching
+                )));
+        // optional filter: cuisineType exact match (keyword field — case-sensitive enum
+        // value)
         if (cuisineType != null && !cuisineType.isBlank()) {
             boolQuery.filter(Query.of(q -> q
-                    .term(t -> t.field("cuisineType.keyword").value(cuisineType))
-            ));
+                    .term(t -> t.field("cuisineType.keyword").value(cuisineType))));
         }
-        // optional filter: status exact match (keyword field — OPEN / CLOSED / SUSPENDED)
+        // optional filter: status exact match (keyword field — OPEN / CLOSED /
+        // SUSPENDED)
         if (status != null && !status.isBlank()) {
             boolQuery.filter(Query.of(q -> q
-                    .term(t -> t.field("status.keyword").value(status))
-            ));
+                    .term(t -> t.field("status.keyword").value(status))));
         }
         // optional filter: rating range (double field — min and/or max, both optional)
         if (minRating != null || maxRating != null) {
@@ -403,80 +404,82 @@ public class RestaurantService {
                     .range(r -> {
                         r.number(n -> {
                             n.field("rating"); // target the rating double field
-                            if (minRating != null) n.gte(minRating); // greater than or equal
-                            if (maxRating != null) n.lte(maxRating); // less than or equal
+                            if (minRating != null)
+                                n.gte(minRating); // greater than or equal
+                            if (maxRating != null)
+                                n.lte(maxRating); // less than or equal
                             return n;
                         });
                         return r;
-                    })
-            ));
+                    })));
         }
 
         // Wrap the bool query inside a NativeQuery that Spring Data ES can execute
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(Query.of(q -> q.bool(boolQuery.build())))
                 .build();
-        // Execute the query — returns SearchHits ordered by relevance score (highest first)
-        SearchHits<RestaurantSearchDocument> hits =
-                elasticsearchOperations.search(nativeQuery, RestaurantSearchDocument.class);
+        // Execute the query — returns SearchHits ordered by relevance score (highest
+        // first)
+        SearchHits<RestaurantSearchDocument> hits = elasticsearchOperations.search(nativeQuery,
+                RestaurantSearchDocument.class);
         // Map each SearchHit wrapper to the inner document and collect to a plain list
         return hits.stream()
                 .map(hit -> hit.getContent())
                 .collect(Collectors.toList());
     }
 
-        // [S2-F12] Get Restaurant Performance Dashboard
-// Uses CacheManager
-// Section 10.2.3 — cached 10 min
-        public RestaurantDashboardDTO getDashboard(Long id) {
-            // Step 1 — logging ALWAYS runs (even on cache hits)
-            notifyDashboardViewed(id);
+    // [S2-F12] Get Restaurant Performance Dashboard
+    // Uses CacheManager
+    // Section 10.2.3 — cached 10 min
+    public RestaurantDashboardDTO getDashboard(Long id) {
+        // Step 1 — logging ALWAYS runs (even on cache hits)
+        notifyDashboardViewed(id);
 
-            // Step 2 — check cache manually
-            Cache cache = cacheManager.getCache("restaurant-service::S2-F12");
-            if (cache != null) {
-                RestaurantDashboardDTO cached = cache.get(id, RestaurantDashboardDTO.class);
-                if (cached != null) {
-                    return cached; // cache hit
-                }
+        // Step 2 — check cache manually
+        Cache cache = cacheManager.getCache("restaurant-service::S2-F12");
+        if (cache != null) {
+            RestaurantDashboardDTO cached = cache.get(id, RestaurantDashboardDTO.class);
+            if (cached != null) {
+                return cached; // cache hit
             }
-
-            // Step 3 — cache miss — fetch from DB
-            Restaurant restaurant = getById(id);
-            List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
-            Object[] row = stats.get(0);
-            Long totalOrders = ((Number) row[0]).longValue();
-            Double totalRevenue = ((Number) row[1]).doubleValue();
-            Double averageOrderValue = ((Number) row[2]).doubleValue();
-            Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
-
-            RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
-                    .restaurantId(restaurant.getId())
-                    .name(restaurant.getName())
-                    .totalOrders(totalOrders)
-                    .totalRevenue(totalRevenue)
-                    .averageOrderValue(averageOrderValue)
-                    .activeMenuItems(activeMenuItems)
-                    .build();
-
-            // Step 4 — store in cache
-            if (cache != null) {
-                cache.put(id, dto);
-            }
-
-            return dto;
         }
 
-        // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
-        // including cache hits
-        // Section 10.2.3 — pure observability, does NOT invalidate cache
-        public void notifyDashboardViewed(Long restaurantId) {
-            Map<String, Object> params = new HashMap<>();
-            params.put("action", RestaurantEventActions.DASHBOARD_VIEWED);
-            params.put("restaurantId", restaurantId);
-            params.put("details", new HashMap<>());
-            notifyObservers(RestaurantEventActions.DASHBOARD_VIEWED, params);
+        // Step 3 — cache miss — fetch from DB
+        Restaurant restaurant = getById(id);
+        List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
+        Object[] row = stats.get(0);
+        Long totalOrders = ((Number) row[0]).longValue();
+        Double totalRevenue = ((Number) row[1]).doubleValue();
+        Double averageOrderValue = ((Number) row[2]).doubleValue();
+        Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
+
+        RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
+                .restaurantId(restaurant.getId())
+                .name(restaurant.getName())
+                .totalOrders(totalOrders)
+                .totalRevenue(totalRevenue)
+                .averageOrderValue(averageOrderValue)
+                .activeMenuItems(activeMenuItems)
+                .build();
+
+        // Step 4 — store in cache
+        if (cache != null) {
+            cache.put(id, dto);
         }
+
+        return dto;
+    }
+
+    // [S2-F12] Logs DASHBOARD_VIEWED event to MongoDB — called on every request
+    // including cache hits
+    // Section 10.2.3 — pure observability, does NOT invalidate cache
+    public void notifyDashboardViewed(Long restaurantId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("action", RestaurantEventActions.DASHBOARD_VIEWED);
+        params.put("restaurantId", restaurantId);
+        params.put("details", new HashMap<>());
+        notifyObservers(RestaurantEventActions.DASHBOARD_VIEWED, params);
+    }
 
     public void registerObserver(EntityObserver observer) {
         observers.add(observer);
@@ -492,5 +495,13 @@ public class RestaurantService {
         }
     }
 
+    // [S2-READ-DB] Calculates average price of available menu items for a restaurant, used by order-service via Feign. Not cached at this level since it's called by order-service which has its own caching requirements.
+    public AvgPriceDTO getMenuItemsAvgPrice(Long id) {
+        if (!restaurantRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        BigDecimal avg = menuItemRepository.findAvgPriceByRestaurantId(id);
+        return new AvgPriceDTO(avg);
+    }
 
 }
