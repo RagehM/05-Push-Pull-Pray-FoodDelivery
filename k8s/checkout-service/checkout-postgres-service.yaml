@@ -1,0 +1,40 @@
+# [S5-READ-DB] Headless service for the checkout-postgres StatefulSet.
+# Pods become reachable as checkout-postgres-0.checkout-postgres.talabat.svc.cluster.local
+# and (via the clusterIP service below) simply as checkout-postgres:5432.
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-postgres
+  namespace: talabat
+  labels:
+    app: checkout-postgres
+    component: database
+    feature: S5-READ-DB
+spec:
+  clusterIP: None        # headless: required by the StatefulSet
+  selector:
+    app: checkout-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+# A regular ClusterIP service so checkout-service can resolve
+# "checkout-postgres:5432" without caring about pod ordinals.
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-postgres-rw
+  namespace: talabat
+  labels:
+    app: checkout-postgres
+    component: database
+    feature: S5-READ-DB
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

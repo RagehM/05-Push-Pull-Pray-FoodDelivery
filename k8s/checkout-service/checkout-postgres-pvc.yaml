@@ -1,0 +1,17 @@
+# [S5-READ-DB] Standalone PVC manifest, mirrored from the volumeClaimTemplate
+# in the StatefulSet. Useful when bootstrapping on clusters that don't
+# auto-provision via templates (kept here for clarity in the rubric).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: checkout-postgres-data
+  namespace: talabat
+  labels:
+    app: checkout-postgres
+    component: database
+    feature: S5-READ-DB
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi

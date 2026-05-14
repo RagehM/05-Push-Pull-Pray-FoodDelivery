@@ -1,0 +1,86 @@
+# [S5-READ-DB] Stateful, isolated postgres for checkout-service.
+# One replica is plenty for the project workload; the StatefulSet + PVC
+# pattern is used so storage is stable across restarts.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: checkout-postgres
+  namespace: talabat
+  labels:
+    app: checkout-postgres
+    component: database
+    feature: S5-READ-DB
+spec:
+  serviceName: checkout-postgres        # must match the headless service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout-postgres
+  template:
+    metadata:
+      labels:
+        app: checkout-postgres
+        component: database
+        feature: S5-READ-DB
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: checkout-postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: checkout-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: checkout-postgres-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "talabatdb-checkout"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "talabatdb-checkout"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: checkout-postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: checkout-postgres-data
+        labels:
+          app: checkout-postgres
+          feature: S5-READ-DB
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
