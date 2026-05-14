@@ -2,6 +2,7 @@ package com.team05.fooddelivery.checkout.config;
 
 import feign.Logger;
 import feign.Request;
+import feign.RequestInterceptor;
 import feign.RetryableException;
 import feign.Retryer;
 import feign.Response;
@@ -9,9 +10,13 @@ import feign.codec.ErrorDecoder;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,6 +52,34 @@ public class FeignConfig {
     @Bean
     public Request.Options feignRequestOptions() {
         return new Request.Options(2, TimeUnit.SECONDS, 5, TimeUnit.SECONDS, true);
+    }
+
+    /**
+     * [S5-READ-DB] Forward the inbound caller's JWT onto every outbound Feign call.
+     *
+     * Without this, Spring Cloud OpenFeign builds a fresh HTTP request with no
+     * Authorization header, so downstream services (user-service, order-service,
+     * restaurant-service) reject the call with 401. The interceptor pulls the
+     * Authorization header off the current servlet request and re-attaches it.
+     *
+     * Note: this only works when we're inside a Spring MVC request thread.
+     * Background jobs that fire Feign calls would need a different strategy
+     * (e.g. a dedicated service-to-service token).
+     */
+    @Bean
+    public RequestInterceptor feignAuthForwardingInterceptor() {
+        return template -> {
+            ServletRequestAttributes attrs =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) {
+                return; // not in an HTTP request — skip silently
+            }
+            HttpServletRequest req = attrs.getRequest();
+            String auth = req.getHeader(HttpHeaders.AUTHORIZATION);
+            if (auth != null && !auth.isBlank()) {
+                template.header(HttpHeaders.AUTHORIZATION, auth);
+            }
+        };
     }
 
     /**
