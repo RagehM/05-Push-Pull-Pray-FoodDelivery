@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    [S5-READ-DB] Logback configuration for checkout-service.
+
+    Produces structured logs (JSON-ish key=value) so Promtail/Loki can extract
+    fields cheaply for the LogQL panels added to the checkout-service Grafana
+    dashboard. The pattern intentionally exposes:
+
+      ts, level, service, traceId, thread, logger, msg
+
+    so panels can group by service="checkout-service" + level=ERROR etc.
+-->
+<configuration scan="true" scanPeriod="30 seconds">
+
+    <springProperty scope="context" name="appName"
+                    source="spring.application.name" defaultValue="checkout-service"/>
+
+    <!-- Console appender: structured one-line records, easy for Promtail to scrape. -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${appName} traceId=%X{traceId:-} thread=%thread logger=%logger{36} msg="%replace(%msg){'"','\\"'}"%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- Rolling file appender for container restarts / debugging. -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/checkout-service.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/checkout-service.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>
+                ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${appName} traceId=%X{traceId:-} thread=%thread logger=%logger{36} msg="%replace(%msg){'"','\\"'}"%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- Feign call traces are useful for the "Feign failures" dashboard panel. -->
+    <logger name="com.team05.fooddelivery.contracts.feign" level="DEBUG"/>
+    <logger name="feign" level="INFO"/>
+    <logger name="com.team05.fooddelivery.checkout" level="INFO"/>
+
+    <!-- Spring Web / SQL: keep them quieter in production but visible in dev. -->
+    <springProfile name="dev,default">
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="org.springframework.web" level="DEBUG"/>
+    </springProfile>
+    <springProfile name="prod">
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.springframework.web" level="WARN"/>
+    </springProfile>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>
