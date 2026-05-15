@@ -6,7 +6,7 @@ spring:
     name: user-service
 
   datasource:
-    url: jdbc:postgresql://user-postgres:5432/talabatdb-users
+    url: jdbc:postgresql://user-postgres:5432/talabatdb
     username: postgres
     password: postgres
 
