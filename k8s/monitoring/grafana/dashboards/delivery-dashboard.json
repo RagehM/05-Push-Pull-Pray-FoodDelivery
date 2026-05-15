@@ -7,42 +7,27 @@
         "type": "graph",
         "title": "HTTP request rate",
         "targets": [
-          { "expr": "rate(http_server_requests_seconds_count{job=\"delivery-service\"}[5m])" }
+          {
+            "expr": "rate(http_server_requests_seconds_count{job=\"delivery-service\"}[5m])"
+          }
         ]
       },
       {
         "type": "graph",
         "title": "HTTP latency P99",
         "targets": [
-          { "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m]))" }
+          {
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m]))"
+          }
         ]
       },
       {
         "type": "graph",
         "title": "HikariCP active connections",
         "targets": [
-          { "expr": "hikaricp_connections_active{job=\"delivery-service\"}" }
-        ]
-      },
-      {
-        "type": "logs",
-        "title": "Error rate (LogQL)",
-        "targets": [
-          { "expr": "{service=\"delivery-service\"} |= \"ERROR\"" }
-        ]
-      },
-      {
-        "type": "logs",
-        "title": "order.completed audit",
-        "targets": [
-          { "expr": "{service=\"delivery-service\"} |= \"order.completed\"" }
-        ]
-      },
-      {
-        "type": "logs",
-        "title": "delivery.publish audit",
-        "targets": [
-          { "expr": "{service=\"delivery-service\"} |= \"sent delivery.created\" or {service=\"delivery-service\"} |= \"sent delivery.cancelled\"" }
+          {
+            "expr": "hikaricp_connections_active{job=\"delivery-service\"}"
+          }
         ]
       }
     ]
