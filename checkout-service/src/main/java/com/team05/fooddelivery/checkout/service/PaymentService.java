@@ -19,6 +19,7 @@ import com.team05.fooddelivery.checkout.dto.RefundResult;
 import com.team05.fooddelivery.checkout.strategy.NoRefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategySelector;
+import com.team05.fooddelivery.contracts.dto.UserDTO;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.model.mongo.PaymentAuditEvent;
 import com.team05.shared.observer.EntityObserver;
@@ -34,15 +35,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.team05.fooddelivery.contracts.feign.UserServiceClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class PaymentService {
@@ -54,14 +53,19 @@ public class PaymentService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final RefundStrategySelector refundStrategySelector;
     private final CacheManager cacheManager;
+    private final UserServiceClient userServiceClient;
 
-    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager) {
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
+
+    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager, UserServiceClient userServiceClient) {
         this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
         this.refundStrategySelector = refundStrategySelector;
         this.cacheManager = cacheManager;
+        this.userServiceClient = userServiceClient;
         this.observers.add(
                 new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT)
         );
@@ -785,5 +789,83 @@ public class PaymentService {
         notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
+    }
+
+    /**
+     * Return the total amount + per-method breakdown of COMPLETED payments for
+     * the given user within an optional date range.
+     *
+     * @param userId    the user whose payments to aggregate; verified via Feign
+     * @param startDate inclusive start date (nullable)
+     * @param endDate   inclusive end date (nullable)
+     * @throws ResponseStatusException 404 if the user is unknown to user-service
+     */
+    public UserPaymentTotalDTO getUserPaymentTotal(Long userId,
+                                                   LocalDate startDate,
+                                                   LocalDate endDate) {
+        log.info("S5-READ-DB user payment total requested userId={} startDate={} endDate={}",
+                userId, startDate, endDate);
+
+        // 1) Validate the user exists via Feign (NOT via the local DB anymore).
+        verifyUserExists(userId);
+
+        // 2) Local aggregation over checkout-postgres.
+        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
+        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
+
+        List<Object[]> rows = paymentRepository
+                .findCompletedPaymentTotalsByUserAndDateRange(userId, start, end);
+
+        long totalPayments = 0L;
+        double totalAmount = 0.0;
+        Map<String, Double> breakdown = new LinkedHashMap<>();
+
+        for (Object[] row : rows) {
+            String method = String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            double sum = toDouble(row[2]);
+
+            totalPayments += count;
+            totalAmount   += sum;
+            breakdown.merge(method, sum, Double::sum);
+        }
+
+        log.info("S5-READ-DB user payment total computed userId={} totalPayments={} totalAmount={} methods={}",
+                userId, totalPayments, totalAmount, breakdown.keySet());
+
+        return UserPaymentTotalDTO.builder()
+                .userId(userId)
+                .startDate(startDate)
+                .endDate(endDate)
+                .totalPayments(totalPayments)
+                .totalAmount(totalAmount)
+                .methodBreakdown(breakdown)
+                .build();
+    }
+
+    private void verifyUserExists(Long userId) {
+        try {
+            UserDTO user = userServiceClient.getUser(userId);
+            if (user == null || user.id() == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found");
+            }
+        } catch (ResponseStatusException rse) {
+            // Already shaped correctly (e.g. by FeignConfig.ErrorDecoder on 404).
+            throw rse;
+        } catch (Exception ex) {
+            // Anything else (timeout, connection refused, retries exhausted) is a 502.
+            log.warn("Feign call to user-service failed userId={} error={}", userId, ex.toString());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "user-service unavailable while verifying user " + userId,
+                    ex);
+        }
+    }
+
+    private static double toDouble(Object o) {
+        if (o == null) return 0.0;
+        if (o instanceof BigDecimal bd) return bd.doubleValue();
+        if (o instanceof Number n) return n.doubleValue();
+        return Double.parseDouble(o.toString());
     }
 }

@@ -6,32 +6,32 @@ import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
-import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
-import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
-import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
-import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
+
     private final PaymentService paymentService;
 
+
     public PaymentController(PaymentService paymentService) {
+
         this.paymentService = paymentService;
     }
     // Payment CRUD
@@ -164,6 +164,17 @@ public class PaymentController {
             @PathVariable Long id,
             @RequestBody RefundRequest refundRequest) {
         return paymentService.processOrderRefundWithDeliveryFeeHandling(id, refundRequest);
+    }
+
+    @GetMapping("/user/{userId}/total")
+    public ResponseEntity<UserPaymentTotalDTO> getUserPaymentTotal(
+            @PathVariable Long userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        log.info("HTTP GET /api/payments/user/{}/total startDate={} endDate={}", userId, startDate, endDate);
+        UserPaymentTotalDTO body = paymentService.getUserPaymentTotal(userId, startDate, endDate);
+        return ResponseEntity.ok(body);
     }
 
 }
