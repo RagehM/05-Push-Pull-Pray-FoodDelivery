@@ -25,9 +25,8 @@ services:
       retries: 5
       start_period: 10s
 
-  # [S5-READ-DB] Isolated DB for checkout-service (talabatdb-checkout)
   checkout-postgres:
-    image: postgres:16-alpine
+    image: postgres:17
     container_name: fooddelivery-checkout-db
     ports:
       - "5435:5432"
@@ -213,12 +212,10 @@ services:
     ports:
       - "8085:8080"
     environment:
-      # [S5-READ-DB] Use isolated checkout-postgres instead of the shared DB
       SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
-      # Feign URLs (resolvable inside the docker network)
       FEIGN_USER-SERVICE_URL: http://user-service:8080
       FEIGN_ORDER-SERVICE_URL: http://order-service:8080
       FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080

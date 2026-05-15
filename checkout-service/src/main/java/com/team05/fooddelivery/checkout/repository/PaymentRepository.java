@@ -83,10 +83,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
     Optional<Payment> findByIdWithOffers(@Param("id") Long id);
 
-    // [S5-READ-DB / S1-F6] Sum of COMPLETED payments for a user in an optional date range.
-    // Pure checkout-postgres query — no cross-DB JOINs. User existence is verified
-    // via Feign -> user-service in the service layer.
-    // COALESCE ensures we return 0 (not NULL) when the user has no matching payments.
     @Query(value = "SELECT COALESCE(SUM(p.amount), 0) " +
                    "FROM payments p " +
                    "WHERE p.user_id = :userId AND p.status = 'COMPLETED' " +

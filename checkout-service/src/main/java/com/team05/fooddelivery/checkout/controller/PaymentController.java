@@ -167,9 +167,6 @@ public class PaymentController {
         return paymentService.processOrderRefundWithDeliveryFeeHandling(id, refundRequest);
     }
 
-    // [S5-READ-DB / S1-F6] GET /api/payments/user/{userId}/total?startDate={d}&endDate={d}
-    // Returns total COMPLETED payment amount for this user in the date range.
-    // 0.0 if no payments.
     @GetMapping("/user/{userId}/total")
     public ResponseEntity<BigDecimal> getUserPaymentTotal(
             @PathVariable Long userId,

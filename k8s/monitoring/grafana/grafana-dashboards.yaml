@@ -16,12 +16,6 @@ data:
   # S4-INFRA owner needs to fill this
   delivery-service-dashboard.json: |
     {}
-  # [S5-READ-DB] checkout-service dashboard.
-  # Contains 4 LogQL panels (>= 3 required by the rubric):
-  #   1. Log rate by level (ERROR / WARN / INFO)
-  #   2. Error log stream (last hour)
-  #   3. Feign upstream failures over time
-  #   4. /api/payments/user/{userId}/total request rate
   checkout-service-dashboard.json: |
     {
       "title": "checkout-service",

@@ -791,29 +791,14 @@ public class PaymentService {
         return ResponseEntity.ok(savedPayment);
     }
 
-    /**
-     * [S5-READ-DB / S1-F6] Total COMPLETED payment amount for this user in the
-     * given date range. Returns {@link BigDecimal#ZERO} if the user has no
-     * matching payments. User existence is verified via Feign so checkout-service
-     * never reads user-service's database directly.
-     *
-     * @param userId    the user whose payments to aggregate; verified via Feign
-     * @param startDate inclusive start date (nullable)
-     * @param endDate   inclusive end date (nullable)
-     * @throws ResponseStatusException 404 if the user is unknown to user-service,
-     *                                 403 if the caller may not view this user,
-     *                                 502 if user-service is unreachable
-     */
     public BigDecimal getUserPaymentTotal(Long userId,
                                           LocalDate startDate,
                                           LocalDate endDate) {
-        log.info("S5-READ-DB user payment total requested userId={} startDate={} endDate={}",
+        log.info("user payment total requested userId={} startDate={} endDate={}",
                 userId, startDate, endDate);
 
-        // 1) Validate the user exists via Feign (NOT via the local DB anymore).
         verifyUserExists(userId);
 
-        // 2) Local aggregation over checkout-postgres.
         LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
         LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
 
@@ -823,20 +808,10 @@ public class PaymentService {
             total = BigDecimal.ZERO;
         }
 
-        log.info("S5-READ-DB user payment total computed userId={} total={}", userId, total);
+        log.info("user payment total computed userId={} total={}", userId, total);
         return total;
     }
 
-    /**
-     * [S5-READ-DB / Section 2.4] Verify that {@code userId} exists by calling user-service via Feign.
-     *
-     * Error-handling pattern follows the rubric: catch {@code FeignException.NotFound}
-     * explicitly, then {@code FeignException} as the catch-all for anything else
-     * (post-retry 5xx, timeouts, connection refused, …). Specific subtypes like
-     * {@code FeignException.Forbidden} are handled in between so the user-service
-     * privacy guard (CUSTOMER asking about another user) propagates as a 403 rather
-     * than being mislabelled 502.
-     */
     private void verifyUserExists(Long userId) {
         try {
             UserDTO user = userServiceClient.getUser(userId);
@@ -849,7 +824,6 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Cannot view user " + userId, e);
         } catch (feign.FeignException e) {
-            // Includes timeouts, connection refused, post-retry 5xx, etc.
             log.warn("user-service unavailable for user {}: {}", userId, e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "user-service unavailable while verifying user " + userId, e);

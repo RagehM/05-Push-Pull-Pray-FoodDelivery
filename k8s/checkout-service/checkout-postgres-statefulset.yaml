@@ -1,6 +1,3 @@
-# [S5-READ-DB] Stateful, isolated postgres for checkout-service.
-# One replica is plenty for the project workload; the StatefulSet + PVC
-# pattern is used so storage is stable across restarts.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -11,7 +8,7 @@ metadata:
     component: database
     feature: S5-READ-DB
 spec:
-  serviceName: checkout-postgres        # must match the headless service
+  serviceName: checkout-postgres
   replicas: 1
   selector:
     matchLabels:
@@ -26,7 +23,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: postgres
-          image: postgres:16-alpine
+          image: postgres:17
           imagePullPolicy: IfNotPresent
           ports:
             - name: postgres
