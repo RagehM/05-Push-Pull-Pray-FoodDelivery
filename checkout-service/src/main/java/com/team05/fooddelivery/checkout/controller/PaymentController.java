@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -166,15 +167,18 @@ public class PaymentController {
         return paymentService.processOrderRefundWithDeliveryFeeHandling(id, refundRequest);
     }
 
+    // [S5-READ-DB / S1-F6] GET /api/payments/user/{userId}/total?startDate={d}&endDate={d}
+    // Returns total COMPLETED payment amount for this user in the date range.
+    // 0.0 if no payments.
     @GetMapping("/user/{userId}/total")
-    public ResponseEntity<UserPaymentTotalDTO> getUserPaymentTotal(
+    public ResponseEntity<BigDecimal> getUserPaymentTotal(
             @PathVariable Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
         log.info("HTTP GET /api/payments/user/{}/total startDate={} endDate={}", userId, startDate, endDate);
-        UserPaymentTotalDTO body = paymentService.getUserPaymentTotal(userId, startDate, endDate);
-        return ResponseEntity.ok(body);
+        BigDecimal total = paymentService.getUserPaymentTotal(userId, startDate, endDate);
+        return ResponseEntity.ok(total);
     }
 
 }

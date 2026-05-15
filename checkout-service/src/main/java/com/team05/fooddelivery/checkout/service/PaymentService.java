@@ -792,17 +792,21 @@ public class PaymentService {
     }
 
     /**
-     * Return the total amount + per-method breakdown of COMPLETED payments for
-     * the given user within an optional date range.
+     * [S5-READ-DB / S1-F6] Total COMPLETED payment amount for this user in the
+     * given date range. Returns {@link BigDecimal#ZERO} if the user has no
+     * matching payments. User existence is verified via Feign so checkout-service
+     * never reads user-service's database directly.
      *
      * @param userId    the user whose payments to aggregate; verified via Feign
      * @param startDate inclusive start date (nullable)
      * @param endDate   inclusive end date (nullable)
-     * @throws ResponseStatusException 404 if the user is unknown to user-service
+     * @throws ResponseStatusException 404 if the user is unknown to user-service,
+     *                                 403 if the caller may not view this user,
+     *                                 502 if user-service is unreachable
      */
-    public UserPaymentTotalDTO getUserPaymentTotal(Long userId,
-                                                   LocalDate startDate,
-                                                   LocalDate endDate) {
+    public BigDecimal getUserPaymentTotal(Long userId,
+                                          LocalDate startDate,
+                                          LocalDate endDate) {
         log.info("S5-READ-DB user payment total requested userId={} startDate={} endDate={}",
                 userId, startDate, endDate);
 
@@ -813,52 +817,42 @@ public class PaymentService {
         LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
         LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
 
-        List<Object[]> rows = paymentRepository
-                .findCompletedPaymentTotalsByUserAndDateRange(userId, start, end);
-
-        long totalPayments = 0L;
-        double totalAmount = 0.0;
-        Map<String, Double> breakdown = new LinkedHashMap<>();
-
-        for (Object[] row : rows) {
-            String method = String.valueOf(row[0]);
-            long count = ((Number) row[1]).longValue();
-            double sum = toDouble(row[2]);
-
-            totalPayments += count;
-            totalAmount   += sum;
-            breakdown.merge(method, sum, Double::sum);
+        BigDecimal total = paymentRepository
+                .sumCompletedPaymentsByUserAndDateRange(userId, start, end);
+        if (total == null) {
+            total = BigDecimal.ZERO;
         }
 
-        log.info("S5-READ-DB user payment total computed userId={} totalPayments={} totalAmount={} methods={}",
-                userId, totalPayments, totalAmount, breakdown.keySet());
-
-        return UserPaymentTotalDTO.builder()
-                .userId(userId)
-                .startDate(startDate)
-                .endDate(endDate)
-                .totalPayments(totalPayments)
-                .totalAmount(totalAmount)
-                .methodBreakdown(breakdown)
-                .build();
+        log.info("S5-READ-DB user payment total computed userId={} total={}", userId, total);
+        return total;
     }
 
+    /**
+     * [S5-READ-DB / Section 2.4] Verify that {@code userId} exists by calling user-service via Feign.
+     *
+     * Error-handling pattern follows the rubric: catch {@code FeignException.NotFound}
+     * explicitly, then {@code FeignException} as the catch-all for anything else
+     * (post-retry 5xx, timeouts, connection refused, …). Specific subtypes like
+     * {@code FeignException.Forbidden} are handled in between so the user-service
+     * privacy guard (CUSTOMER asking about another user) propagates as a 403 rather
+     * than being mislabelled 502.
+     */
     private void verifyUserExists(Long userId) {
         try {
             UserDTO user = userServiceClient.getUser(userId);
             if (user == null || user.id() == null) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found");
             }
-        } catch (ResponseStatusException rse) {
-            // Already shaped correctly (e.g. by FeignConfig.ErrorDecoder on 404).
-            throw rse;
-        } catch (Exception ex) {
-            // Anything else (timeout, connection refused, retries exhausted) is a 502.
-            log.warn("Feign call to user-service failed userId={} error={}", userId, ex.toString());
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "user-service unavailable while verifying user " + userId,
-                    ex);
+        } catch (feign.FeignException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found", e);
+        } catch (feign.FeignException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot view user " + userId, e);
+        } catch (feign.FeignException e) {
+            // Includes timeouts, connection refused, post-retry 5xx, etc.
+            log.warn("user-service unavailable for user {}: {}", userId, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "user-service unavailable while verifying user " + userId, e);
         }
     }
 

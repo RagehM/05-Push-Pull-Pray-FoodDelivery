@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -82,18 +83,17 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
     Optional<Payment> findByIdWithOffers(@Param("id") Long id);
 
-    // [S5-READ-DB] Aggregate COMPLETED payments for a user in an optional date range.
-    // Pure checkout-postgres query — no cross-DB JOINs. User existence is verified via
-    // Feign -> user-service in the service layer.
-    // Returns Object[] rows: [method (String), count (Long), sum (Numeric)]
-    @Query(value = "SELECT p.method, COUNT(p.id), COALESCE(SUM(p.amount), 0) " +
+    // [S5-READ-DB / S1-F6] Sum of COMPLETED payments for a user in an optional date range.
+    // Pure checkout-postgres query — no cross-DB JOINs. User existence is verified
+    // via Feign -> user-service in the service layer.
+    // COALESCE ensures we return 0 (not NULL) when the user has no matching payments.
+    @Query(value = "SELECT COALESCE(SUM(p.amount), 0) " +
                    "FROM payments p " +
                    "WHERE p.user_id = :userId AND p.status = 'COMPLETED' " +
                    "  AND (CAST(:startDate AS timestamp) IS NULL OR p.created_at >= CAST(:startDate AS timestamp)) " +
-                   "  AND (CAST(:endDate   AS timestamp) IS NULL OR p.created_at <= CAST(:endDate   AS timestamp)) " +
-                   "GROUP BY p.method",
+                   "  AND (CAST(:endDate   AS timestamp) IS NULL OR p.created_at <= CAST(:endDate   AS timestamp))",
            nativeQuery = true)
-    List<Object[]> findCompletedPaymentTotalsByUserAndDateRange(
+    BigDecimal sumCompletedPaymentsByUserAndDateRange(
             @Param("userId") Long userId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
