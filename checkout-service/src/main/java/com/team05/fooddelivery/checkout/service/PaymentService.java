@@ -24,12 +24,8 @@ import com.team05.fooddelivery.contracts.dto.OrderDTO;
 import com.team05.fooddelivery.contracts.dto.RestaurantDTO;
 import com.team05.fooddelivery.contracts.dto.UserDTO;
 import org.springframework.util.StopWatch;
-import com.team05.fooddelivery.contracts.events.OrderCancelledEvent;
-import com.team05.fooddelivery.contracts.events.OrderCompletedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentCompletedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentFailedEvent;
-import com.team05.fooddelivery.contracts.events.PaymentInitiatedEvent;
-import com.team05.fooddelivery.contracts.events.PaymentRefundedEvent;
 import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.contracts.feign.RestaurantServiceClient;
 import com.team05.fooddelivery.contracts.feign.UserServiceClient;
@@ -834,6 +830,70 @@ public class PaymentService {
             result.add(new PaymentMethodDTO(entry.getKey(), success, failure, rate, total));
         }
         return result;
+    }
+
+    @Transactional
+    public Payment createPendingPayment(Long orderId, Long userId, java.math.BigDecimal totalAmount) {
+        Optional<Payment> existing = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
+        if (existing.isPresent()) {
+            log.info("Idempotency: payment already exists for orderId={} (status={}) — skipping creation",
+                    orderId, existing.get().getStatus());
+            return existing.get();
+        }
+
+        fetchUserOrThrow(userId);
+
+        Payment payment = new Payment();
+        payment.setOrderId(orderId);
+        payment.setUserId(userId);
+        payment.setAmount(totalAmount != null ? totalAmount.doubleValue() : 0.0);
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setMethod(PaymentMethod.CASH_ON_DELIVERY);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        java.util.Map<String, Object> auditPayload = new java.util.HashMap<>();
+        auditPayload.put("paymentId", savedPayment.getId());
+        auditPayload.put("amount", savedPayment.getAmount());
+        auditPayload.put("method", savedPayment.getMethod().name());
+        notifyObservers("PAYMENT_CREATED", auditPayload);
+
+        log.info("Payment {} saved with status=PENDING for orderId={}", savedPayment.getId(), orderId);
+        return savedPayment;
+    }
+
+    @Transactional
+    public Optional<Payment> refundPaymentForCancelledOrder(Long orderId) {
+        Optional<Payment> paymentOpt = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
+        if (paymentOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Payment payment = paymentOpt.get();
+        if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.COMPLETED) {
+            log.info("Payment {} for orderId={} is already {} — skipping refund",
+                    payment.getId(), orderId, payment.getStatus());
+            return Optional.empty();
+        }
+
+        java.util.Map<String, Object> details = payment.getTransactionDetails();
+        if (details == null) details = new java.util.HashMap<>();
+        details.put("refundReason", "order_cancelled");
+        details.put("refundedAt", LocalDateTime.now().toString());
+        payment.setTransactionDetails(details);
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        Payment saved = paymentRepository.save(payment);
+
+        java.util.Map<String, Object> auditPayload = new java.util.HashMap<>();
+        auditPayload.put("paymentId", saved.getId());
+        auditPayload.put("amount", saved.getAmount());
+        auditPayload.put("method", saved.getMethod().name());
+        auditPayload.put("details", details);
+        notifyObservers("REFUNDED", auditPayload);
+
+        log.info("Payment {} saved with status=REFUNDED for orderId={}", saved.getId(), orderId);
+        return Optional.of(saved);
     }
 
     // [S5-F12] Process Order Refund with Delivery Fee Handling
