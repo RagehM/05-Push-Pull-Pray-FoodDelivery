@@ -47,6 +47,12 @@ public class Delivery {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "restaurant_name")
+    private String restaurantName;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @Column(columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> metadata = new HashMap<>();
@@ -111,6 +117,22 @@ public class Delivery {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getRestaurantName() {
+        return restaurantName;
+    }
+
+    public void setRestaurantName(String restaurantName) {
+        this.restaurantName = restaurantName;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
     }
 
     public Map<String, Object> getMetadata() {
