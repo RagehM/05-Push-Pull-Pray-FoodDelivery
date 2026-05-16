@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.order.rabbit;
+package com.team05.fooddelivery.order.messaging.consumers;
 
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -23,22 +23,23 @@ public class PaymentEventListener {
     
     @RabbitHandler
     public void handlePaymentInitiatedEvent(PaymentInitiatedEvent event) {
-        // orderService.handlePaymentInitiatedEvent(event);
+        orderService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.initiated");
     }
 
     @RabbitHandler
     public void handlePaymentCompletedEvent(PaymentCompletedEvent event) {
-        // orderService.handlePaymentCompletedEvent(event);
     }
 
     @RabbitHandler
     public void handlePaymentFailedEvent(PaymentFailedEvent event) {
         // orderService.handlePaymentFailedEvent(event);
+        System.out.println("Payment Failed Event Received");
     }
 
     @RabbitHandler
     public void handlePaymentRefundedEvent(PaymentRefundedEvent event) {
         // orderService.handlePaymentRefundedEvent(event);
+        System.out.println("Payment Refunded Event Received");
     }
 
 

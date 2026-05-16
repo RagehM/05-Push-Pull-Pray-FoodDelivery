@@ -9,11 +9,11 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.messaging.publishers.OrderPublisher;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
-import com.team05.fooddelivery.order.rabbit.OrderPublisher;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
@@ -65,6 +65,8 @@ public class OrderService {
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
 
+    private Map<Integer, String> pendingPaymentAndDeliveryEvents;
+
     public OrderService(OrderRepository orderRepository,
                         MongoOrderEventRepository mongoOrderEventRepository,
                         UserNodeRepository userNodeRepository,
@@ -80,6 +82,8 @@ public class OrderService {
         this.observers.add(
                 new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
+
+        this.pendingPaymentAndDeliveryEvents = new HashMap<>();
     }
     // [S3-F1] Search Orders by Status and Date Range
     @Cacheable(value = "order-service::S3-F1", key = "{#status, #startDate.toString(), #endDate.toString()}")
@@ -233,7 +237,7 @@ public class OrderService {
         if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
 
-        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
+        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETEING
         foundOrder.setDeliveredAt(LocalDateTime.now());
 
         if (foundOrder.getTotalAmount() == null || foundOrder.getTotalAmount() == 0) {
@@ -638,6 +642,53 @@ public class OrderService {
     //     }
     // }
 
+    // MS3 Saga Awiting Payment
+
+    @Transactional
+    public void processDeliveryCreatedAndPaymentInitiatedEvent(Long orderId, String receivedEvent){
+        // Read from the list of pending events
+        String existingEvent = pendingPaymentAndDeliveryEvents.get(orderId.hashCode());
+
+        // If no event is there at all, add it and wait for the other event
+        if (existingEvent == null) {
+            pendingPaymentAndDeliveryEvents.put(orderId.hashCode(), receivedEvent);
+            return;
+        }
+
+        // This means the same event was received twice, which should not happen. Ignore.
+        if (existingEvent.equals(receivedEvent)) {
+            return;
+        }
+
+        // If we have both payment and delivery events, we can proceed with the completion of the order
+        if ((existingEvent.equals("payment.completed") && receivedEvent.equals("delivery.created")) ||
+            (existingEvent.equals("delivery.created") && receivedEvent.equals("payment.completed"))) {
+                // Proceed with order completion logic, e.g. update
+                Order order = getOrderById(orderId);
+                order.setStatus(OrderStatusEnum.PAYMENT_PENDING);
+                orderRepository.save(order);
+
+                // Remove the entry from pending events
+                pendingPaymentAndDeliveryEvents.remove(orderId.hashCode());
+            }
+
+
+    }
+
+    @Transactional
+    public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
+        Order order = getOrderById(orderId);
+        if (receivedEvent.equals("payment.completed")) {
+            order.setStatus(OrderStatusEnum.PAID);
+            orderRepository.save(order);
+        } else if (receivedEvent.equals("payment.failed")) {
+            order.setStatus(OrderStatusEnum.PAYMENT_FAILED);
+            orderRepository.save(order);
+        } else if (receivedEvent.equals("payment.refunded")) {
+            order.setStatus(OrderStatusEnum.REFUNDED);
+            orderRepository.save(order);
+        }
+    }
 
     // [CRUD]
     //// Get order by ID

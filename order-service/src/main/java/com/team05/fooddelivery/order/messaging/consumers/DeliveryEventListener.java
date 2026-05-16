@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.order.rabbit;
+package com.team05.fooddelivery.order.messaging.consumers;
 
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,6 +18,6 @@ public class DeliveryEventListener {
 
     @RabbitHandler
     public void handleDeliveryCreatedEvent(DeliveryCreatedEvent event) {
-        // orderService.handleDeliveryCreatedEvent(event);
+        orderService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "delivery.created");
     }
 }
