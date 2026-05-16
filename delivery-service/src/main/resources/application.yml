@@ -61,6 +61,8 @@ jwt:
 feign:
   order-service:
     url: http://order-service:8080
+  restaurant-service:
+    url: http://restaurant-service:8080
 
 management:
   endpoints:
