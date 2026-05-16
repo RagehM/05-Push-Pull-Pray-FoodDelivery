@@ -9,17 +9,14 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.messaging.publishers.OrderPublisher;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
-import com.team05.fooddelivery.order.repository.neo4j.RestaurantNodeRepository;
 import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
-import com.team05.fooddelivery.order.model.neo4j.OrderedFrom;
-import com.team05.fooddelivery.order.model.neo4j.RestaurantNode;
-import com.team05.fooddelivery.order.model.neo4j.UserNode;
 import com.team05.fooddelivery.order.dto.InteractionRecordingResponseDTO;
 import com.team05.fooddelivery.contracts.dto.OrderSummaryDTO;
 import com.team05.fooddelivery.contracts.dto.RestaurantOrderSummaryDTO;
@@ -35,12 +32,7 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.annotation.Lazy;
-import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.core.type.TypeReference;
-
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
@@ -64,8 +56,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
@@ -80,17 +70,22 @@ public class OrderService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
     private final Neo4jClient neo4jClient;
+    private final OrderPublisher orderPublisher;
 
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
     private final RestaurantServiceClient restaurantServiceClient;
     private final UserServiceClient userServiceClient;
 
+
     public OrderService(OrderRepository orderRepository,
                         MongoOrderEventRepository mongoOrderEventRepository,
                         UserNodeRepository userNodeRepository,
                         OrderInteractionGraphService orderInteractionGraphService,
-                        Neo4jClient neo4jClient, RestaurantServiceClient restaurantServiceClient, UserServiceClient userServiceClient) {
+                        Neo4jClient neo4jClient, 
+                        RestaurantServiceClient restaurantServiceClient, 
+                        UserServiceClient userServiceClient,
+                        OrderPublisher orderPublisher) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.userNodeRepository = userNodeRepository;
@@ -98,6 +93,7 @@ public class OrderService {
         this.neo4jClient = neo4jClient;
         this.restaurantServiceClient = restaurantServiceClient;
         this.userServiceClient = userServiceClient;
+        this.orderPublisher = orderPublisher;
         this.observers.add(
                 new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
@@ -202,6 +198,29 @@ public class OrderService {
 
     }
     // [S3-F2] Confirm Order and Assign Restaurant (Transactional)
+
+    public Order confirmOrderAndAssignRestaurantWrapper(Long orderId, Long restaurantId) {
+        Order confirmedOrder = self.confirmOrderAndAssignRestaurant(orderId, restaurantId);
+
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("order", confirmedOrder);
+        params.put("orderId", confirmedOrder.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", confirmedOrder.getUserId());
+        details.put("restaurantId", confirmedOrder.getRestaurantId());
+        details.put("status", confirmedOrder.getStatus().name());
+        details.put("assignedRestaurantId", confirmedOrder.getRestaurantId());
+
+        params.put("details", details);
+
+        //// TODO: Look into the idempotency and deduplication of this event in case of retries and failures
+        notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
+        
+        return confirmedOrder;
+    }
+
     @Transactional
     @Caching(put = {
             @CachePut(value = "order-service::order", key = "#orderId"),
@@ -232,21 +251,8 @@ public class OrderService {
         order.setRestaurantId(restaurantId);
         order.setStatus(OrderStatusEnum.CONFIRMED);
 
-
         Order savedOrder = orderRepository.save(order);
-        Map<String, Object> params = new HashMap<>();
-        params.put("order", savedOrder);
-        params.put("orderId", savedOrder.getId());
 
-        Map<String, Object> details = new HashMap<>();
-        details.put("userId", savedOrder.getUserId());
-        details.put("restaurantId", savedOrder.getRestaurantId());
-        details.put("status", savedOrder.getStatus().name());
-        details.put("assignedRestaurantId", restaurantId);
-
-        params.put("details", details);
-
-        notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
         return savedOrder;
 
     }
@@ -289,6 +295,31 @@ public class OrderService {
                 .build();
     }
     // [S3-F4] Deliver Order
+    public Order deliverOrderWrapper(Long id){
+        Order deliveredOrder = self.deliverOrder(id);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("order", deliveredOrder);
+        params.put("orderId", deliveredOrder.getId());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("userId", deliveredOrder.getUserId());
+        details.put("restaurantId", deliveredOrder.getRestaurantId());
+        details.put("status", deliveredOrder.getStatus().name());
+        details.put("deliveredAt", deliveredOrder.getDeliveredAt());
+        details.put("totalAmount", deliveredOrder.getTotalAmount());
+
+        params.put("details", details);
+
+        notifyObservers(OrderEventActions.ORDER_DELIVERED, params);
+
+        // TODO: Look into the idempotency and dedupliccation
+        orderPublisher.publishOrderCompletedEvent(deliveredOrder);
+
+        return deliveredOrder;
+    }
+
+
     @Transactional
     @Caching(put = {
             @CachePut(value = "order-service::order", key = "#id"),
@@ -298,12 +329,17 @@ public class OrderService {
             @CacheEvict(value = "order-service::S3-F9", key = "#id"),
     })
     public Order deliverOrder(Long id) {
-        Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        //// TODO: Add authentication and authorization checks to ensure only the delivery person assigned to the order or an admin can mark the order as delivered
+
+
+        // Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        // Replaced above line with getOrderById to use caching when viable
+        Order foundOrder = getOrderById(id);
 
         if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
 
-        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
+        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETEING
         foundOrder.setDeliveredAt(LocalDateTime.now());
 
         if (foundOrder.getTotalAmount() == null || foundOrder.getTotalAmount() == 0) {
@@ -315,20 +351,6 @@ public class OrderService {
         // Create payment record with status PENDING. Save order. Return the order after the update.
         orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
         Order savedOrder = orderRepository.save(foundOrder);
-        Map<String, Object> params = new HashMap<>();
-        params.put("order", savedOrder);
-        params.put("orderId", savedOrder.getId());
-
-        Map<String, Object> details = new HashMap<>();
-        details.put("userId", savedOrder.getUserId());
-        details.put("restaurantId", savedOrder.getRestaurantId());
-        details.put("status", savedOrder.getStatus().name());
-        details.put("deliveredAt", savedOrder.getDeliveredAt());
-        details.put("totalAmount", savedOrder.getTotalAmount());
-
-        params.put("details", details);
-
-        notifyObservers(OrderEventActions.ORDER_DELIVERED, params);
         return savedOrder;
 
 
@@ -379,6 +401,9 @@ public class OrderService {
             @CacheEvict(value = "delivery-service::S4-F10", allEntries = true)
     })
     public void cancelOrder(Long orderId) {
+        //// TODO: Add authentication and authorization checks to ensure only the user who placed the order or an admin can cancel the order
+
+
         //Get order through JPA default method findById, if order not found, throw HTTP 404 Not Found
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         //Check Status, if status != PLACED or CONFIRMED, throw HTTP 400 Bad Request
@@ -399,16 +424,9 @@ public class OrderService {
         params.put("details", details);
 
         notifyObservers(OrderEventActions.ORDER_CANCELLED, params);
-        //Update status of all order items to cancelled through repository
-        // // // try {
-        // // //     orderRepository.updateOrderItemsStatusByOrderId(orderId, OrderItemStatusEnum.CANCELLED);
-        // // // } catch (Exception e) {
-        // // //     System.err.println("Failed to cancel order items for orderId " + orderId + ": " + e.getMessage());
-        // // //     throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to cancel order items: " + e.getMessage());
-        // // // }
-        //Call SQL query from within orderRepository to update deliveryStatus to CANCELLED
         try {
-            orderRepository.cancelDeliveryByOrderId(orderId);
+            // orderRepository.cancelDeliveryByOrderId(orderId); Cross-service DB, refactored in MS3 to be done through RabbitMQ event
+            orderPublisher.publishOrderCancelledEvent(order, "user_requested");
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.LOCKED, "Failed to cancel delivery: " + e.getMessage());
         }
@@ -740,6 +758,21 @@ public class OrderService {
     //     }
     // }
 
+ 
+    @Transactional
+    public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
+        Order order = getOrderById(orderId);
+        if (receivedEvent.equals("payment.completed")) {
+            order.setStatus(OrderStatusEnum.PAID);
+            orderRepository.save(order);
+        } else if (receivedEvent.equals("payment.failed")) {
+            order.setStatus(OrderStatusEnum.PAYMENT_FAILED);
+            orderRepository.save(order);
+        } else if (receivedEvent.equals("payment.refunded")) {
+            order.setStatus(OrderStatusEnum.REFUNDED);
+            orderRepository.save(order);
+        }
+    }
 
     // [CRUD]
     //// Get order by ID

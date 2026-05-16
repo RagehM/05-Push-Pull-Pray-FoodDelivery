@@ -71,10 +71,6 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			@Param("end") LocalDateTime end
 	);
 
-	//// Check for the existence of order
-	@Query(value = "SELECT COUNT(*) > 0 FROM orders WHERE id = :orderId", nativeQuery = true)
-	boolean orderExists(@Param("orderId") Long orderId);
-
 	@Query(value = "SELECT * FROM deliveries d WHERE d.order_id = :orderId ORDER BY d.updated_at DESC LIMIT 1", nativeQuery = true)
 	Optional<Delivery> findLatestByOrderId(@Param("orderId") Long orderId);
 
@@ -139,82 +135,23 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
 			@Param("end") LocalDateTime end
 	);
 
-	@Query(value = """
-        SELECT COUNT(*)
-        FROM deliveries d
-        JOIN orders o ON d.order_id = o.id
-        WHERE (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
-          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
-        """, nativeQuery = true)
-	Number countTotalDeliveries(
-			@Param("start") LocalDateTime start,
-			@Param("end") LocalDateTime end
-	);
+    @Query("""
+    SELECT d
+    FROM Delivery d
+    WHERE (:start IS NULL OR d.updatedAt >= :start)
+      AND (:end IS NULL OR d.updatedAt <= :end)
+""")
+    List<Delivery> findAllInRange(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
-
-	@Query(value = """
-        SELECT AVG(minutes_taken)
-        FROM (
-            SELECT DISTINCT o.id,
-                   EXTRACT(EPOCH FROM
-                      (o.delivered_at - o.order_date)
-                   ) / 60.0 AS minutes_taken
-            FROM deliveries d
-            JOIN orders o ON d.order_id = o.id
-            WHERE o.status = 'DELIVERED'
-              AND o.delivered_at IS NOT NULL
-              AND (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
-              AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
-        ) x
-        """, nativeQuery = true)
-	Number averageDeliveryMinutes(
-			@Param("start") LocalDateTime start,
-			@Param("end") LocalDateTime end
-	);
-
-
-	@Query(value = """
-        SELECT COUNT(DISTINCT o.id)
-        FROM deliveries d
-        JOIN orders o ON d.order_id = o.id
-        WHERE o.status = 'DELIVERED'
-          AND (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
-          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
-        """, nativeQuery = true)
-	Number countDeliveredOrders(
-			@Param("start") LocalDateTime start,
-			@Param("end") LocalDateTime end
-	);
-
-
-	@Query(value = """
-        SELECT COUNT(DISTINCT o.id)
-        FROM deliveries d
-        JOIN orders o ON d.order_id = o.id
-        WHERE o.status = 'DELIVERED'
-          AND o.delivered_at IS NOT NULL
-          AND EXTRACT(EPOCH FROM
-              (o.delivered_at - o.order_date)
-          ) / 60.0 <= 45
-          AND (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
-          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
-        """, nativeQuery = true)
-	Number countOnTimeDeliveredOrders(
-			@Param("start") LocalDateTime start,
-			@Param("end") LocalDateTime end
-	);
-
-
-	@Query(value = """
-        SELECT d.status, COUNT(*)
-        FROM deliveries d
-        JOIN orders o ON d.order_id = o.id
-        WHERE (CAST(:start AS timestamp) IS NULL OR o.order_date >= CAST(:start AS timestamp))
-          AND (CAST(:end AS timestamp) IS NULL OR o.order_date <= CAST(:end AS timestamp))
-        GROUP BY d.status
-        """, nativeQuery = true)
-	List<Object[]> countByStatus(
-			@Param("start") LocalDateTime start,
-			@Param("end") LocalDateTime end
-	);
+    @Query("""
+        SELECT d
+        FROM Delivery d
+        WHERE d.orderId = :orderId
+          AND d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
+        ORDER BY d.updatedAt DESC
+    """)
+    Optional<Delivery> findActiveByOrderId(@Param("orderId") Long orderId);
 }
