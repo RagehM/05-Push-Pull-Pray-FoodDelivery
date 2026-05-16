@@ -1,0 +1,63 @@
+{
+  "title": "User Service Dashboard",
+  "uid": "user-service-dash",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "User Service - All Logs",
+      "description": "Full log stream for user-service",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{app=\"talabat\", service=\"user-service\", env=\"k8s\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 2,
+      "title": "User Service - Error Logs",
+      "description": "Only ERROR level logs from user-service",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{app=\"talabat\", service=\"user-service\", env=\"k8s\", level=\"ERROR\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 3,
+      "title": "User Service - Log Rate by Level",
+      "description": "Per-minute log rate grouped by log level",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum by (level) (rate({app=\"talabat\", service=\"user-service\", env=\"k8s\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{level}}"
+        }
+      ]
+    }
+  ]
+}
