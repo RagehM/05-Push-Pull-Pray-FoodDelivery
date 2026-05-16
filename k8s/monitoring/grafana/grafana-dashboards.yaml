@@ -1,4 +1,4 @@
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboards
@@ -18,4 +18,179 @@ data:
     {}
   # S5-INFRA owner needs to fill this
   checkout-service-dashboard.json: |
-    {}
+    {
+      "title": "checkout-service",
+      "uid": "checkout-service",
+      "schemaVersion": 38,
+      "tags": ["s5", "checkout-service"],
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "15s",
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "[LogQL] Log Volume Rate by Level",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (level) (rate({app=\"talabat\", service=\"checkout-service\"} | json [5m]))"
+            }
+          ],
+          "options": { "legend": { "displayMode": "table", "placement": "right" } }
+        },
+        {
+          "id": 2,
+          "type": "logs",
+          "title": "[LogQL] Real-Time ERROR Logs",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{app=\"talabat\", service=\"checkout-service\", level=\"ERROR\"} | json"
+            }
+          ],
+          "options": { "showTime": true, "wrapLogMessage": true, "dedupStrategy": "none" }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "[LogQL] Downstream Feign Outbound Failures",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({app=\"talabat\", service=\"checkout-service\"} | json | message =~ \".*(Feign error|unavailable|Exception).*\" [1m]))"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "[LogQL] S5-F10 Analytics Traffic Monitor",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({app=\"talabat\", service=\"checkout-service\"} | json | message =~ \".*HTTP GET /api/payments/user/.*/total.*\" [5m]))"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "[LogQL] S5-F4 Micro-Transaction Error Rate",
+          "description": "Monitors spikes in ERROR logs per minute specific to payment processing.",
+          "gridPos": { "x": 0, "y": 16, "w": 24, "h": 6 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "expr": "sum(rate({app=\"talabat\", service=\"checkout-service\", level=\"ERROR\"}[1m]))",
+              "legendFormat": "Errors/min",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": { "lineWidth": 2 }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "type": "logs",
+          "title": "[LogQL] RabbitMQ Event Audit — payment.events",
+          "description": "Lines emitted by saga publishers and consumers filtered by payment routing keys.",
+          "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "expr": "{app=\"talabat\", service=\"checkout-service\"} | json | routingKey =~ \"payment\\\\..*\"",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "logs",
+          "title": "[LogQL] Saga State Transitions — Order Journey Trace",
+          "description": "Filter all payment saga log lines by orderId to trace the complete transaction flow.",
+          "gridPos": { "x": 0, "y": 30, "w": 24, "h": 8 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "expr": "{app=\"talabat\", service=\"checkout-service\"} | json | orderId != \"\" | line_format \"[{{.level}}] orderId={{.orderId}} paymentId={{.paymentId}} routingKey={{.routingKey}} — {{.message}}\"",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "[PromQL] HTTP Server Latency Percentiles (S5-F4 & S5-F10)",
+          "description": "P95 and P99 response durations across endpoints to track processing delays.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 38 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{service=\"checkout-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P95: {{uri}}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{service=\"checkout-service\"}[5m])) by (le, uri))",
+              "legendFormat": "P99: {{uri}}",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "[PromQL] HikariCP Connection Pool Connection Allocation",
+          "description": "Active vs Max pool metrics tracking database saturation under concurrent SELECT FOR UPDATE locks.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 38 },
+          "targets": [
+            {
+              "expr": "hikaricp_connections_active{service=\"checkout-service\"}",
+              "legendFormat": "Active DB Connections",
+              "refId": "A"
+            },
+            {
+              "expr": "hikaricp_connections_max{service=\"checkout-service\"}",
+              "legendFormat": "Max Limit Pool Size",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "[PromQL] RabbitMQ Event Throughput — payment.saga-listener Queue",
+          "description": "Live production processing throughput monitoring counter increments from Actuator.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 46 },
+          "targets": [
+            {
+              "expr": "sum(rate(rabbitmq_messages_published_total{queue=\"payment.saga-listener\"}[5m]))",
+              "legendFormat": "Published/sec",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(rabbitmq_messages_delivered_total{queue=\"payment.saga-listener\"}[5m]))",
+              "legendFormat": "Consumed & Processed/sec",
+              "refId": "B"
+            }
+          ]
+        }
+      ]
+    }
