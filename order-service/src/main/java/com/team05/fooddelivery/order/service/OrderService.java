@@ -18,10 +18,6 @@ import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
 import com.team05.fooddelivery.order.dto.InteractionRecordingResponseDTO;
-import com.team05.fooddelivery.contracts.dto.RestaurantOrderSummaryDTO;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -642,31 +638,6 @@ public class OrderService {
     //     }
     // }
 
-
-    @Transactional(readOnly = true)
-    public RestaurantOrderSummaryDTO getRestaurantOrderSummary(Long restaurantId) {
-        Object[] row = orderRepository.aggregateOrdersByRestaurant(restaurantId);
-        long totalOrders = ((Number) row[0]).longValue();
-        double sum = ((Number) row[1]).doubleValue();
-        double avg = totalOrders > 0 ? sum / totalOrders : 0.0;
-        return new RestaurantOrderSummaryDTO(
-                totalOrders,
-                BigDecimal.valueOf(sum).setScale(2, RoundingMode.HALF_UP),
-                BigDecimal.valueOf(avg).setScale(2, RoundingMode.HALF_UP)
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public int getActiveOrderCountByRestaurant(Long restaurantId) {
-        List<OrderStatusEnum> active = List.of(
-                OrderStatusEnum.PLACED,
-                OrderStatusEnum.CONFIRMED,
-                OrderStatusEnum.PREPARING,
-                OrderStatusEnum.COMPLETING,
-                OrderStatusEnum.PAYMENT_PENDING
-        );
-        return (int) orderRepository.countActiveOrdersByRestaurant(restaurantId, active);
-    }
 
     // [CRUD]
     //// Get order by ID
