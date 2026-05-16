@@ -65,7 +65,6 @@ public class OrderService {
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
 
-    private Map<Integer, String> pendingPaymentAndDeliveryEvents;
 
     public OrderService(OrderRepository orderRepository,
                         MongoOrderEventRepository mongoOrderEventRepository,
@@ -82,8 +81,6 @@ public class OrderService {
         this.observers.add(
                 new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
-
-        this.pendingPaymentAndDeliveryEvents = new HashMap<>();
     }
     // [S3-F1] Search Orders by Status and Date Range
     @Cacheable(value = "order-service::S3-F1", key = "{#status, #startDate.toString(), #endDate.toString()}")
@@ -642,39 +639,7 @@ public class OrderService {
     //     }
     // }
 
-    // MS3 Saga Awiting Payment
-
-    @Transactional
-    public void processDeliveryCreatedAndPaymentInitiatedEvent(Long orderId, String receivedEvent){
-        // Read from the list of pending events
-        String existingEvent = pendingPaymentAndDeliveryEvents.get(orderId.hashCode());
-
-        // If no event is there at all, add it and wait for the other event
-        if (existingEvent == null) {
-            pendingPaymentAndDeliveryEvents.put(orderId.hashCode(), receivedEvent);
-            return;
-        }
-
-        // This means the same event was received twice, which should not happen. Ignore.
-        if (existingEvent.equals(receivedEvent)) {
-            return;
-        }
-
-        // If we have both payment and delivery events, we can proceed with the completion of the order
-        if ((existingEvent.equals("payment.completed") && receivedEvent.equals("delivery.created")) ||
-            (existingEvent.equals("delivery.created") && receivedEvent.equals("payment.completed"))) {
-                // Proceed with order completion logic, e.g. update
-                Order order = getOrderById(orderId);
-                order.setStatus(OrderStatusEnum.PAYMENT_PENDING);
-                orderRepository.save(order);
-
-                // Remove the entry from pending events
-                pendingPaymentAndDeliveryEvents.remove(orderId.hashCode());
-            }
-
-
-    }
-
+ 
     @Transactional
     public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
         Order order = getOrderById(orderId);
