@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.contracts.dto.OrderSummaryDTO;
 import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
 import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.user.dto.*;
@@ -336,7 +337,7 @@ public class UserService {
     public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 //
-        var orders = orderServiceClient.getUserOrderSummary(userId);
+        OrderSummaryDTO orders = orderServiceClient.getUserOrderSummary(userId);
 
         return UserOrderSummaryDTO.builder()
                 .userId(user.getId())
