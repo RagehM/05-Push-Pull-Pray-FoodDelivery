@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+// Routing Key -> order.completed
+// Listened to by: All other services
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record OrderCompletedEvent(
         Long orderId,

@@ -14,8 +14,7 @@ http:
     data: |-
       {
         "userId": 1,
-        "restaurantId": 1,
-        "status": "DELIVERED",
+        "status": "PLACED",
         "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},
@@ -23,7 +22,7 @@ http:
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDE0MjI4LCJleHAiOjE3NzgxMDA2Mjh9.B7Vc3K6N7zADkYxhoN6QyZtKL26mVwGM9E7oMnT722I
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTM0NjgxLCJleHAiOjE3NzkwMjEwODF9.HBPxLjQ9azLEYVcguRPHvcXmsHivixs1pasnD29irjc
 
 settings:
   encodeUrl: true
