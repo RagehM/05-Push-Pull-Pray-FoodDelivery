@@ -4,6 +4,7 @@ import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.dto.AuthResponse;
 import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
+import com.team05.fooddelivery.user.messaging.UserPublisher;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
@@ -29,11 +30,13 @@ public class AuthService {
     private final JwtConfigurationManager jwtConfig;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
+    private final UserPublisher publisher;
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService,AuthEventRepository authEventRepository) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, AuthEventRepository authEventRepository, UserPublisher publisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.publisher = publisher;
         this.jwtConfig = JwtConfigurationManager.getInstance();
         this.authEventRepository = authEventRepository;
         this.observers.add(
@@ -96,6 +99,8 @@ public class AuthService {
         user.setStatus(com.team05.fooddelivery.user.enums.UserStatus.ACTIVE);
         user.setPassword(passwordEncoder.encode(request.password()));
         userRepository.save(user);
+
+        publisher.publishRegisteredUser(user);
 
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
