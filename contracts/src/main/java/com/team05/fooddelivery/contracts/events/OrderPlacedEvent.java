@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
 
+// Routing Key -> order.placed
+// Listened to by: restaurant-service, delivery-service
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record OrderPlacedEvent(
         Long orderId,

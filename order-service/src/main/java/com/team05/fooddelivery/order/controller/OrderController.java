@@ -53,7 +53,7 @@ public class OrderController {
     // [S3-F4] Deliver order
     @PutMapping("/{id}/deliver")
     public Order deliverOrder(@PathVariable Long id) {
-        return orderService.deliverOrder(id);
+        return orderService.deliverOrderWrapper(id);
     }
     // [S3-F5]
     @GetMapping("/metadata/search")
