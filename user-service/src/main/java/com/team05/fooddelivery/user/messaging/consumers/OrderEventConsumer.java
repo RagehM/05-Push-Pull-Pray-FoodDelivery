@@ -1,14 +1,15 @@
 package com.team05.fooddelivery.user.messaging.consumers;
 
+import com.team05.fooddelivery.contracts.events.UserRegisteredEvent;
 import com.team05.fooddelivery.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OrderListener {
+public class OrderEventConsumer {
     private static final Logger log = LoggerFactory.getLogger(UserRegisteredEvent.class);
     private final UserService userService;
 
-    public OrderListener(UserService userService) {
+    public OrderEventConsumer(UserService userService) {
         this.userService = userService;
     }
 

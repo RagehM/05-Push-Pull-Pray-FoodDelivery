@@ -7,7 +7,7 @@ import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
-import com.team05.fooddelivery.user.messaging.UserPublisher;
+import com.team05.fooddelivery.user.messaging.publishers.UserEventPublisher;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
@@ -27,21 +27,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
-
-import static org.springframework.data.mongodb.repository.Aggregation.*;
 
 @Service
 public class UserService {
@@ -50,12 +46,12 @@ public class UserService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
     private final MongoTemplate mongoTemplate;
-    private final UserPublisher publisher;
+    private final UserEventPublisher publisher;
     private final OrderServiceClient orderServiceClient;
     private final CheckoutServiceClient checkoutServiceClient;
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate, UserPublisher publisher, OrderServiceClient orderServiceClient, CheckoutServiceClient checkoutServiceClient) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate, UserEventPublisher publisher, OrderServiceClient orderServiceClient, CheckoutServiceClient checkoutServiceClient) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;

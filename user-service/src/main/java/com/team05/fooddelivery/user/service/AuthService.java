@@ -4,7 +4,7 @@ import com.team05.fooddelivery.user.config.JwtConfigurationManager;
 import com.team05.fooddelivery.user.dto.AuthResponse;
 import com.team05.fooddelivery.user.dto.LoginRequest;
 import com.team05.fooddelivery.user.dto.RegisterRequest;
-import com.team05.fooddelivery.user.messaging.UserPublisher;
+import com.team05.fooddelivery.user.messaging.publishers.UserEventPublisher;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.UserRepository;
 import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
@@ -30,9 +30,9 @@ public class AuthService {
     private final JwtConfigurationManager jwtConfig;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
-    private final UserPublisher publisher;
+    private final UserEventPublisher publisher;
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, AuthEventRepository authEventRepository, UserPublisher publisher) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtService jwtService, AuthEventRepository authEventRepository, UserEventPublisher publisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;

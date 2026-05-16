@@ -8,15 +8,24 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Map;
 
 @Configuration
 public class RabbitConfig {
 
     public static final String USER_EXCHANGE = "user.events";
+    public static final String USER_SAGA_LISTENER_QUEUE = "user.order.saga-listener";
+    public static final String USER_SAGA_LISTENER_DLQ = "user.order.saga-listener.dlq";
+    public static final String USER_SAGA_LISTENER_DLX = "user.order.saga-listener.dlx";
 
 
     @Bean
@@ -25,24 +34,47 @@ public class RabbitConfig {
     }
 
     @Bean
-    Queue userRegisteredQueue() {
-        return QueueBuilder.durable("user.queue.registered")
+    TopicExchange userSagaDeadLetterExchange() {
+        return new TopicExchange(USER_SAGA_LISTENER_DLX, true, false);
+    }
+
+    @Bean
+    Queue userSageListenerQueue() {
+        return  QueueBuilder
+                .durable(USER_SAGA_LISTENER_QUEUE)
+                .withArgument(
+                        "x-dead-letter-exchange",
+                        USER_SAGA_LISTENER_DLX)
+                .withArgument(
+                        "x-dead-letter-routing-key",
+                        USER_SAGA_LISTENER_DLQ)
                 .build();
+
     }
 
     @Bean
-    Queue userDeactivatedQueue() {
-        return QueueBuilder.durable("user.queue.deactivated").build();
+    Queue userSageListenerDeadLetterQueue() {
+        return QueueBuilder.durable(USER_SAGA_LISTENER_DLQ).build();
     }
 
+
+
     @Bean
-    Binding userBinding(@Qualifier("userRegisteredQueue") Queue q, TopicExchange exchange) {
+    Binding userRegisteredBinding(@Qualifier("userSageListenerQueue") Queue q,@Qualifier("userExchange") TopicExchange exchange) {
         return BindingBuilder.bind(q).to(exchange).with("user.registered");
     }
 
     @Bean
-    Binding userDeactivatedBinding(@Qualifier("userDeactivatedQueue") Queue q, TopicExchange exchange) {
+    Binding userDeactivatedBinding(@Qualifier("userSageListenerQueue") Queue q,@Qualifier("userExchange") TopicExchange exchange) {
         return BindingBuilder.bind(q).to(exchange).with("user.deactivated");
+    }
+
+    @Bean
+    Binding userSagaListenerDeadLetterBinding(@Qualifier("userSageListenerDeadLetterQueue") Queue userSageListenerDeadLetterQueue,
+                                                 @Qualifier("userSagaDeadLetterExchange") TopicExchange userSagaDeadLetterExchange) {
+        return BindingBuilder.bind(userSageListenerDeadLetterQueue)
+                .to(userSagaDeadLetterExchange)
+                .with(USER_SAGA_LISTENER_DLQ);
     }
 
     @Bean
