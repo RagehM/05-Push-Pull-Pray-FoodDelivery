@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: checkout-service
-          image: checkout-service:latest
-          imagePullPolicy: IfNotPresent
+          image: 05-push-pull-pray-fooddelivery-checkout-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           envFrom:
@@ -39,14 +39,14 @@ spec:
                   key: POSTGRES_PASSWORD
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /api/payments/health
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /api/payments/health
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30

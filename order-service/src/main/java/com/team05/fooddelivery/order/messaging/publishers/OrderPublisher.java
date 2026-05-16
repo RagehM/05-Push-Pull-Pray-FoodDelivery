@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.order.rabbit;
+package com.team05.fooddelivery.order.messaging.publishers;
 
 import java.math.BigDecimal;
 
