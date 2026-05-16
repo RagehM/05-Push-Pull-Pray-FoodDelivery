@@ -254,6 +254,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
+      LOGGING_LOKI_URL: http://loki:3100/loki/api/v1/push
       FEIGN_USER-SERVICE_URL: http://user-service:8080
       FEIGN_ORDER-SERVICE_URL: http://order-service:8080
       FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
@@ -273,6 +274,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
+      LOGGING_LOKI_URL: http://loki:3100/loki/api/v1/push
     depends_on:
       delivery-postgres:
         condition: service_healthy
@@ -287,6 +289,7 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://user-postgres:5432/talabatdb-users
       SPRING_DATASOURCE_USERNAME: postgres
+      LOGGING_LOKI_URL: http://loki:3100/loki/api/v1/push
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
