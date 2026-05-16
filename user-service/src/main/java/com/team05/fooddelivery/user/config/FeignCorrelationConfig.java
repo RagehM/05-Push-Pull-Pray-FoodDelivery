@@ -1,0 +1,18 @@
+package com.team05.fooddelivery.user.config;
+
+import feign.RequestInterceptor;
+import org.slf4j.MDC;
+import org.springframework.context.annotation.Bean;
+
+public class FeignCorrelationConfig {
+@Bean
+public RequestInterceptor correlationIdInterceptor() {
+    return template -> {
+        String correlationId = MDC.get("correlationId");
+        if (correlationId != null) {
+            template.header("X-Correlation-ID", correlationId);
+        }
+    };
+}
+
+}
