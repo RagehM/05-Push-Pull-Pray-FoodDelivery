@@ -145,4 +145,13 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
+    @Query("""
+        SELECT d
+        FROM Delivery d
+        WHERE d.orderId = :orderId
+          AND d.status IN ('ASSIGNED', 'PICKED_UP', 'IN_TRANSIT')
+        ORDER BY d.updatedAt DESC
+    """)
+    Optional<Delivery> findActiveByOrderId(@Param("orderId") Long orderId);
 }

@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.team05.fooddelivery.contracts.dto.DeliveryDTO;
 import com.team05.fooddelivery.contracts.dto.OrderDTO;
 import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
@@ -195,6 +196,11 @@ public class DeliveryService {
 
         // Mongo logging is observational and must not block the Cassandra write path.
         notifyObservers("TRACKING_RECORDED", eventPayload);
+
+        Cache cache = cacheManager.getCache("delivery-service::delivery-active-status");
+        if (cache != null) {
+            cache.evict(delivery.getOrderId());
+        }
     }
 
     /**
@@ -206,6 +212,36 @@ public class DeliveryService {
     public Delivery getDeliveryById(Long id) {
         return deliveryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Cacheable(
+            cacheNames = "delivery-service::delivery-active-status",
+            key = "#orderId"
+    )
+    @Transactional(readOnly = true)
+    public DeliveryDTO getDeliveryActiveStatus(Long orderId) {
+
+        validateOrder(orderId);
+
+        Delivery delivery =
+                deliveryRepository.findActiveByOrderId(orderId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "No active delivery for order " + orderId
+                                )
+                        );
+
+        OrderDTO order =
+                orderServiceClient.getOrder(orderId);
+
+        return new DeliveryDTO(
+                delivery.getId(),
+                delivery.getOrderId(),
+                delivery.getStatus().toString(),
+                delivery.getDriverName(),
+                order.restaurantId()
+        );
     }
 
     /**

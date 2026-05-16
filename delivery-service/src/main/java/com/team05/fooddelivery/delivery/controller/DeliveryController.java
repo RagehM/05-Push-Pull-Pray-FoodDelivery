@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import com.team05.fooddelivery.contracts.dto.DeliveryDTO;
 import com.team05.fooddelivery.delivery.dto.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -136,6 +137,12 @@ public class DeliveryController {
             @RequestParam LocalDate endDate) {
         return deliveryService.getDeliveryPerformanceSummary(driverName, startDate, endDate);
     }
+
+    @GetMapping("deliveries/order/{orderId}/active")
+    public DeliveryDTO getActiveDeliveryStatys(@PathVariable Long orderId) {
+        return deliveryService.getDeliveryActiveStatus(orderId);
+    }
+
 
     @GetMapping("/analytics")
 //    @PreAuthorize("hasRole('CUSTOMER')")
