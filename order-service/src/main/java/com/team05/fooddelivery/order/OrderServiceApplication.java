@@ -5,6 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
+
+// Listens to Events: delivery.created, payment.initiated, payment.completed, payment.failed, payment.refunded
+
 @SpringBootApplication
 @EnableCaching
 @EnableFeignClients

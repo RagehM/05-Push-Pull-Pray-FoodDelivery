@@ -1,10 +1,10 @@
 package com.team05.fooddelivery.checkout.controller;
 
+import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.dto.PaymentDetailsDTO;
 import com.team05.fooddelivery.checkout.dto.PaymentMethodDTO;
 import com.team05.fooddelivery.checkout.dto.ProcessPaymentRequestDTO;
 import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
-import com.team05.fooddelivery.checkout.dto.*;
 import com.team05.fooddelivery.checkout.dto.CuisineRevenueDTO;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
 import com.team05.fooddelivery.checkout.dto.UserPaymentSummaryDTO;
@@ -14,10 +14,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.math.BigDecimal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -90,14 +93,28 @@ public class PaymentController {
         return ResponseEntity.ok(summary);
     }
 
+    // THIS ENDPOINT IS DEPRECATED IN M3
     // S5-F4: POST /api/payments/order/{orderId}
-    @PostMapping("/order/{orderId}")
-    public ResponseEntity<Payment> processPaymentForOrder(
-            @PathVariable Long orderId,
-            @RequestBody(required = false) ProcessPaymentRequestDTO dto,
+//    @PostMapping("/order/{orderId}")
+//    public ResponseEntity<Payment> processPaymentForOrder(
+//            @PathVariable Long orderId,
+//            @RequestBody(required = false) ProcessPaymentRequestDTO dto,
+//            @RequestParam(required = false) boolean simulateFailure) {
+//        authorizePaymentRequest(dto, null, null);
+//        Payment payment = paymentService.processPaymentForOrder(orderId, dto, simulateFailure);
+//        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+//    }
+
+    // M3 S5-F4: POST /api/payments/process
+    @PostMapping("/process")
+    public ResponseEntity<Payment> processPayment(
+            @RequestBody ProcessPaymentRequestDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long requesterUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String requesterRole,
             @RequestParam(required = false) boolean simulateFailure) {
-        Payment payment = paymentService.processPaymentForOrder(orderId, dto, simulateFailure);
-        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+        authorizePaymentRequest(dto, requesterUserId, requesterRole);
+        Payment payment = paymentService.processPaymentForOrder(dto.orderId(), dto, simulateFailure);
+        return ResponseEntity.ok(payment);
     }
 
     // S5-F5: POST /api/payments/{paymentId}/offers/{offerId}
@@ -113,8 +130,12 @@ public class PaymentController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
-        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
+        if (startDate == null || endDate == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end   = endDate.atTime(23, 59, 59);
 
         RevenueReportDTO report = paymentService.generateRevenueReport(start, end);
         return ResponseEntity.ok(report);
@@ -176,6 +197,20 @@ public class PaymentController {
         log.info("HTTP GET /api/payments/user/{}/total startDate={} endDate={}", userId, startDate, endDate);
         BigDecimal total = paymentService.getUserPaymentTotal(userId, startDate, endDate);
         return ResponseEntity.ok(total);
+    }
+
+    private void authorizePaymentRequest(ProcessPaymentRequestDTO dto, Long requesterUserId, String requesterRole) {
+        if ("ADMIN".equalsIgnoreCase(requesterRole)) {
+            return;
+        }
+
+        if (requesterUserId == null || dto == null || dto.userId() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing user identification for authorization");
+        }
+
+        if (!requesterUserId.equals(dto.userId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to process another user's payment");
+        }
     }
 
 }
