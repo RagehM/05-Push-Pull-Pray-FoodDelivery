@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-service-configmap
+  namespace: talabat
+data:
+  SPRING_APPLICATION_NAME: checkout-service
+  SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
+  SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: "5672"
+  FEIGN_USER_SERVICE_URL: http://user-service:8080
+  FEIGN_ORDER_SERVICE_URL: http://order-service:8080
+  FEIGN_RESTAURANT_SERVICE_URL: http://restaurant-service:8080
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: prometheus,health,info

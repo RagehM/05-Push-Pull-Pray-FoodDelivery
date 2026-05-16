@@ -21,4 +21,7 @@ data:
         - targets: ['delivery-service.talabat.svc.cluster.local:8080']
       metrics_path: /actuator/prometheus
     
-    # S5-INFRA owner needs to fill this
+    - job_name: checkout-service
+      static_configs:
+        - targets: ['checkout-service.talabat.svc.cluster.local:8080']
+      metrics_path: /actuator/prometheus
