@@ -1,11 +1,9 @@
-package com.team05.fooddelivery.user.messaging;
+package com.team05.fooddelivery.user.messaging.publishers;
 
 import com.team05.fooddelivery.user.model.User;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import com.team05.fooddelivery.user.config.RabbitConfig;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 @Component
 public class UserPublisher {

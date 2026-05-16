@@ -1,10 +1,8 @@
-package com.team05.fooddelivery.user.messaging;
+package com.team05.fooddelivery.user.messaging.consumers;
 
 import com.team05.fooddelivery.user.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import com.team05.fooddelivery.user.config.RabbitConfig;
 
 public class OrderListener {
     private static final Logger log = LoggerFactory.getLogger(UserRegisteredEvent.class);
