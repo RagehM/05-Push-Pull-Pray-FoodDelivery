@@ -12,7 +12,7 @@ import org.springframework.data.elasticsearch.repository.config.EnableElasticsea
 @EnableCaching
 //s2-f11
 @EnableElasticsearchRepositories(basePackageClasses = RestaurantSearchRepository.class)
-@EnableFeignClients
+@EnableFeignClients(basePackages = "com.team05.fooddelivery.contracts.feign")
 public class RestaurantServiceApplication {
 
     public static void main(String[] args) {

@@ -1,7 +1,12 @@
 package com.team05.fooddelivery.restaurant.service;
 
-import com.team05.fooddelivery.restaurant.adapter.RestaurantRevenueAdapter;
+import com.team05.fooddelivery.contracts.dto.OrderDTO;
+import com.team05.fooddelivery.contracts.dto.RestaurantOrderSummaryDTO;
+import com.team05.fooddelivery.contracts.events.RestaurantRatedEvent;
+import com.team05.fooddelivery.contracts.events.RestaurantStatusChangedEvent;
+import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.restaurant.adapter.TopRestaurantAdapter;
+import com.team05.fooddelivery.restaurant.messaging.publishers.RestaurantEventPublisher;
 import com.team05.fooddelivery.restaurant.dto.RestaurantDashboardDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantMenuAlertDTO;
 import com.team05.fooddelivery.restaurant.dto.RestaurantRevenueDTO;
@@ -43,8 +48,14 @@ import java.util.stream.Collectors;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
+import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class RestaurantService {
+
+    private static final Logger log = LoggerFactory.getLogger(RestaurantService.class);
 
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
@@ -52,18 +63,24 @@ public class RestaurantService {
     private final CacheManager cacheManager;
     private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
     private final ElasticsearchOperations elasticsearchOperations;
+    private final OrderServiceClient orderServiceClient;
+    private final RestaurantEventPublisher restaurantEventPublisher;
 
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
             MongoRestaurantEventRepository mongoRestaurantEventRepository,
             RestaurantElasticsearchIndexService restaurantElasticsearchIndexService,
             CacheManager cacheManager,
-            ElasticsearchOperations elasticsearchOperations) {
+            ElasticsearchOperations elasticsearchOperations,
+            OrderServiceClient orderServiceClient,
+            RestaurantEventPublisher restaurantEventPublisher) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         this.cacheManager = cacheManager;
         this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
         this.elasticsearchOperations = elasticsearchOperations;
+        this.orderServiceClient = orderServiceClient;
+        this.restaurantEventPublisher = restaurantEventPublisher;
         this.observers.add(
                 new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
@@ -221,8 +238,27 @@ public class RestaurantService {
     @Cacheable(value = "restaurant-service::S2-F3", key = "#id + ':' + #startDate + ':' + #endDate")
     public RestaurantRevenueDTO getRevenueSummary(Long id, LocalDateTime startDate, LocalDateTime endDate) {
         Restaurant restaurant = getById(id);
-        List<Object[]> results = restaurantRepository.getRevenueSummary(id, startDate, endDate);
-        return new RestaurantRevenueAdapter(results.get(0), restaurant).adapt(results.get(0));
+        RestaurantOrderSummaryDTO summary = fetchRestaurantOrderSummary(id);
+        return RestaurantRevenueDTO.builder()
+                .restaurantId(restaurant.getId())
+                .name(restaurant.getName())
+                .totalOrders(summary.totalOrders())
+                .totalRevenue(summary.totalRevenue().doubleValue())
+                .averageOrderAmount(summary.avgOrderValue().doubleValue())
+                .build();
+    }
+
+    @Cacheable(value = "restaurant-service::S2-F3", key = "'order-summary:' + #id")
+    public RestaurantRevenueDTO getOrderSummary(Long id) {
+        Restaurant restaurant = getById(id);
+        RestaurantOrderSummaryDTO summary = fetchRestaurantOrderSummary(id);
+        return RestaurantRevenueDTO.builder()
+                .restaurantId(restaurant.getId())
+                .name(restaurant.getName())
+                .totalOrders(summary.totalOrders())
+                .totalRevenue(summary.totalRevenue().doubleValue())
+                .averageOrderAmount(summary.avgOrderValue().doubleValue())
+                .build();
     }
 
     // [S2-F4] Write — invalidates caches + notify observers — Section 4.4.4
@@ -243,9 +279,10 @@ public class RestaurantService {
         }
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+        String oldStatus = restaurant.getStatus().name();
                 // CLOSE added for TC 246
         if ("SUSPENDED".equals(newStatus) || "CLOSED".equals(newStatus) ) {
-            int activeOrders = restaurantRepository.countActiveOrders(id);
+            int activeOrders = fetchActiveOrderCount(id);
             if (activeOrders > 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Cannot suspend or close restaurant with active orders");
@@ -257,6 +294,8 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
+        restaurantEventPublisher.publishStatusChanged(
+                new RestaurantStatusChangedEvent(id, oldStatus, newStatus));
         //s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
@@ -297,7 +336,7 @@ public class RestaurantService {
             @CacheEvict(value = "restaurant-service::S2-F12", key = "#restaurantId"),
             @CacheEvict(value = "restaurant-service::S2-F10", allEntries = true)
     })
-    public void rateRestaurant(Long restaurantId, Long orderId, Integer rating) {
+    public void rateRestaurant(Long restaurantId, Long orderId, Double rating) {
         if (rating == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must not be null");
         }
@@ -306,17 +345,11 @@ public class RestaurantService {
         }
         Restaurant rest = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-        List<Object[]> orderResults = restaurantRepository.findOrderDetailsById(orderId);
-        if (orderResults.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
-        Object[] order = orderResults.get(0);
-        Long orderRestaurantId = ((Number) order[0]).longValue();
-        String orderStatus = (String) order[1];
-        if (!orderRestaurantId.equals(restaurantId)) {
+        OrderDTO order = fetchOrder(orderId);
+        if (order.restaurantId() == null || !order.restaurantId().equals(restaurantId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order does not belong to this restaurant");
         }
-        if (!"DELIVERED".equals(orderStatus)) {
+        if (!"DELIVERED".equals(order.status())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is not delivered");
         }
         int newTRating = rest.getTotalRatings() + 1;
@@ -324,6 +357,8 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
+        restaurantEventPublisher.publishRated(
+                new RestaurantRatedEvent(restaurantId, orderId, rating, order.userId()));
         //s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
@@ -441,13 +476,12 @@ public class RestaurantService {
                 }
             }
 
-            // Step 3 — cache miss — fetch from DB
+            // Step 3 — cache miss — fetch from DB + order-service via Feign
             Restaurant restaurant = getById(id);
-            List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
-            Object[] row = stats.get(0);
-            Long totalOrders = ((Number) row[0]).longValue();
-            Double totalRevenue = ((Number) row[1]).doubleValue();
-            Double averageOrderValue = ((Number) row[2]).doubleValue();
+            RestaurantOrderSummaryDTO stats = fetchRestaurantOrderSummary(id);
+            Long totalOrders = stats.totalOrders();
+            Double totalRevenue = stats.totalRevenue().doubleValue();
+            Double averageOrderValue = stats.avgOrderValue().doubleValue();
             Long activeMenuItems = restaurantRepository.countActiveMenuItems(id);
 
             RestaurantDashboardDTO dto = RestaurantDashboardDTO.builder()
@@ -489,6 +523,49 @@ public class RestaurantService {
     private void notifyObservers(String eventType, Object payload) {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
+        }
+    }
+
+    private RestaurantOrderSummaryDTO fetchRestaurantOrderSummary(Long restaurantId) {
+        try {
+            log.info("Calling order-service.getRestaurantOrderSummary with args={}", restaurantId);
+            RestaurantOrderSummaryDTO summary = orderServiceClient.getRestaurantOrderSummary(restaurantId);
+            log.info("order-service.getRestaurantOrderSummary returned successfully");
+            return summary;
+        } catch (FeignException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        } catch (FeignException e) {
+            log.warn("Feign call to order-service failed: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service temporarily unavailable");
+        }
+    }
+
+    private int fetchActiveOrderCount(Long restaurantId) {
+        try {
+            log.info("Calling order-service.getActiveOrderCountByRestaurant with args={}", restaurantId);
+            int count = orderServiceClient.getActiveOrderCountByRestaurant(restaurantId);
+            log.info("order-service.getActiveOrderCountByRestaurant returned successfully");
+            return count;
+        } catch (FeignException e) {
+            log.warn("Feign call to order-service failed: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service temporarily unavailable");
+        }
+    }
+
+    private OrderDTO fetchOrder(Long orderId) {
+        try {
+            log.info("Calling order-service.getOrder with args={}", orderId);
+            OrderDTO order = orderServiceClient.getOrder(orderId);
+            log.info("order-service.getOrder returned successfully");
+            return order;
+        } catch (FeignException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        } catch (FeignException e) {
+            log.warn("Feign call to order-service failed: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service temporarily unavailable");
         }
     }
 

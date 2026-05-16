@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.order.controller;
 
+import com.team05.fooddelivery.contracts.dto.RestaurantOrderSummaryDTO;
 import com.team05.fooddelivery.order.dto.*;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
@@ -111,6 +112,16 @@ public class OrderController {
 
         return ResponseEntity.ok(orderService.getRestaurantRecommendations(userId, finalLimit));
     }
+    @GetMapping("/restaurant/{restaurantId}/summary")
+    public RestaurantOrderSummaryDTO getRestaurantOrderSummary(@PathVariable Long restaurantId) {
+        return orderService.getRestaurantOrderSummary(restaurantId);
+    }
+
+    @GetMapping("/restaurant/{restaurantId}/active-count")
+    public int getActiveOrderCountByRestaurant(@PathVariable Long restaurantId) {
+        return orderService.getActiveOrderCountByRestaurant(restaurantId);
+    }
+
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")

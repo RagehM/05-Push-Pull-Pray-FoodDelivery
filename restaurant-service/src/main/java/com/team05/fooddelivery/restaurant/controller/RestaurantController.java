@@ -74,7 +74,12 @@ public class RestaurantController {
         return ResponseEntity.ok(restaurantService.updateDetails(id, details));
     }
 
-    // [S2-F3] Get Restaurant Order Revenue Summary
+    // [S2-F3] Get Restaurant Order Revenue Summary (M3: Feign → order-service)
+    @GetMapping("/{id}/order-summary")
+    public ResponseEntity<RestaurantRevenueDTO> getOrderSummary(@PathVariable Long id) {
+        return ResponseEntity.ok(restaurantService.getOrderSummary(id));
+    }
+
     @GetMapping("/{id}/revenue")
     public ResponseEntity<RestaurantRevenueDTO> getRevenueSummary(
             @PathVariable Long id,
@@ -112,12 +117,12 @@ public class RestaurantController {
     }
 
     // [S2-F7] Rate a Restaurant After Order (Transactional)
-    @PostMapping("/{id}/rate")
+    @PutMapping("/{id}/rate")
     public ResponseEntity<Void> rateRestaurant(
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         Long orderId = Long.valueOf(body.get("orderId").toString());
-        Integer rating = Integer.valueOf(body.get("rating").toString());
+        Double rating = Double.valueOf(body.get("rating").toString());
         restaurantService.rateRestaurant(id, orderId, rating);
         return ResponseEntity.ok().build();
     }

@@ -201,4 +201,23 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                 String getName();
                 String getCuisineType();
         }
+
+        @Query("""
+                        SELECT COUNT(o), COALESCE(SUM(o.totalAmount), 0), COALESCE(AVG(o.totalAmount), 0)
+                        FROM Order o
+                        WHERE o.restaurantId = :restaurantId
+                        """)
+        @Transactional(readOnly = true)
+        Object[] aggregateOrdersByRestaurant(@Param("restaurantId") Long restaurantId);
+
+        @Query("""
+                        SELECT COUNT(o)
+                        FROM Order o
+                        WHERE o.restaurantId = :restaurantId
+                          AND o.status IN :activeStatuses
+                        """)
+        @Transactional(readOnly = true)
+        long countActiveOrdersByRestaurant(
+                        @Param("restaurantId") Long restaurantId,
+                        @Param("activeStatuses") List<OrderStatusEnum> activeStatuses);
 }
