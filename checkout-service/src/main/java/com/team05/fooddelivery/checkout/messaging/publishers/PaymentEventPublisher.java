@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.checkout.messaging;
+package com.team05.fooddelivery.checkout.messaging.publishers;
 
 import com.team05.fooddelivery.checkout.config.RabbitMQ;
 import com.team05.fooddelivery.contracts.events.PaymentCompletedEvent;

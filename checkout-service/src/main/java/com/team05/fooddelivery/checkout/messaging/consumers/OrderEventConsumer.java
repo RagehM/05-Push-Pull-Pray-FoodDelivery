@@ -1,7 +1,7 @@
 package com.team05.fooddelivery.checkout.messaging.consumers;
 
 import com.team05.fooddelivery.checkout.config.RabbitMQ;
-import com.team05.fooddelivery.checkout.messaging.PaymentEventPublisher;
+import com.team05.fooddelivery.checkout.messaging.publishers.PaymentEventPublisher;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.service.PaymentService;
 import com.team05.fooddelivery.contracts.events.OrderCancelledEvent;
