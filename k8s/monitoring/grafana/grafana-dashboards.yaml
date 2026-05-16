@@ -13,123 +13,48 @@ data:
   # S3-INFRA owner needs to fill this
   order-service-dashboard.json: |
     {}
+  # S4-INFRA owner needs to fill this
   delivery-service-dashboard.json: |
     {
       "id": null,
-      "uid": "delivery-svc",
-      "title": "Delivery Service",
+      "uid": "delivery-service",
+      "title": "Delivery Service Dashboard",
       "tags": ["talabat", "delivery"],
       "timezone": "browser",
-      "schemaVersion": 38,
+      "schemaVersion": 36,
       "version": 1,
       "refresh": "30s",
       "time": { "from": "now-1h", "to": "now" },
       "panels": [
         {
-          "id": 1,
-          "title": "Error Rate",
-          "description": "ERROR-level log lines per minute from delivery-service",
-          "type": "logs",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "{app=\"talabat\", service=\"delivery-service\"} | json | level = `ERROR`"
-            }
-          ]
-        },
-        {
-          "id": 2,
-          "title": "RabbitMQ Event Audit",
-          "description": "Events published and consumed by delivery-service, filtered by routing key",
-          "type": "logs",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-          "targets": [
-            {
-              "refId": "A",git branch --set-upstream-to=origin/feat/M3/delivery/S4-INFRA/55-25730
-
-              "expr": "{app=\"talabat\", service=\"delivery-service\"} | json | routingKey =~ `delivery\\..+|order\\..+`"
-            }
-          ]
-        },
-        {
-          "id": 3,
-          "title": "Feign Call Outcomes",
-          "description": "Successful Feign returns vs FeignException catches to order-service and restaurant-service",
-          "type": "logs",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "{app=\"talabat\", service=\"delivery-service\"} | json | message =~ `.*(Calling|returned successfully|Feign call to).+`"
-            }
-          ]
-        },
-        {
-          "id": 4,
-          "title": "HTTP Request Rate",
-          "description": "Requests per second per endpoint",
-          "type": "timeseries",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "rate(http_server_requests_seconds_count{job=\"delivery-service\"}[1m])",
-              "legendFormat": "{{method}} {{uri}}"
-            }
-          ]
-        },
-        {
-          "id": 5,
-          "title": "HTTP Latency Percentiles (P50/P95/P99)",
-          "description": "Request latency percentiles per endpoint",
-          "type": "timeseries",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m])) by (le, uri))",
-              "legendFormat": "P50 {{uri}}"
-            },
-            {
-              "refId": "B",
-              "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m])) by (le, uri))",
-              "legendFormat": "P95 {{uri}}"
-            },
-            {
-              "refId": "C",
-              "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m])) by (le, uri))",
-              "legendFormat": "P99 {{uri}}"
-            }
-          ]
-        },
-        {
           "id": 6,
-          "title": "JVM Heap Usage",
-          "description": "JVM heap memory used vs committed",
           "type": "timeseries",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+          "title": "[LogQL] Error Rate — delivery-service",
+          "gridPos": { "x": 8, "y": 16, "w": 16, "h": 6 },
+          "datasource": { "type": "loki", "uid": "loki" },
           "targets": [
             {
-              "refId": "A",
-              "expr": "jvm_memory_used_bytes{job=\"delivery-service\", area=\"heap\"}",
-              "legendFormat": "Used"
-            },
+              "expr": "sum(rate({app=\"talabat\", service=\"delivery-service\", level=\"ERROR\"}[1m]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "logs",
+          "title": "[LogQL] RabbitMQ Event Audit",
+          "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
             {
-              "refId": "B",
-              "expr": "jvm_memory_committed_bytes{job=\"delivery-service\", area=\"heap\"}",
-              "legendFormat": "Committed"
+              "expr": "{app=\"talabat\", service=\"delivery-service\"} | json | routingKey =~ \"delivery\\\\.*\"",
+              "refId": "A"
             }
           ]
         }
       ]
     }
+  # S5-INFRA owner needs to fill this
   checkout-service-dashboard.json: |
     {
       "title": "checkout-service",
