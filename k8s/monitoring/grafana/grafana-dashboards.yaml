@@ -16,6 +16,79 @@ data:
   # S4-INFRA owner needs to fill this
   delivery-service-dashboard.json: |
     {}
-  # S5-INFRA owner needs to fill this
   checkout-service-dashboard.json: |
-    {}
+    {
+      "title": "checkout-service",
+      "uid": "checkout-service",
+      "schemaVersion": 38,
+      "tags": ["s5", "checkout-service", "loki"],
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "loki",
+            "current": { "text": "Loki", "value": "Loki" }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Log rate by level (checkout-service)",
+          "datasource": { "type": "loki", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (level) (rate({service=\"checkout-service\"} | logfmt | level != \"\" [5m]))"
+            }
+          ],
+          "options": { "legend": { "displayMode": "table", "placement": "right" } }
+        },
+        {
+          "id": 2,
+          "type": "logs",
+          "title": "ERROR logs (last 1h)",
+          "datasource": { "type": "loki", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{service=\"checkout-service\"} | logfmt | level=\"ERROR\""
+            }
+          ],
+          "options": { "showTime": true, "wrapLogMessage": true, "dedupStrategy": "none" }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Feign upstream failures /min",
+          "datasource": { "type": "loki", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({service=\"checkout-service\"} |~ \"Feign error|user-service unavailable\" [1m]))"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "GET /api/payments/user/{id}/total request rate",
+          "datasource": { "type": "loki", "uid": "${datasource}" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({service=\"checkout-service\"} |~ \"HTTP GET /api/payments/user/.*?/total\" [5m]))"
+            }
+          ]
+        }
+      ]
+    }

@@ -25,6 +25,24 @@ services:
       retries: 5
       start_period: 10s
 
+  checkout-postgres:
+    image: postgres:17
+    container_name: fooddelivery-checkout-db
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: talabatdb-checkout
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - checkout-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d talabatdb-checkout"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   pgadmin:
     build:
       context: .
@@ -209,10 +227,15 @@ services:
     ports:
       - "8085:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_ORDER-SERVICE_URL: http://order-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
     depends_on:
-      postgres:
+      checkout-postgres:
         condition: service_healthy
 
   delivery-service:
@@ -261,6 +284,7 @@ services:
 
 volumes:
     pgdata:
+    checkout-pgdata:
     pgadmin-data:
     mongo-data:
     es-data:
