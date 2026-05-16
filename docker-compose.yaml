@@ -192,7 +192,6 @@ services:
       HEAP_NEWSIZE: 128M
       JVM_OPTS: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
 
-
     volumes:
       - cassandra-data:/var/lib/cassandra
     command: >
@@ -276,6 +275,27 @@ services:
       user-postgres:
         condition: service_healthy
 
+  restaurant-service:
+    build:
+      context: ./restaurant-service
+      dockerfile: Dockerfile
+    container_name: fooddelivery-restaurant-service
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://restaurant-postgres:5432/talabatdb-restaurants
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+    depends_on:
+      restaurant-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
   restaurant-postgres:
     image: postgres:17
     container_name: talabat-restaurant-postgres
@@ -304,32 +324,11 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  restaurant-service:
-    build:
-      context: ./restaurant-service
-      dockerfile: Dockerfile
-    container_name: fooddelivery-restaurant-service
-    ports:
-      - "8082:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://restaurant-postgres:5432/talabatdb-restaurants
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: ${JWT_EXPIRATION}
-    depends_on:
-      restaurant-postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
 
   loki:
     image: grafana/loki:2.9.4
@@ -381,5 +380,7 @@ volumes:
     es-data:
     neo4j-data:
     cassandra-data:
-    restaurant-pgdata:
     user-pgdata:
+    restaurant-pgdata:
+
+
