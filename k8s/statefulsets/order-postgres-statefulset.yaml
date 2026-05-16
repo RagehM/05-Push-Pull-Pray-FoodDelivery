@@ -38,11 +38,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
+  volumes: # Modified from volumeClaimTemplates to volumes to reference the existing PVC
+    - name: data
+      persistentVolumeClaim:
+        claimName: order-postgres-data
