@@ -1,0 +1,35 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Delivery Service Dashboard",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "HTTP request rate",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count{job=\"delivery-service\"}[5m])"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "HTTP latency P99",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m]))"
+          }
+        ]
+      },
+      {
+        "type": "graph",
+        "title": "HikariCP active connections",
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job=\"delivery-service\"}"
+          }
+        ]
+      }
+    ]
+  }
+}
