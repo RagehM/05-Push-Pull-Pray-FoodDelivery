@@ -44,9 +44,13 @@ import java.util.stream.Collectors;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class RestaurantService {
+
+    private static final Logger log = LoggerFactory.getLogger(RestaurantService.class);
 
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
@@ -85,6 +89,7 @@ public class RestaurantService {
         restaurant.setDetails(details);
 
         Restaurant saved = restaurantRepository.save(restaurant);
+        log.info("{} {} saved with status={}", "Restaurant", saved.getId(), saved.getStatus());
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();
@@ -139,6 +144,7 @@ public class RestaurantService {
         if (updated.getDetails() != null)
             existing.setDetails(updated.getDetails());
         Restaurant saved = restaurantRepository.save(existing);
+        log.info("{} {} saved with status={}", "Restaurant", saved.getId(), saved.getStatus());
 
         Map<String, Object> params = new HashMap<>();
         params.put("action", RestaurantEventActions.UPDATED);
@@ -208,6 +214,7 @@ public class RestaurantService {
             existing.setDetails(currentDetails);
         }
         Restaurant saved = restaurantRepository.save(existing);
+        log.info("{} {} saved with status={}", "Restaurant", saved.getId(), saved.getStatus());
         // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(saved);
 
@@ -259,6 +266,7 @@ public class RestaurantService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + newStatus);
         }
         restaurantRepository.save(restaurant);
+        log.info("{} {} saved with status={}", "Restaurant", restaurant.getId(), restaurant.getStatus());
         // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(restaurant);
 
@@ -326,6 +334,7 @@ public class RestaurantService {
         rest.setRating(newRating);
         rest.setTotalRatings(newTRating);
         restaurantRepository.save(rest);
+        log.info("{} {} saved with status={}", "Restaurant", rest.getId(), rest.getStatus());
         // s2-f11
         restaurantElasticsearchIndexService.upsertFromRestaurant(rest);
 
@@ -445,6 +454,7 @@ public class RestaurantService {
         }
 
         // Step 3 — cache miss — fetch from DB
+        long start = System.currentTimeMillis();
         Restaurant restaurant = getById(id);
         List<Object[]> stats = restaurantRepository.getDashboardOrderStats(id);
         Object[] row = stats.get(0);
@@ -461,6 +471,11 @@ public class RestaurantService {
                 .averageOrderValue(averageOrderValue)
                 .activeMenuItems(activeMenuItems)
                 .build();
+
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "getDashboard", elapsed);
+        }
 
         // Step 4 — store in cache
         if (cache != null) {
