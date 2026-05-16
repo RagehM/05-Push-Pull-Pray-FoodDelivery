@@ -436,8 +436,10 @@ public class DeliveryService {
     }
 
     private void validateOrder(Long orderId) {
+        OrderDTO order;
+
         try {
-            orderServiceClient.getOrder(orderId);
+            order = orderServiceClient.getOrder(orderId);
         } catch (FeignException.NotFound e) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
@@ -447,6 +449,13 @@ public class DeliveryService {
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Order service temporarily unavailable"
+            );
+        }
+
+        if (order == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service returned empty response"
             );
         }
     }
@@ -699,9 +708,7 @@ public class DeliveryService {
         long totalDeliveries = deliveries.size();
 
         long deliveredCount = 0;
-
         long onTimeCount = 0;
-
         double totalMinutes = 0.0;
 
         Map<DeliveryStatus, Long> grouped =
@@ -712,20 +719,16 @@ public class DeliveryService {
                         ));
 
         for (Delivery delivery : deliveries) {
-
             try {
-
                 OrderDTO order =
                         orderServiceClient.getOrder(
                                 delivery.getOrderId()
                         );
-
                 if (
                         "DELIVERED".equals(order.status())
                                 && order.deliveredAt() != null
                                 && order.orderDate() != null
                 ) {
-
                     deliveredCount++;
 
                     long minutes =
