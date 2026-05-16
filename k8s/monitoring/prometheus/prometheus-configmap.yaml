@@ -12,7 +12,13 @@ data:
     scrape_configs:
     # S1-INFRA owner needs to fill this
     
-    # S2-INFRA owner needs to fill this
+    # S2-INFRA: restaurant-service scrape job
+    - job_name: restaurant-service
+      static_configs:
+        - targets: ['restaurant-service.talabat.svc.cluster.local:8080']
+          labels:
+            service: restaurant-service
+      metrics_path: /actuator/prometheus
     
     # S3-INFRA owner needs to fill this
     

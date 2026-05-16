@@ -6,7 +6,11 @@ spring:
       routes:
         # S1-INFRA owner needs to fill this
         
-        # S2-INFRA owner needs to fill this
+        # S2-INFRA: restaurant-service routes
+        - id: restaurant-service
+          uri: http://restaurant-service.talabat.svc.cluster.local:8080
+          predicates:
+            - Path=/api/restaurants/**
         
         # S3-INFRA owner needs to fill this
         
