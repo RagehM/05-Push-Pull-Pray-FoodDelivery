@@ -1,4 +1,3 @@
-# k8s/namespaces/monitoring-namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:

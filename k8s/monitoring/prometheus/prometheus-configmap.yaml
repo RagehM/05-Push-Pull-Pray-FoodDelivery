@@ -13,17 +13,18 @@ data:
     # S1-INFRA owner needs to fill this
     
     # S2-INFRA owner needs to fill this
+      
+    - job_name: order-service
+      static_configs:
+        - targets: ['order-service.talabat.svc.cluster.local:8080']
+      metrics_path: /actuator/prometheus
     
-    # S3-INFRA — order-service scrape job
-      - job_name: order-service
-        static_configs:
-          - targets: ['order-service.talabat.svc.cluster.local:8080']
-        metrics_path: /actuator/prometheus
-
-    # S4-INFRA owner needs to fill this
-
-    # S5-INFRA owner needs to fill this
-      - job_name: checkout-service
-        static_configs:
-          - targets: ['checkout-service.talabat.svc.cluster.local:8080']
-        metrics_path: /actuator/prometheus
+    - job_name: delivery-service
+      static_configs:
+        - targets: ['delivery-service.talabat.svc.cluster.local:8080']
+      metrics_path: /actuator/prometheus
+    
+    - job_name: checkout-service
+      static_configs:
+        - targets: ['checkout-service.talabat.svc.cluster.local:8080']
+      metrics_path: /actuator/prometheus
