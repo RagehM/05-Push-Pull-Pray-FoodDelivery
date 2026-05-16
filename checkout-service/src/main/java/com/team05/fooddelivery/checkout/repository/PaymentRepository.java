@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -73,4 +74,30 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // and the nested offer in a single round-trip, avoiding LazyInitializationException:
     @Query("SELECT p FROM Payment p LEFT JOIN FETCH p.paymentOffers po LEFT JOIN FETCH po.offer WHERE p.id = :id")
     Optional<Payment> findByIdWithOffers(@Param("id") Long id);
+
+    @Query(value = "SELECT COALESCE(SUM(p.amount), 0) " +
+                   "FROM payments p " +
+                   "WHERE p.user_id = :userId AND p.status = 'COMPLETED' " +
+                   "  AND (CAST(:startDate AS timestamp) IS NULL OR p.created_at >= CAST(:startDate AS timestamp)) " +
+                   "  AND (CAST(:endDate   AS timestamp) IS NULL OR p.created_at <= CAST(:endDate   AS timestamp))",
+           nativeQuery = true)
+    BigDecimal sumCompletedPaymentsByUserAndDateRange(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    // S5-F10: Revenue by cuisine type with delivery fee breakdown (cross-service native SQL JOIN)
+    @Query(value = "SELECT r.cuisine_type, COUNT(DISTINCT p.order_id), SUM(p.amount), " +
+            "SUM(COALESCE(CAST(p.transaction_details->>'deliveryFee' AS NUMERIC), p.amount * 0.10)) " + //is a JSONB column and deliveryFee may not be present for all payments. When absent, 10% of the payment amount is used as a fallback estimate.
+            "FROM payments p " +
+            "JOIN orders o ON o.id = p.order_id " +
+            "JOIN restaurants r ON r.id = o.restaurant_id " +
+            "WHERE o.order_date >= :startDate AND o.order_date <= :endDate AND p.status = 'COMPLETED' " +
+            "GROUP BY r.cuisine_type",
+            nativeQuery = true)
+    List<Object[]> findRevenueByCuisineAndDateRange(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

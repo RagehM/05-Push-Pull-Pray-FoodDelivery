@@ -29,6 +29,7 @@ import com.team05.fooddelivery.contracts.events.PaymentFailedEvent;
 import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.contracts.feign.RestaurantServiceClient;
 import com.team05.fooddelivery.contracts.feign.UserServiceClient;
+import com.team05.fooddelivery.contracts.dto.UserDTO;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.model.mongo.PaymentAuditEvent;
 import com.team05.shared.observer.EntityObserver;
@@ -48,10 +49,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.team05.fooddelivery.contracts.feign.UserServiceClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.math.BigDecimal;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -78,7 +84,6 @@ public class PaymentService {
     private final OrderServiceClient orderServiceClient;
     private final RestaurantServiceClient restaurantServiceClient;
     private final PaymentEventPublisher paymentEventPublisher;
-
     public PaymentService(PaymentRepository paymentRepository,
                           OfferRepository offerRepository,
                           PaymentOfferRepository paymentOfferRepository,
@@ -567,13 +572,31 @@ public class PaymentService {
         return savedPayment;
     }
 
+    private double computeDeliveryFee(String deliveryTypeFee, Double orderTotal, String restaurantFeeStr) {
+        if (deliveryTypeFee != null) {
+            try {
+                return Double.parseDouble(deliveryTypeFee);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (restaurantFeeStr != null) {
+            try {
+                return Double.parseDouble(restaurantFeeStr);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return orderTotal != null ? orderTotal * 0.10 : 0.0;
+    }
+
     // [S5-F8] Get Payment Details with Applied Offers (Join Entity DTO)
     @Cacheable(value = "checkout-service::S5-F8", key = "#paymentId")
     public PaymentDetailsDTO getPaymentDetails(Long paymentId) {
+        // Fetch payment with offers eagerly loaded via JOIN FETCH
         Payment payment = paymentRepository.findByIdWithOffers(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Payment not found"));
 
+        // Map each PaymentOffer join entity → AppliedOfferDTO
         List<AppliedOfferDTO> appliedOffers = payment.getPaymentOffers().stream()
                 .map(po -> new AppliedOfferDTO(
                         po.getOffer().getCode(),
@@ -975,5 +998,51 @@ public class PaymentService {
         notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
+    }
+
+    public BigDecimal getUserPaymentTotal(Long userId,
+                                          LocalDate startDate,
+                                          LocalDate endDate) {
+        log.info("user payment total requested userId={} startDate={} endDate={}",
+                userId, startDate, endDate);
+
+        verifyUserExists(userId);
+
+        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
+        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
+
+        BigDecimal total = paymentRepository
+                .sumCompletedPaymentsByUserAndDateRange(userId, start, end);
+        if (total == null) {
+            total = BigDecimal.ZERO;
+        }
+
+        log.info("user payment total computed userId={} total={}", userId, total);
+        return total;
+    }
+
+    private void verifyUserExists(Long userId) {
+        try {
+            UserDTO user = userServiceClient.getUser(userId);
+            if (user == null || user.id() == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found");
+            }
+        } catch (feign.FeignException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found", e);
+        } catch (feign.FeignException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot view user " + userId, e);
+        } catch (feign.FeignException e) {
+            log.warn("user-service unavailable for user {}: {}", userId, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "user-service unavailable while verifying user " + userId, e);
+        }
+    }
+
+    private static double toDouble(Object o) {
+        if (o == null) return 0.0;
+        if (o instanceof BigDecimal bd) return bd.doubleValue();
+        if (o instanceof Number n) return n.doubleValue();
+        return Double.parseDouble(o.toString());
     }
 }
