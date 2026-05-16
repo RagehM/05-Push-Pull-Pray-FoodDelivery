@@ -1,0 +1,101 @@
+{
+  "id": null,
+  "uid": "delivery-svc",
+  "title": "Delivery Service",
+  "tags": ["talabat", "delivery"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Error Rate",
+      "description": "ERROR-level log lines per minute from delivery-service",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate({app=\"talabat\", service=\"delivery-service\", level=\"ERROR\"}[1m]))",
+          "legendFormat": "errors/min"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "RabbitMQ Event Audit",
+      "description": "Events published and consumed by delivery-service, filtered by routing key",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{app=\"talabat\", service=\"delivery-service\"} | json | routingKey =~ `delivery\\..+|order\\..+`"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Saga Tracking — delivery lifecycle by orderId",
+      "description": "Traces the complete delivery saga flow filtered by orderId",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{app=\"talabat\", service=\"delivery-service\"} | json | orderId != \"\" | line_format \"[{{.level}}] orderId={{.orderId}} deliveryId={{.deliveryId}} status={{.status}} — {{.message}}\""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Request Rate",
+      "description": "Requests per second per endpoint",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(http_server_requests_seconds_count{job=\"delivery-service\"}[5m])",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HTTP Latency P99",
+      "description": "P99 request latency per endpoint",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"delivery-service\"}[5m]))",
+          "legendFormat": "P99"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "HikariCP Active Connections",
+      "description": "Active database connections from the connection pool",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "hikaricp_connections_active{job=\"delivery-service\"}",
+          "legendFormat": "Active"
+        }
+      ]
+    }
+  ]
+}
