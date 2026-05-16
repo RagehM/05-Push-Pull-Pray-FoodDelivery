@@ -19,6 +19,7 @@ import com.team05.fooddelivery.checkout.dto.RefundResult;
 import com.team05.fooddelivery.checkout.strategy.NoRefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategySelector;
+import com.team05.fooddelivery.contracts.dto.UserDTO;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.model.mongo.PaymentAuditEvent;
 import com.team05.shared.observer.EntityObserver;
@@ -34,15 +35,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.team05.fooddelivery.contracts.feign.UserServiceClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class PaymentService {
@@ -54,14 +53,19 @@ public class PaymentService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final RefundStrategySelector refundStrategySelector;
     private final CacheManager cacheManager;
+    private final UserServiceClient userServiceClient;
 
-    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager) {
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
+
+    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager, UserServiceClient userServiceClient) {
         this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
         this.refundStrategySelector = refundStrategySelector;
         this.cacheManager = cacheManager;
+        this.userServiceClient = userServiceClient;
         this.observers.add(
                 new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT)
         );
@@ -785,5 +789,51 @@ public class PaymentService {
         notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
+    }
+
+    public BigDecimal getUserPaymentTotal(Long userId,
+                                          LocalDate startDate,
+                                          LocalDate endDate) {
+        log.info("user payment total requested userId={} startDate={} endDate={}",
+                userId, startDate, endDate);
+
+        verifyUserExists(userId);
+
+        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
+        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
+
+        BigDecimal total = paymentRepository
+                .sumCompletedPaymentsByUserAndDateRange(userId, start, end);
+        if (total == null) {
+            total = BigDecimal.ZERO;
+        }
+
+        log.info("user payment total computed userId={} total={}", userId, total);
+        return total;
+    }
+
+    private void verifyUserExists(Long userId) {
+        try {
+            UserDTO user = userServiceClient.getUser(userId);
+            if (user == null || user.id() == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found");
+            }
+        } catch (feign.FeignException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found", e);
+        } catch (feign.FeignException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot view user " + userId, e);
+        } catch (feign.FeignException e) {
+            log.warn("user-service unavailable for user {}: {}", userId, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "user-service unavailable while verifying user " + userId, e);
+        }
+    }
+
+    private static double toDouble(Object o) {
+        if (o == null) return 0.0;
+        if (o instanceof BigDecimal bd) return bd.doubleValue();
+        if (o instanceof Number n) return n.doubleValue();
+        return Double.parseDouble(o.toString());
     }
 }
