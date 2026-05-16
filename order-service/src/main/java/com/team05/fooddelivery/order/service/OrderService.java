@@ -9,11 +9,11 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
+import com.team05.fooddelivery.order.messaging.publishers.OrderPublisher;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.model.OrderItem;
-import com.team05.fooddelivery.order.rabbit.OrderPublisher;
 import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
@@ -64,6 +64,7 @@ public class OrderService {
 
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
+
 
     public OrderService(OrderRepository orderRepository,
                         MongoOrderEventRepository mongoOrderEventRepository,
@@ -233,7 +234,7 @@ public class OrderService {
         if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
 
-        foundOrder.setStatus(OrderStatusEnum.DELIVERED);
+        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETEING
         foundOrder.setDeliveredAt(LocalDateTime.now());
 
         if (foundOrder.getTotalAmount() == null || foundOrder.getTotalAmount() == 0) {
@@ -638,6 +639,21 @@ public class OrderService {
     //     }
     // }
 
+ 
+    @Transactional
+    public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
+        Order order = getOrderById(orderId);
+        if (receivedEvent.equals("payment.completed")) {
+            order.setStatus(OrderStatusEnum.PAID);
+            orderRepository.save(order);
+        } else if (receivedEvent.equals("payment.failed")) {
+            order.setStatus(OrderStatusEnum.PAYMENT_FAILED);
+            orderRepository.save(order);
+        } else if (receivedEvent.equals("payment.refunded")) {
+            order.setStatus(OrderStatusEnum.REFUNDED);
+            orderRepository.save(order);
+        }
+    }
 
     // [CRUD]
     //// Get order by ID

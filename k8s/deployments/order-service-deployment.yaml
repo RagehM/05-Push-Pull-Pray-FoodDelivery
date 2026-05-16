@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: <your-registry>/order-service:latest
+          image: 05-push-pull-pray-fooddelivery-order-service:latest
+          imagePullPolicy: Never # Using local image, use "minikube image load 05-push-pull-pray-fooddelivery-order-service:latest"
           ports:
             - containerPort: 8080
           envFrom:
@@ -31,13 +32,13 @@ spec:
                   key: jwt-secret
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /api/orders/health
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /api/orders/health
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30

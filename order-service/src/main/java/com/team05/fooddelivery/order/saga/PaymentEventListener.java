@@ -1,4 +1,4 @@
-package com.team05.fooddelivery.order.rabbit;
+package com.team05.fooddelivery.order.saga;
 
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -13,32 +13,36 @@ import com.team05.fooddelivery.order.service.OrderService;
 @Component
 @RabbitListener(queues = "order.saga-feedback")
 public class PaymentEventListener {
-    private final OrderService orderService;
+    private final SagaTriggerService sagaTriggerService;
 
     
-    public PaymentEventListener(OrderService orderService) {
-        this.orderService = orderService;
+    public PaymentEventListener(SagaTriggerService sagaTriggerService) {
+        this.sagaTriggerService = sagaTriggerService;
     }
 
     
     @RabbitHandler
     public void handlePaymentInitiatedEvent(PaymentInitiatedEvent event) {
-        // orderService.handlePaymentInitiatedEvent(event);
+        sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.initiated");
+        System.out.println("Payment Initiated Event Received");
     }
 
     @RabbitHandler
     public void handlePaymentCompletedEvent(PaymentCompletedEvent event) {
-        // orderService.handlePaymentCompletedEvent(event);
+        sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.completed");
+        System.out.println("Payment Completed Event Received");
     }
 
     @RabbitHandler
     public void handlePaymentFailedEvent(PaymentFailedEvent event) {
-        // orderService.handlePaymentFailedEvent(event);
+        sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.failed");
+        System.out.println("Payment Failed Event Received");
     }
 
     @RabbitHandler
     public void handlePaymentRefundedEvent(PaymentRefundedEvent event) {
-        // orderService.handlePaymentRefundedEvent(event);
+        sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.refunded");
+        System.out.println("Payment Refunded Event Received");
     }
 
 
