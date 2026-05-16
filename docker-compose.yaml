@@ -44,6 +44,19 @@ services:
     #   start_period: 15s
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-users" ]
+  checkout-postgres:
+    image: postgres:17
+    container_name: fooddelivery-checkout-db
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: talabatdb-checkout
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - checkout-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d talabatdb-checkout"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -219,10 +232,15 @@ services:
     ports:
       - "8085:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_ORDER-SERVICE_URL: http://order-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
     depends_on:
-      postgres:
+      checkout-postgres:
         condition: service_healthy
 
   delivery-service:
@@ -271,8 +289,67 @@ services:
       postgres:
         condition: service_healthy
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: fooddelivery-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: fooddelivery-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: "wget -q -O - http://localhost:3100/ready || exit 1"
+      interval: 10s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: checkout-service-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: fooddelivery-prometheus
+    ports:
+      - "9095:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=24h'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    healthcheck:
+      test: "wget -q -O - http://localhost:9090/-/ready || exit 1"
+      interval: 10s
+      retries: 5
+
 volumes:
     pgdata:
+    checkout-pgdata:
     pgadmin-data:
     mongo-data:
     es-data:
