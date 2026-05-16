@@ -22,6 +22,8 @@ import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
 import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
@@ -39,6 +41,8 @@ import com.team05.shared.observer.MongoEventLogger;
 @Service
 @Transactional
 public class DeliveryService {
+
+    private static final Logger log = LoggerFactory.getLogger(DeliveryService.class);
 
     private final DeliveryRepository deliveryRepository;
     private final DeliveryTrackingEventRepository trackingEventRepository;
@@ -90,6 +94,7 @@ public class DeliveryService {
             delivery.setStatus(DeliveryStatus.ASSIGNED);
         }
         Delivery saved = deliveryRepository.save(delivery);
+        log.info("{} {} saved with status={}", "Delivery", saved.getId(), saved.getStatus());
 
         // [S4-F2] DELIVERY_CREATED: Notify observers to log event
         Map<String, Object> eventDetails = new HashMap<>();
@@ -123,6 +128,7 @@ public class DeliveryService {
         }
 
         Delivery saved = deliveryRepository.save(delivery);
+        log.info("{} {} saved with status={}", "Delivery", saved.getId(), saved.getStatus());
 
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("orderId", saved.getOrderId());
@@ -232,8 +238,15 @@ public class DeliveryService {
                                 )
                         );
 
-        OrderDTO order =
-                orderServiceClient.getOrder(orderId);
+        log.info("Calling {}.{} with args={}", "OrderServiceClient", "getOrder", orderId);
+        OrderDTO order;
+        try {
+            order = orderServiceClient.getOrder(orderId);
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getOrder");
+        } catch (FeignException e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            throw e;
+        }
 
         return new DeliveryDTO(
                 delivery.getId(),
@@ -475,13 +488,17 @@ public class DeliveryService {
         OrderDTO order;
 
         try {
+            log.info("Calling {}.{} with args={}", "OrderServiceClient", "getOrder", orderId);
             order = orderServiceClient.getOrder(orderId);
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getOrder");
         } catch (FeignException.NotFound e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Order not found"
             );
         } catch (FeignException e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Order service temporarily unavailable"
@@ -729,6 +746,7 @@ public class DeliveryService {
             LocalDate startDate,
             LocalDate endDate
     ) {
+        long startMs = System.currentTimeMillis();
 
         LocalDateTime start = startDate == null
                 ? null
@@ -780,7 +798,8 @@ public class DeliveryService {
                     }
                 }
 
-            } catch (FeignException ignored) {
+            } catch (FeignException e) {
+                log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
             }
         }
 
@@ -794,12 +813,19 @@ public class DeliveryService {
                         ? 0.0
                         : (double) onTimeCount / deliveredCount;
 
-        return DeliveryAnalyticsDTO.builder()
+        DeliveryAnalyticsDTO result = DeliveryAnalyticsDTO.builder()
                 .totalDeliveries(totalDeliveries)
                 .averageDeliveryTimeMinutes(averageMinutes)
                 .onTimeRate(onTimeRate)
                 .deliveriesByStatus(grouped)
                 .build();
+
+        long elapsed = System.currentTimeMillis() - startMs;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "buildDeliveryAnalytics", elapsed);
+        }
+
+        return result;
     }
 
     private void validateDates(LocalDate startDate, LocalDate endDate) {
