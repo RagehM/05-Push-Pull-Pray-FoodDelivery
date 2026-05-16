@@ -25,6 +25,8 @@ import com.team05.fooddelivery.contracts.dto.RestaurantDTO;
 import com.team05.fooddelivery.contracts.dto.AvgPriceDTO;
 import com.team05.fooddelivery.contracts.feign.RestaurantServiceClient;
 import com.team05.fooddelivery.contracts.feign.UserServiceClient;
+// import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
+import com.team05.fooddelivery.contracts.feign.DeliveryServiceClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -48,8 +50,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.Collection;
 
 import org.springframework.http.HttpStatus;
@@ -76,6 +76,8 @@ public class OrderService {
     private final OrderInteractionGraphService orderInteractionGraphService;
     private final RestaurantServiceClient restaurantServiceClient;
     private final UserServiceClient userServiceClient;
+    private final DeliveryServiceClient deliveryServiceClient;
+    // private final CheckoutServiceClient checkoutServiceClient;
 
 
     public OrderService(OrderRepository orderRepository,
@@ -85,6 +87,8 @@ public class OrderService {
                         Neo4jClient neo4jClient, 
                         RestaurantServiceClient restaurantServiceClient, 
                         UserServiceClient userServiceClient,
+                        DeliveryServiceClient deliveryServiceClient,
+                        // CheckoutServiceClient checkoutServiceClient,
                         OrderPublisher orderPublisher) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
@@ -93,6 +97,8 @@ public class OrderService {
         this.neo4jClient = neo4jClient;
         this.restaurantServiceClient = restaurantServiceClient;
         this.userServiceClient = userServiceClient;
+        this.deliveryServiceClient = deliveryServiceClient;
+        // this.checkoutServiceClient = checkoutServiceClient;
         this.orderPublisher = orderPublisher;
         this.observers.add(
                 new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
@@ -339,17 +345,48 @@ public class OrderService {
         if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
 
-        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETEING
-        foundOrder.setDeliveredAt(LocalDateTime.now());
-
         if (foundOrder.getTotalAmount() == null || foundOrder.getTotalAmount() == 0) {
             List<OrderItem> orderItems = foundOrder.getOrderItems();
             double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
             foundOrder.setTotalAmount(total);
         }
 
+        // Pre-saga Feign checks
+        //// Check restaurant is open
+        RestaurantDTO restaurant;
+        try {
+            restaurant = restaurantServiceClient.getRestaurant(foundOrder.getRestaurantId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        if (restaurant.status() == null || !restaurant.status().equalsIgnoreCase("OPEN")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant is not open");
+        }
+        //// Check user is active
+        UserDTO user;
+        try {
+            user = userServiceClient.getUser(foundOrder.getUserId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        if (user.status() == null || !user.status().equalsIgnoreCase("ACTIVE")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not active");
+        }
+        //// Check delivery service has an active delivery
+        // try {
+        //     deliveryServiceClient.getActiveDeliveryForOrder(foundOrder.getId());
+        // } catch (Exception e) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active delivery not found for this order");
+        // }
+
         // Create payment record with status PENDING. Save order. Return the order after the update.
-        orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
+        // orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
+        //// This is now done though the RabbitMQ event that is published in the wrapper method
+        
+
+        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETING
+        // foundOrder.setDeliveredAt(LocalDateTime.now());
+
         Order savedOrder = orderRepository.save(foundOrder);
         return savedOrder;
 
@@ -796,6 +833,7 @@ public class OrderService {
         try {
             userServiceClient.getUser(order.getUserId());
         } catch (Exception e) {
+            // System.out.println("User not found: " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
         }
         if (order.getRestaurantId() != null) {
