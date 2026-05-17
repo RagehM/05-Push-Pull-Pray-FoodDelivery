@@ -11,7 +11,10 @@ data:
 
     scrape_configs:
     # S1-INFRA owner needs to fill this
-    
+      - job_name: user-service
+        static_configs:
+          - targets: ['user-service.talabat.svc.cluster.local:8080']
+        metrics_path: /actuator/prometheus
     # S2-INFRA owner needs to fill this
       
     - job_name: order-service

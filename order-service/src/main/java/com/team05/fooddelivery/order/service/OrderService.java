@@ -225,6 +225,8 @@ public class OrderService {
 
         //// TODO: Look into the idempotency and deduplication of this event in case of retries and failures
         notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
+
+        orderPublisher.publishOrderPlacedEvent(confirmedOrder);
         
         return confirmedOrder;
     }
