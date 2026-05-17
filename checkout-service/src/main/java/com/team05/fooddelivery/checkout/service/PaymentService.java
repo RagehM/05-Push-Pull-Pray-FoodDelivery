@@ -1001,7 +1001,6 @@ public class PaymentService {
         log.info("user payment total requested userId={} startDate={} endDate={}",
                 userId, startDate, endDate);
 
-        verifyUserExists(userId);
 
         LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
         LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
