@@ -13,6 +13,7 @@ import com.team05.fooddelivery.restaurant.model.Restaurant;
 import com.team05.fooddelivery.restaurant.repository.MenuItemRepository;
 import com.team05.fooddelivery.restaurant.repository.RestaurantRepository;
 import com.team05.fooddelivery.restaurant.repository.mongo.MongoRestaurantEventRepository;
+import com.team05.messaging.publishers.RestaurantEventPublisher;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.model.mongo.RestaurantEvent.RestaurantEventActions;
 import com.team05.shared.observer.EntityObserver;
@@ -58,18 +59,21 @@ public class RestaurantService {
     private final CacheManager cacheManager;
     private final RestaurantElasticsearchIndexService restaurantElasticsearchIndexService;
     private final ElasticsearchOperations elasticsearchOperations;
-
+    private final RestaurantEventPublisher restaurantEventPublisher;
+    
     public RestaurantService(RestaurantRepository restaurantRepository,
             MenuItemRepository menuItemRepository,
             MongoRestaurantEventRepository mongoRestaurantEventRepository,
             RestaurantElasticsearchIndexService restaurantElasticsearchIndexService,
             CacheManager cacheManager,
-            ElasticsearchOperations elasticsearchOperations) {
+            ElasticsearchOperations elasticsearchOperations,
+            RestaurantEventPublisher restaurantEventPublisher ) {
         this.restaurantRepository = restaurantRepository;
         this.menuItemRepository = menuItemRepository;
         this.cacheManager = cacheManager;
         this.restaurantElasticsearchIndexService = restaurantElasticsearchIndexService;
         this.elasticsearchOperations = elasticsearchOperations;
+        this.restaurantEventPublisher = restaurantEventPublisher;
         this.observers.add(
                 new MongoEventLogger<>(mongoRestaurantEventRepository, EventType.RESTAURANT));
     }
@@ -260,6 +264,10 @@ public class RestaurantService {
                         "Cannot suspend or close restaurant with active orders");
             }
         }
+
+        // capture old status BEFORE changing it
+        String oldStatus = restaurant.getStatus().toString();
+
         try {
             restaurant.setStatus(RestaurantStatusEnum.valueOf(newStatus));
         } catch (IllegalArgumentException e) {
@@ -276,7 +284,7 @@ public class RestaurantService {
         details.put("newStatus", newStatus);
         params.put("details", details);
         notifyObservers(RestaurantEventActions.STATUS_CHANGED, params);
-    }
+        restaurantEventPublisher.publishStatusChanged(id, oldStatus, newStatus);    }  
 
     // [S2-F5] Cached 5 min — Section 4.4.1
     @Cacheable(value = "restaurant-service::S2-F5", key = "#key + ':' + #value + ':' + #status")
@@ -345,6 +353,9 @@ public class RestaurantService {
         details.put("orderId", orderId);
         params.put("details", details);
         notifyObservers(RestaurantEventActions.REVIEW_ADDED, params);
+        restaurantEventPublisher.publishRestaurantRated(restaurantId, orderId, (double) rating, null);
+
+
     }
 
     // [S2-F9] Cached 10 min — Section 4.4.1
