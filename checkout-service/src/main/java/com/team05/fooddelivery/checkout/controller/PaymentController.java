@@ -41,7 +41,9 @@ public class PaymentController {
     // Payment CRUD
     @PostMapping
     public ResponseEntity<Payment> createPayment(@RequestBody Payment payment) {
+        log.info("Received request to create a new payment");
         Payment newPayment = paymentService.createPayment(payment);
+        log.info("Returning request to create a new payment");
         return ResponseEntity.status(HttpStatus.CREATED).body(newPayment);
     }
 

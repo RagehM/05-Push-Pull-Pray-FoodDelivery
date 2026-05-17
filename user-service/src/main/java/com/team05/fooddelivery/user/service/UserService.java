@@ -1,5 +1,6 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.contracts.dto.OrderDTO;
 import com.team05.fooddelivery.contracts.dto.OrderSummaryDTO;
 import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
 import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
@@ -484,7 +485,7 @@ public class UserService {
                         "User not found: " + userId));
         java.math.BigDecimal orderAmount = java.math.BigDecimal.ZERO;
         try {
-            com.team05.fooddelivery.contracts.dto.OrderDTO order = orderServiceClient.getOrder(orderId);
+            OrderDTO order = orderServiceClient.getOrder(orderId);
             if (order != null && order.totalAmount() != null) {
                 orderAmount = order.totalAmount();
             }

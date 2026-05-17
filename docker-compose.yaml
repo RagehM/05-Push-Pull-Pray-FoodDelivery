@@ -1,9 +1,10 @@
 services:
+
   user-postgres:
     image: postgres:17
     container_name: fooddelivery-user-db
     ports:
-      - "5433:5432"
+      - "5431:5432"
     environment:
       POSTGRES_DB: talabatdb-users
       POSTGRES_USER: postgres
@@ -17,11 +18,29 @@ services:
       retries: 10
       start_period: 10s
 
+  restaurant-postgres:
+    image: postgres:17
+    container_name: fooddelivery-restaurant-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: talabatdb-restaurants
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - restaurant-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-restaurants" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   order-postgres:
     image: postgres:17
     container_name: fooddelivery-order-db
     ports:
-      - "5434:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: talabatdb-orders
       POSTGRES_USER: postgres
@@ -39,21 +58,19 @@ services:
     image: postgres:17
     container_name: fooddelivery-delivery-db
     ports:
-      - "5431:5432"
+      - "5434:5432"
     environment:
       POSTGRES_DB: talabatdb-deliveries
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
       - delivery-pgdata:/var/lib/postgresql
-    # healthcheck:
-    #   test: ["CMD-SHELL", "test -f /tmp/healthy"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 10
-    #   start_period: 15s
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-deliveries" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   checkout-postgres:
     image: postgres:17
@@ -73,20 +90,6 @@ services:
       retries: 5
       start_period: 10s
 
-  pgadmin:
-    build:
-      context: .
-      dockerfile: pgadmin.Dockerfile
-    container_name: fooddelivery-pgadmin
-    ports:
-      - "9090:80"
-    depends_on:
-      - postgres
-      - user-postgres
-    restart: on-failure
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-
   mongo:
     image: mongo:latest
     container_name: fooddelivery-mongo
@@ -104,20 +107,6 @@ services:
       timeout: 5s
       retries: 5
 
-  mongo-express:
-    image: mongo-express:latest
-    container_name: fooddelivery-mongo-ui
-    ports:
-      - "27018:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: rootpass
-      ME_CONFIG_MONGODB_URL: mongodb://root:rootpass@mongo:27017/
-      ME_CONFIG_BASICAUTH: "false"
-    depends_on:
-      mongo:
-        condition: service_healthy
-
   redis:
     image: redis:latest
     container_name: fooddelivery-redis
@@ -133,14 +122,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  redisinsight:
-    image: redis/redisinsight:latest
-    container_name: fooddelivery-redis-ui
-    ports:
-      - "5540:5540"
-    depends_on:
-      - redis
 
   elasticsearch:
     image: elasticsearch:9.0.3
@@ -159,17 +140,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-
-  kibana:
-    image: kibana:9.0.3
-    container_name: fooddelivery-kibana
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
 
   neo4j:
     image: neo4j:latest
@@ -219,91 +189,54 @@ services:
       retries: 10
       start_period: 60s
 
-  order-service:
+  pgadmin:
     build:
-      context: ./order-service
-      dockerfile: Dockerfile
-    container_name: fooddelivery-order-service
+      context: .
+      dockerfile: pgadmin.Dockerfile
+    container_name: fooddelivery-pgadmin
     ports:
-      - "8083:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://order-postgres:5432/talabatdb-orders
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
-      SPRING_NEO4J_URI: bolt://neo4j:7687
-      JWT_SECRET: ${JWT_SECRET}
-      FEIGN_USER-SERVICE_URL: http://user-service:8080
-      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
-      FEIGN_DELIVERY-SERVICE_URL: http://delivery-service:8080
-      FEIGN_CHECKOUT-SERVICE_URL: http://checkout-service:8080
+      - "9090:80"
     depends_on:
-      order-postgres:
+      - user-postgres
+      - restaurant-postgres
+      - order-postgres
+      - delivery-postgres
+      - checkout-postgres
+    restart: on-failure
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: fooddelivery-mongo-ui
+    ports:
+      - "27018:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: rootpass
+      ME_CONFIG_MONGODB_URL: mongodb://root:rootpass@mongo:27017/
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      mongo:
         condition: service_healthy
 
-  checkout-service:
-    build:
-      context: ./checkout-service
-      dockerfile: Dockerfile
-    container_name: fooddelivery-checkout-service
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: fooddelivery-redis-ui
     ports:
-      - "8085:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      JWT_SECRET: ${JWT_SECRET}
-      FEIGN_USER-SERVICE_URL: http://user-service:8080
-      FEIGN_ORDER-SERVICE_URL: http://order-service:8080
-      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
+      - "5540:5540"
     depends_on:
-      checkout-postgres:
-        condition: service_healthy
+      - redis
 
-  delivery-service:
-    build:
-      context: ./delivery-service
-      dockerfile: Dockerfile
-    container_name: fooddelivery-delivery-service
+  kibana:
+    image: kibana:9.0.3
+    container_name: fooddelivery-kibana
     ports:
-      - "8084:8080"
+      - "5601:5601"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
-      JWT_SECRET: ${JWT_SECRET}
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     depends_on:
-      postgres:
-        condition: service_healthy
-    entrypoint: [ "sh", "-c", "sleep 90 && exec java -jar app.jar" ]
-
-  user-service:
-    build:
-      context: ./user-service
-      dockerfile: Dockerfile
-    container_name: fooddelivery-user-service
-    ports:
-      - "8081:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://user-postgres:5432/talabatdb-users
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: ${JWT_EXPIRATION}
-    depends_on:
-      user-postgres:
-        condition: service_healthy
-
-  restaurant-service:
-    build:
-      context: ./restaurant-service
-      dockerfile: Dockerfile
-    container_name: fooddelivery-restaurant-service
-    ports:
-      - "8082:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
-      JWT_SECRET: ${JWT_SECRET}
-    depends_on:
-      postgres:
+      elasticsearch:
         condition: service_healthy
 
   rabbitmq:
@@ -335,7 +268,7 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.2
-    container_name: checkout-service-grafana
+    container_name: fooddelivery-grafana
     ports:
       - "3000:3000"
     environment:
@@ -364,16 +297,103 @@ services:
       interval: 10s
       retries: 5
 
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: fooddelivery-user-service
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-postgres:5432/talabatdb-users
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+
+  restaurant-service:
+    build:
+      context: ./restaurant-service
+      dockerfile: Dockerfile
+    container_name: fooddelivery-restaurant-service
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://restaurant-postgres:5432/talabatdb-restaurants
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      restaurant-postgres:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: fooddelivery-order-service
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-postgres:5432/talabatdb-orders
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
+      SPRING_NEO4J_URI: bolt://neo4j:7687
+      JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
+      FEIGN_DELIVERY-SERVICE_URL: http://delivery-service:8080
+      FEIGN_CHECKOUT-SERVICE_URL: http://checkout-service:8080
+    depends_on:
+      order-postgres:
+        condition: service_healthy
+
+  delivery-service:
+    build:
+      context: ./delivery-service
+      dockerfile: Dockerfile
+    container_name: fooddelivery-delivery-service
+    ports:
+      - "8084:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://delivery-postgres:5432/talabatdb-deliveries
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      delivery-postgres:
+        condition: service_healthy
+    entrypoint: [ "sh", "-c", "sleep 90 && exec java -jar app.jar" ]
+
+  checkout-service:
+    build:
+      context: ./checkout-service
+      dockerfile: Dockerfile
+    container_name: fooddelivery-checkout-service
+    ports:
+      - "8085:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_ORDER-SERVICE_URL: http://order-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
+    depends_on:
+      checkout-postgres:
+        condition: service_healthy
+
 volumes:
-    pgdata:
-    checkout-pgdata:
     pgadmin-data:
     mongo-data:
     es-data:
     neo4j-data:
     cassandra-data:
     user-pgdata:
+    restaurant-pgdata:
     order-pgdata:
     delivery-pgdata:
+    checkout-pgdata:
 
 
