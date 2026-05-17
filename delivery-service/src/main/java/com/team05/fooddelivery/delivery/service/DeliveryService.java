@@ -1,10 +1,6 @@
 package com.team05.fooddelivery.delivery.service;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -14,6 +10,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.team05.fooddelivery.contracts.dto.DeliveryDTO;
+import com.team05.fooddelivery.contracts.dto.OrderDTO;
+import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.delivery.adapter.CassandraRowAdapter;
 import com.team05.fooddelivery.delivery.dto.*;
 import com.team05.fooddelivery.delivery.enums.DeliveryStatus;
@@ -22,6 +21,9 @@ import com.team05.fooddelivery.delivery.model.cassandra.DeliveryTrackingEvent;
 import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import com.team05.fooddelivery.delivery.repository.cassandra.DeliveryTrackingEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
+import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
@@ -40,21 +42,25 @@ import com.team05.shared.observer.MongoEventLogger;
 @Transactional
 public class DeliveryService {
 
+    private static final Logger log = LoggerFactory.getLogger(DeliveryService.class);
+
     private final DeliveryRepository deliveryRepository;
     private final DeliveryTrackingEventRepository trackingEventRepository;
     private final CassandraRowAdapter cassandraRowAdapter = new CassandraRowAdapter();
     private final CacheManager cacheManager;
     private final List<EntityObserver> observers = new ArrayList<>();
+    private final OrderServiceClient orderServiceClient;
 
     public DeliveryService(DeliveryRepository deliveryRepository,CacheManager cacheManager,
                            DeliveryTrackingEventRepository trackingEventRepository,
-                           DeliveryEventRepository eventRepository) {
+                           DeliveryEventRepository eventRepository, OrderServiceClient orderServiceClient) {
         this.deliveryRepository = deliveryRepository;
         this.cacheManager = cacheManager;
         this.trackingEventRepository = trackingEventRepository;
         this.observers.add(
                 new MongoEventLogger<>(eventRepository, MongoEvent.EventType.DELIVERY)
         );
+        this.orderServiceClient = orderServiceClient;
     }
 
     /**
@@ -70,9 +76,7 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public Delivery createOrderDelivery(Long orderId, Delivery delivery) {
-        if (!deliveryRepository.orderExists(orderId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        validateOrder(orderId);
         if (delivery.getDriverName() == null || delivery.getDriverName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "driverName is required");
         }
@@ -90,6 +94,7 @@ public class DeliveryService {
             delivery.setStatus(DeliveryStatus.ASSIGNED);
         }
         Delivery saved = deliveryRepository.save(delivery);
+        log.info("{} {} saved with status={}", "Delivery", saved.getId(), saved.getStatus());
 
         // [S4-F2] DELIVERY_CREATED: Notify observers to log event
         Map<String, Object> eventDetails = new HashMap<>();
@@ -123,6 +128,7 @@ public class DeliveryService {
         }
 
         Delivery saved = deliveryRepository.save(delivery);
+        log.info("{} {} saved with status={}", "Delivery", saved.getId(), saved.getStatus());
 
         Map<String, Object> eventDetails = new HashMap<>();
         eventDetails.put("orderId", saved.getOrderId());
@@ -196,6 +202,11 @@ public class DeliveryService {
 
         // Mongo logging is observational and must not block the Cassandra write path.
         notifyObservers("TRACKING_RECORDED", eventPayload);
+
+        Cache cache = cacheManager.getCache("delivery-service::delivery-active-status");
+        if (cache != null) {
+            cache.evict(delivery.getOrderId());
+        }
     }
 
     /**
@@ -207,6 +218,43 @@ public class DeliveryService {
     public Delivery getDeliveryById(Long id) {
         return deliveryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Delivery not found"));
+    }
+
+    @Cacheable(
+            cacheNames = "delivery-service::delivery-active-status",
+            key = "#orderId"
+    )
+    @Transactional(readOnly = true)
+    public DeliveryDTO getDeliveryActiveStatus(Long orderId) {
+
+        validateOrder(orderId);
+
+        Delivery delivery =
+                deliveryRepository.findActiveByOrderId(orderId)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "No active delivery for order " + orderId
+                                )
+                        );
+
+        log.info("Calling {}.{} with args={}", "OrderServiceClient", "getOrder", orderId);
+        OrderDTO order;
+        try {
+            order = orderServiceClient.getOrder(orderId);
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getOrder");
+        } catch (FeignException e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            throw e;
+        }
+
+        return new DeliveryDTO(
+                delivery.getId(),
+                delivery.getOrderId(),
+                delivery.getStatus().toString(),
+                delivery.getDriverName(),
+                order.restaurantId()
+        );
     }
 
     /**
@@ -357,9 +405,7 @@ public class DeliveryService {
         @CacheEvict(cacheNames = "delivery-service::S4-F10", allEntries = true)
     })
     public int batchCreate(BatchDeliveryRequestDTO request) {
-        if (!deliveryRepository.orderExists(request.getOrderId())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
+        validateOrder(request.getOrderId());
 
         if (request.getDeliveries() == null || request.getDeliveries().isEmpty()) {
             return 0;
@@ -439,11 +485,34 @@ public class DeliveryService {
     }
 
     private void validateOrder(Long orderId) {
-        if (!deliveryRepository.orderExists(orderId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-        }
-    }
+        OrderDTO order;
 
+        try {
+            log.info("Calling {}.{} with args={}", "OrderServiceClient", "getOrder", orderId);
+            order = orderServiceClient.getOrder(orderId);
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getOrder");
+        } catch (FeignException.NotFound e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Order not found"
+            );
+        } catch (FeignException e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service temporarily unavailable"
+            );
+        }
+
+        if (order == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Order service returned empty response"
+            );
+        }
+
+    }
     /**
      * [S4-F6] Order Delivery History in Date Range
      * Endpoint: GET /api/deliveries/order/{orderId}/history?startDate={d}&endDate={d}
@@ -674,11 +743,12 @@ public class DeliveryService {
 
         return events.stream().map(cassandraRowAdapter::adapt).toList();
     }
-
     private DeliveryAnalyticsDTO buildDeliveryAnalytics(
             LocalDate startDate,
             LocalDate endDate
     ) {
+        long startMs = System.currentTimeMillis();
+
         LocalDateTime start = startDate == null
                 ? null
                 : startDate.atStartOfDay();
@@ -687,42 +757,76 @@ public class DeliveryService {
                 ? null
                 : endDate.atTime(23, 59, 59, 999_000_000);
 
-        Number totalCount =
-                deliveryRepository.countTotalDeliveries(start, end);
+        List<Delivery> deliveries =
+                deliveryRepository.findAllInRange(start, end);
 
-        Number averageMinutes =
-                deliveryRepository.averageDeliveryMinutes(start, end);
+        long totalDeliveries = deliveries.size();
 
-        Number deliveredCount =
-                deliveryRepository.countDeliveredOrders(start, end);
-
-        Number onTimeCount =
-                deliveryRepository.countOnTimeDeliveredOrders(start, end);
+        long deliveredCount = 0;
+        long onTimeCount = 0;
+        double totalMinutes = 0.0;
 
         Map<DeliveryStatus, Long> grouped =
-                deliveryRepository.countByStatus(start, end)
-                        .stream()
-                        .collect(Collectors.toMap(
-                                row -> DeliveryStatus.valueOf(row[0].toString()),
-                                row -> ((Number) row[1]).longValue()
+                deliveries.stream()
+                        .collect(Collectors.groupingBy(
+                                Delivery::getStatus,
+                                Collectors.counting()
                         ));
 
-        long total = totalCount == null ? 0L : totalCount.longValue();
-        long delivered = deliveredCount == null ? 0L : deliveredCount.longValue();
-        long onTime = onTimeCount == null ? 0L : onTimeCount.longValue();
-        double average = averageMinutes == null ? 0.0 : averageMinutes.doubleValue();
+        for (Delivery delivery : deliveries) {
+            try {
+                OrderDTO order =
+                        orderServiceClient.getOrder(
+                                delivery.getOrderId()
+                        );
+                if (
+                        "DELIVERED".equals(order.status())
+                                && order.deliveredAt() != null
+                                && order.orderDate() != null
+                ) {
+                    deliveredCount++;
 
-        double rate =
-                delivered == 0
+                    long minutes =
+                            Duration.between(
+                                    order.orderDate(),
+                                    order.deliveredAt()
+                            ).toMinutes();
+
+                    totalMinutes += minutes;
+
+                    if (minutes <= 45) {
+                        onTimeCount++;
+                    }
+                }
+
+            } catch (FeignException e) {
+                log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            }
+        }
+
+        double averageMinutes =
+                deliveredCount == 0
                         ? 0.0
-                        : (double) onTime / delivered;
+                        : totalMinutes / deliveredCount;
 
-        return DeliveryAnalyticsDTO.builder()
-                .totalDeliveries(total)
-                .averageDeliveryTimeMinutes(average)
-                .onTimeRate(rate)
+        double onTimeRate =
+                deliveredCount == 0
+                        ? 0.0
+                        : (double) onTimeCount / deliveredCount;
+
+        DeliveryAnalyticsDTO result = DeliveryAnalyticsDTO.builder()
+                .totalDeliveries(totalDeliveries)
+                .averageDeliveryTimeMinutes(averageMinutes)
+                .onTimeRate(onTimeRate)
                 .deliveriesByStatus(grouped)
                 .build();
+
+        long elapsed = System.currentTimeMillis() - startMs;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "buildDeliveryAnalytics", elapsed);
+        }
+
+        return result;
     }
 
     private void validateDates(LocalDate startDate, LocalDate endDate) {

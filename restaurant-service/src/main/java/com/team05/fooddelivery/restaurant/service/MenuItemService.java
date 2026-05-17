@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,6 +27,8 @@ import java.util.Map;
 
 @Service
 public class MenuItemService {
+
+    private static final Logger log = LoggerFactory.getLogger(MenuItemService.class);
 
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
@@ -47,7 +51,9 @@ public class MenuItemService {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         menuItem.setRestaurant(restaurant);
-        return menuItemRepository.save(menuItem);
+        MenuItem saved = menuItemRepository.save(menuItem);
+        log.info("{} {} saved with status={}", "MenuItem", saved.getId(), saved.getAvailable());
+        return saved;
     }
 
     // Cached 15 min — Section 4.4.2
@@ -75,7 +81,9 @@ public class MenuItemService {
         if (updated.getCategory() != null) existing.setCategory(updated.getCategory());
         if (updated.getAvailable() != null) existing.setAvailable(updated.getAvailable());
         if (updated.getMetadata() != null) existing.setMetadata(updated.getMetadata());
-        return menuItemRepository.save(existing);
+        MenuItem saved = menuItemRepository.save(existing);
+        log.info("{} {} saved with status={}", "MenuItem", saved.getId(), saved.getAvailable());
+        return saved;
     }
 
     // Delete — evict caches
@@ -122,6 +130,7 @@ public class MenuItemService {
         metadata.put("toggledBy", toggledBy);
         menuItem.setMetadata(metadata);
         menuItemRepository.save(menuItem);
+        log.info("{} {} saved with status={}", "MenuItem", menuItem.getId(), menuItem.getAvailable());
 
         // Notify observers — Section 4.5
         Map<String, Object> params = new HashMap<>();

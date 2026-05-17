@@ -1,17 +1,51 @@
 services:
-  postgres:
-    build:
-      context: .
-      dockerfile: postgres.Dockerfile
-    container_name: fooddelivery-db
+  user-postgres:
+    image: postgres:17
+    container_name: fooddelivery-user-db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
-      POSTGRES_DB: fooddeliverydb
+      POSTGRES_DB: talabatdb-users
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - pgdata:/var/lib/postgresql
+      - user-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-users" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  order-postgres:
+    image: postgres:17
+    container_name: fooddelivery-order-db
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: talabatdb-orders
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - order-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-orders" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  delivery-postgres:
+    image: postgres:17
+    container_name: fooddelivery-delivery-db
+    ports:
+      - "5431:5432"
+    environment:
+      POSTGRES_DB: talabatdb-deliveries
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - delivery-pgdata:/var/lib/postgresql
     # healthcheck:
     #   test: ["CMD-SHELL", "test -f /tmp/healthy"]
     #   interval: 10s
@@ -19,7 +53,25 @@ services:
     #   retries: 10
     #   start_period: 15s
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fooddeliverydb"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-deliveries" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  checkout-postgres:
+    image: postgres:17
+    container_name: fooddelivery-checkout-db
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: talabatdb-checkout
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - checkout-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d talabatdb-checkout"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,7 +85,7 @@ services:
     ports:
       - "9090:80"
     depends_on:
-      - postgres
+      - user-postgres
     restart: on-failure
     volumes:
       - pgadmin-data:/var/lib/pgadmin
@@ -178,12 +230,18 @@ services:
     ports:
       - "8083:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-postgres:5432/talabatdb-orders
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
       SPRING_NEO4J_URI: bolt://neo4j:7687
       JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
+      FEIGN_DELIVERY-SERVICE_URL: http://delivery-service:8080
+      FEIGN_CHECKOUT-SERVICE_URL: http://checkout-service:8080
     depends_on:
-      postgres:
+      order-postgres:
         condition: service_healthy
 
   checkout-service:
@@ -194,10 +252,15 @@ services:
     ports:
       - "8085:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://checkout-postgres:5432/talabatdb-checkout
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_ORDER-SERVICE_URL: http://order-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
     depends_on:
-      postgres:
+      checkout-postgres:
         condition: service_healthy
 
   delivery-service:
@@ -208,12 +271,13 @@ services:
     ports:
       - "8084:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://delivery-postgres:5432/talabatdb-deliveries
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
-      postgres:
+      delivery-postgres:
         condition: service_healthy
-    entrypoint: [ "sh", "-c", "sleep 90 && exec java -jar app.jar" ]
 
   user-service:
     build:
@@ -223,11 +287,13 @@ services:
     ports:
       - "8081:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-postgres:5432/talabatdb-users
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
     depends_on:
-      postgres:
+      user-postgres:
         condition: service_healthy
 
   restaurant-service:
@@ -238,11 +304,94 @@ services:
     ports:
       - "8082:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://restaurant-postgres:5432/talabatdb-restaurants
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
       JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
     depends_on:
-      postgres:
+      restaurant-postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  restaurant-postgres:
+    image: postgres:17
+    container_name: talabat-restaurant-postgres
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: talabatdb-restaurants
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - restaurant-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d talabatdb-restaurants"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: fooddelivery-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: fooddelivery-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: "wget -q -O - http://localhost:3100/ready || exit 1"
+      interval: 10s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: checkout-service-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: fooddelivery-prometheus
+    ports:
+      - "9095:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=24h'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    healthcheck:
+      test: "wget -q -O - http://localhost:9090/-/ready || exit 1"
+      interval: 10s
+      retries: 5
 
   api-gateway:
     build:
@@ -250,17 +399,21 @@ services:
       dockerfile: api-gateway/Dockerfile
     container_name: api-gateway
     ports:
-      - "30083:8080"
+      - "30080:8080"
     environment:
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       - user-service
 volumes:
     pgdata:
+    delivery-pgdata:
+    checkout-pgdata:
     pgadmin-data:
     mongo-data:
     es-data:
     neo4j-data:
     cassandra-data:
-
+    user-pgdata:
+    restaurant-pgdata:
+    order-pgdata:
 

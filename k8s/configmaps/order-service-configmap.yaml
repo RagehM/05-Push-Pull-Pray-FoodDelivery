@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-configmap
+  namespace: talabat
+data:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://order-postgres:5432/talabatdb-orders
+  SPRING_DATASOURCE_USERNAME: user
+  SPRING_RABBITMQ_HOST: rabbitmq
+  FEIGN_USER_SERVICE_URL: http://user-service:8080
+  FEIGN_RESTAURANT_SERVICE_URL: http://restaurant-service:8080
+  FEIGN_DELIVERY_SERVICE_URL: http://delivery-service:8080
+  FEIGN_CHECKOUT_SERVICE_URL: http://checkout-service:8080
