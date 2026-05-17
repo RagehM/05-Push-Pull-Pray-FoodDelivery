@@ -1,4 +1,4 @@
-package com.team05.messaging.consumers;
+package com.team05.fooddelivery.restaurant.messaging.consumers;
 
 import com.team05.fooddelivery.contracts.events.OrderCancelledEvent;
 import com.team05.fooddelivery.contracts.events.OrderCompletedEvent;

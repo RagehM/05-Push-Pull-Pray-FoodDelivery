@@ -1,4 +1,4 @@
-package com.team05.messaging.publishers;
+package com.team05.fooddelivery.restaurant.messaging.publishers;
 
 import com.team05.fooddelivery.contracts.events.RestaurantRatedEvent;
 import com.team05.fooddelivery.contracts.events.RestaurantStatusChangedEvent;
