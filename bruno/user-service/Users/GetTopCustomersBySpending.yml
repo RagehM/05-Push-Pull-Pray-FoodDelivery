@@ -16,11 +16,12 @@ http:
     - name: limit
       value: "10"
       type: query
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFhc2Rhc2RzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6NCwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDQ4NDAxLCJleHAiOjE3NzkxMzQ4MDF9.Jr0z9z5hv8XKya3G9rqK05Yp4XjkmWRQ_lgxnZXxWyM
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

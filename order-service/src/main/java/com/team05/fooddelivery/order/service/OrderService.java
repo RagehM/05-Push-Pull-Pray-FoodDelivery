@@ -28,6 +28,8 @@ import com.team05.fooddelivery.contracts.feign.UserServiceClient;
 // import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
 import com.team05.fooddelivery.contracts.feign.DeliveryServiceClient;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -76,6 +78,8 @@ public class OrderService {
     private final UserServiceClient userServiceClient;
     private final DeliveryServiceClient deliveryServiceClient;
     // private final CheckoutServiceClient checkoutServiceClient;
+        private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+ 
 
 
     public OrderService(OrderRepository orderRepository,
@@ -221,6 +225,8 @@ public class OrderService {
 
         //// TODO: Look into the idempotency and deduplication of this event in case of retries and failures
         notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
+
+        orderPublisher.publishOrderPlacedEvent(confirmedOrder);
         
         return confirmedOrder;
     }
@@ -244,8 +250,11 @@ public class OrderService {
         RestaurantDTO restaurant;
 
         try {
+            log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getRestaurant", restaurantId);
             restaurant = restaurantServiceClient.getRestaurant(restaurantId);
+            log.info("{}, {} returned successfully", "restaurantServiceClient", "getRestaurant");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
 
@@ -256,6 +265,8 @@ public class OrderService {
         order.setStatus(OrderStatusEnum.CONFIRMED);
 
         Order savedOrder = orderRepository.save(order);
+
+        log.info("Order {} saved with status = {}", savedOrder.getId(), savedOrder.getStatus());
 
         return savedOrder;
 
@@ -276,8 +287,11 @@ public class OrderService {
         AvgPriceDTO avgPriceDTO;
 
         try {
+            log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getMenuItemAvgPrice", request.restaurantId());
             avgPriceDTO = restaurantServiceClient.getMenuItemAvgPrice(request.restaurantId());
+            log.info("{}, {} returned successfully", "restaurantServiceClient", "getMenuItemAvgPrice");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
 
@@ -317,7 +331,6 @@ public class OrderService {
 
         notifyObservers(OrderEventActions.ORDER_DELIVERED, params);
 
-        // TODO: Look into the idempotency and dedupliccation
         orderPublisher.publishOrderCompletedEvent(deliveredOrder);
 
         return deliveredOrder;
@@ -335,9 +348,6 @@ public class OrderService {
     public Order deliverOrder(Long id) {
         //// TODO: Add authentication and authorization checks to ensure only the delivery person assigned to the order or an admin can mark the order as delivered
 
-
-        // Order foundOrder = orderRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        // Replaced above line with getOrderById to use caching when viable
         Order foundOrder = getOrderById(id);
 
         if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
@@ -353,8 +363,11 @@ public class OrderService {
         //// Check restaurant is open
         RestaurantDTO restaurant;
         try {
+            log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getRestaurant", foundOrder.getRestaurantId());
             restaurant = restaurantServiceClient.getRestaurant(foundOrder.getRestaurantId());
+            log.info("{}, {} returned successfully", "restaurantServiceClient", "getRestaurant");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
         if (restaurant.status() == null || !restaurant.status().equalsIgnoreCase("OPEN")) {
@@ -363,8 +376,11 @@ public class OrderService {
         //// Check user is active
         UserDTO user;
         try {
+            log.info("Calling {}, {} with args={}", "userServiceClient", "getUser", foundOrder.getUserId());
             user = userServiceClient.getUser(foundOrder.getUserId());
+            log.info("{}, {} returned successfully", "userServiceClient", "getUser");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "user-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
         if (user.status() == null || !user.status().equalsIgnoreCase("ACTIVE")) {
@@ -372,8 +388,11 @@ public class OrderService {
         }
         //// Check delivery service has an active delivery
         try {
+            log.info("Calling {}, {} with args={}", "deliveryServiceClient", "getActiveDeliveryForOrder", foundOrder.getId());
             deliveryServiceClient.getActiveDeliveryForOrder(foundOrder.getId());
+            log.info("{}, {} returned successfully", "deliveryServiceClient", "getActiveDeliveryForOrder");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "delivery-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active delivery not found for this order");
         }
         
@@ -381,7 +400,13 @@ public class OrderService {
         foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETING
         // foundOrder.setDeliveredAt(LocalDateTime.now());
 
+
+
+
         Order savedOrder = orderRepository.save(foundOrder);
+
+        log.info("Order {} transitioning {} → {}", foundOrder.getId(), OrderStatusEnum.PREPARING, OrderStatusEnum.COMPLETING);
+
         return savedOrder;
 
 
@@ -488,6 +513,9 @@ public class OrderService {
         }
         existingOrder.getOrderItems().addAll(orderItems);
         Order returnObject = orderRepository.save(existingOrder);
+
+        log.info("Order {} saved with status = {}", returnObject.getId(), returnObject.getStatus());
+        
 
 
 
@@ -636,12 +664,13 @@ public class OrderService {
         }
 
         // (e)
-        String userName;
-
         UserDTO user;
         try {
+            log.info("Calling {}, {} with args={}", "userServiceClient", "getUser", order.getUserId());
             user = userServiceClient.getUser(order.getUserId());
+            log.info("{}, {} returned successfully", "userServiceClient", "getUser");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "user-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
 
@@ -651,8 +680,11 @@ public class OrderService {
 
         RestaurantDTO restaurant;
         try {
+            log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getRestaurant", order.getRestaurantId());
             restaurant = restaurantServiceClient.getRestaurant(order.getRestaurantId());
+            log.info("{}, {} returned successfully", "restaurantServiceClient", "getRestaurant");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
 
@@ -699,8 +731,11 @@ public class OrderService {
 
         UserDTO user;
         try {
+            log.info("Calling {}, {} with args={}", "userServiceClient", "getUser", userId);
             user = userServiceClient.getUser(userId);
+            log.info("{}, {} returned successfully", "userServiceClient", "getUser");
         } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "user-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
 
@@ -740,8 +775,10 @@ public class OrderService {
         List<RestaurantRecommendationDTO> recommendations = rows.stream()
                 .map(r -> {
                     try {
+                        log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getRestaurant", r.restaurantId());
                         RestaurantDTO restaurant =
                                 restaurantServiceClient.getRestaurant(r.restaurantId());
+                        log.info("{}, {} returned successfully", "restaurantServiceClient", "getRestaurant");
 
                         return new RestaurantRecommendationDTO.Builder()
                                 .id(restaurant.id())
@@ -751,6 +788,7 @@ public class OrderService {
                                 .build();
 
                     } catch (Exception e) {
+                        log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
                         return null;
                     }
                 })
@@ -770,22 +808,6 @@ public class OrderService {
     //     } catch (Exception ignored) {
     //     }
     // }
-
- 
-    @Transactional
-    public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
-        Order order = getOrderById(orderId);
-        if (receivedEvent.equals("payment.completed")) {
-            order.setStatus(OrderStatusEnum.PAID);
-            orderRepository.save(order);
-        } else if (receivedEvent.equals("payment.failed")) {
-            order.setStatus(OrderStatusEnum.PAYMENT_FAILED);
-            orderRepository.save(order);
-        } else if (receivedEvent.equals("payment.refunded")) {
-            order.setStatus(OrderStatusEnum.REFUNDED);
-            orderRepository.save(order);
-        }
-    }
 
     // [CRUD]
     //// Get order by ID
@@ -807,20 +829,28 @@ public class OrderService {
     @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
     public Order createOrder(Order order) {
         try {
+            log.info("Calling {}, {} with args={}", "userServiceClient", "getUser", order.getUserId());
             userServiceClient.getUser(order.getUserId());
+            log.info("{}, {} returned successfully", "userServiceClient", "getUser");
         } catch (Exception e) {
-            // System.out.println("User not found: " + e.getMessage());
+            log.warn("Feign call to {} failed: {}", "user-service", e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
         }
         if (order.getRestaurantId() != null) {
             try {
+                log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getRestaurant", order.getRestaurantId());
                 restaurantServiceClient.getRestaurant(order.getRestaurantId());
+                log.info("{}, {} returned successfully", "restaurantServiceClient", "getRestaurant");
             } catch (Exception e) {
+                log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
             }
         }
 
         Order savedOrder = orderRepository.save(order);
+
+        log.info("Order {} saved with status = {}", savedOrder.getId(), savedOrder.getStatus());
+
         Map<String, Object> params = new HashMap<>();
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
@@ -863,8 +893,11 @@ public class OrderService {
 
         if (updatedOrder.getRestaurantId() != null){
             try {
+                log.info("Calling {}, {} with args={}", "restaurantServiceClient", "getRestaurant", updatedOrder.getRestaurantId());
                 restaurantServiceClient.getRestaurant(updatedOrder.getRestaurantId());
+                log.info("{}, {} returned successfully", "restaurantServiceClient", "getRestaurant");
             } catch (Exception e) {
+                log.warn("Feign call to {} failed: {}", "restaurant-service", e.getMessage());
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant you're trying to set does not exist");
             }
             existingOrder.setRestaurantId(updatedOrder.getRestaurantId());
@@ -883,6 +916,9 @@ public class OrderService {
         }
 
         Order savedOrder = orderRepository.save(existingOrder);
+        
+        log.info("Order {} saved with status = {}", savedOrder.getId(), savedOrder.getStatus());
+
         Map<String, Object> params = new HashMap<>();
         params.put("order", savedOrder);
         params.put("orderId", savedOrder.getId());
@@ -939,5 +975,9 @@ public class OrderService {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
         }
+    }
+
+    public int getActiveOrderCountForRestaurant(Long restaurantId) {
+        return orderRepository.countActiveOrdersByRestaurantId(restaurantId).intValue();
     }
 }

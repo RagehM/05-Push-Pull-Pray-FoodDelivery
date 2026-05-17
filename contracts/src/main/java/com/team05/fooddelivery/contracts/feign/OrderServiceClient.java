@@ -24,4 +24,7 @@ public interface OrderServiceClient {
 
     @GetMapping("/api/orders/{orderId}")
     OrderDTO getOrder(@PathVariable Long orderId);
+
+    @GetMapping("/api/orders/restaurant/{restaurantId}/active-count")
+    int getActiveOrderCountByRestaurant(@PathVariable Long restaurantId);
 }

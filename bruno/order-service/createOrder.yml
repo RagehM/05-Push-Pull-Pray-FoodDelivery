@@ -1,0 +1,29 @@
+info:
+  name: createOrder
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: http://localhost:8083/api/orders
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 1,
+        "restaurantId": 9,
+        "status": "PREPARING",
+        "totalAmount": 180.0,
+        "deliveryAddress": "Matrouh",
+        "metadata": {},
+        "orderDate": "2026-09-30T23:59:59.9999"
+      }
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDQzNDIyLCJleHAiOjE3NzkxMjk4MjJ9.p1S7KlK-H-CCo26UGwhqQnTjY6VqJqxRFfo5WW0z9XQ
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

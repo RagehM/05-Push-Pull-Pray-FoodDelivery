@@ -5,12 +5,13 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8081/api/users/1/deactivate
-  auth: inherit
+  url: http://localhost:8081/api/users/5/deactivate
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyMTJhYXNkYWFzZGFzZHNkZ2FzZGVoQG1haWwuY29tIiwidWlkIjo1LCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3NzkwNDg5OTgsImV4cCI6MTc3OTEzNTM5OH0.iUBYYpSZ6WLQJR3Lp3YoAcVY-d_ZELfSvc3Gw2Kkkw8
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-

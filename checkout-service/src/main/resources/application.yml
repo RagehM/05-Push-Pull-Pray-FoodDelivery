@@ -63,6 +63,10 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+
+  endpoint:
+    prometheus:
+      enabled: true
 #spring.application.name=checkout-service
 #server.port=8080
 #spring.datasource.url=jdbc:postgresql://localhost:5432/fooddeliverydb
