@@ -26,7 +26,7 @@
       },
       "targets": [
         {
-          "expr": "{app=\"talabat\", service=\"user-service\", env=\"k8s\"}",
+          "expr": "{app=\"talabat\", service=\"user-service\"}",
           "refId": "A"
         }
       ],
@@ -65,8 +65,7 @@
     },
     {
       "id": 3,
-      "title": "User Service - Log Rate by Level",
-      "description": "Per-minute log rate grouped by log level",
+      "title": "Log Rate by Level",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -80,11 +79,19 @@
       },
       "targets": [
         {
-          "expr": "sum by (level) (rate({app=\"talabat\", service=\"user-service\", env=\"k8s\"}[1m]))",
-          "refId": "A",
-          "legendFormat": "{{level}}"
+          "expr": "sum by (level) (rate({app=\"talabat\", service=\"user-service\"}[1m]))",
+          "legendFormat": "{{level}}",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      }
     },
     {
       "id": 4,

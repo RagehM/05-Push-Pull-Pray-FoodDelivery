@@ -5,16 +5,17 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8083/api/orders/1/confirm?restaurantId=1
+  url: http://localhost:8083/api/orders/2/confirm?restaurantId=1
   params:
     - name: restaurantId
       value: "1"
       type: query
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDUxODI3LCJleHAiOjE3NzkxMzgyMjd9.q20-H7-VLGNWKDQ2o9-UBK3URcnSCSiaLAZ0gOq78BE
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
