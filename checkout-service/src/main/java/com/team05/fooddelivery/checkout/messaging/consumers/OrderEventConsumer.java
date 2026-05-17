@@ -40,7 +40,7 @@ public class OrderEventConsumer {
 
         setupMdc(RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, correlationId, event.orderId());
         try {
-            log.info("Consuming order.completed for orderId={}", event.orderId());
+            log.info("Consuming {} for {}={}", RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, "orderId", event.orderId());
 
             Payment payment = paymentService.createPendingPayment(
                     event.orderId(), event.userId(), event.totalAmount());
@@ -51,11 +51,9 @@ public class OrderEventConsumer {
                     BigDecimal.valueOf(payment.getAmount())
             ));
 
-            log.info("Processed order.completed for orderId={} — created paymentId={}",
-                    event.orderId(), payment.getId());
+            log.info("Processed {} for {}={}", RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, "orderId", event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process order.completed for orderId={}: {}",
-                    event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, ex.getMessage(), ex);
             throw ex; // let retry / DLQ handle it
         } finally {
             clearMdc();
@@ -69,7 +67,7 @@ public class OrderEventConsumer {
 
         setupMdc(RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, correlationId, event.orderId());
         try {
-            log.info("Consuming order.cancelled for orderId={}", event.orderId());
+            log.info("Consuming {} for {}={}", RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, "orderId", event.orderId());
 
             Optional<Payment> refundedOpt =
                     paymentService.refundPaymentForCancelledOrder(event.orderId());
@@ -87,11 +85,9 @@ public class OrderEventConsumer {
                     BigDecimal.valueOf(refunded.getAmount())
             ));
 
-            log.info("Processed order.cancelled for orderId={} — refunded paymentId={}",
-                    event.orderId(), refunded.getId());
+            log.info("Processed {} for {}={}", RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, "orderId", event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process order.cancelled for orderId={}: {}",
-                    event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, ex.getMessage(), ex);
             throw ex;
         } finally {
             clearMdc();

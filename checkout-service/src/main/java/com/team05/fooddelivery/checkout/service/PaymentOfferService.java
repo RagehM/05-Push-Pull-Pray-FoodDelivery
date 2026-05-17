@@ -4,6 +4,8 @@ import com.team05.fooddelivery.checkout.dto.OfferUsageDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
 import com.team05.fooddelivery.checkout.repository.PaymentOfferRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -23,6 +25,9 @@ import java.util.List;
 
 @Service
 public class PaymentOfferService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentOfferService.class);
+
     private final PaymentOfferRepository paymentOfferRepository;
     private final PaymentRepository paymentRepository;
     private final OfferRepository offerRepository;
@@ -51,7 +56,9 @@ public class PaymentOfferService {
 
         paymentOffer.setDiscountApplied(dto.discountApplied() != null ? dto.discountApplied() : 0.0);
 
-        return paymentOfferRepository.save(paymentOffer);
+        PaymentOffer saved = paymentOfferRepository.save(paymentOffer);
+        log.info("PaymentOffer {} saved with status={}", saved.getId(), "created");
+        return saved;
     }
 
     public List<PaymentOffer> getPaymentOffers() {
@@ -82,7 +89,9 @@ public class PaymentOfferService {
                 paymentOffer.setOffer(offer);
             }
 
-            return paymentOfferRepository.save(paymentOffer);
+            PaymentOffer saved = paymentOfferRepository.save(paymentOffer);
+            log.info("PaymentOffer {} saved with status={}", saved.getId(), "updated");
+            return saved;
         }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PaymentOffer not found"));
     }
 
@@ -92,6 +101,7 @@ public class PaymentOfferService {
     })
     public void deletePaymentOfferById(Long paymentOfferId) {
         paymentOfferRepository.deleteById(paymentOfferId);
+        log.info("PaymentOffer {} saved with status={}", paymentOfferId, "deleted");
     }
 
     // [S5-F9] Get Most Used Offers Report (Join Entity + Aggregation)
