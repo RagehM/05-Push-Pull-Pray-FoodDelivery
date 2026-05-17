@@ -313,6 +313,8 @@ services:
     depends_on:
       user-postgres:
         condition: service_healthy
+      loki:
+        condition: service_healthy
 
   restaurant-service:
     build:
@@ -326,6 +328,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       restaurant-postgres:
+        condition: service_healthy
+      loki:
         condition: service_healthy
 
   order-service:
@@ -349,6 +353,8 @@ services:
     depends_on:
       order-postgres:
         condition: service_healthy
+      loki:
+        condition: service_healthy
 
   delivery-service:
     build:
@@ -362,6 +368,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       delivery-postgres:
+        condition: service_healthy
+      loki:
         condition: service_healthy
     entrypoint: [ "sh", "-c", "sleep 90 && exec java -jar app.jar" ]
 

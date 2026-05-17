@@ -8,7 +8,7 @@
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${appName} correlationId=%X{correlationId:-} userId=%X{userId:-} orderId=%X{orderId:-} paymentId=%X{paymentId:-} routingKey=%X{routingKey:-} thread=%thread logger=%logger{36} msg="%replace(%msg){'"','\"'}"%n</pattern>
+            <pattern>ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${appName} correlationId=%X{correlationId:-} userId=%X{userId:-} orderId=%X{orderId:-} paymentId=%X{paymentId:-} routingKey=%X{routingKey:-} thread=%thread logger=%logger{36} msg="%replace(%msg){'&quot;','\\&quot;'}"%n</pattern>
         </encoder>
     </appender>
 
@@ -16,14 +16,16 @@
         <http>
             <url>${lokiUrl}</url>
         </http>
-        <format>
-            <label>
-                <pattern>app=talabat,service=${appName},level=%level,env=docker</pattern>
-            </label>
-            <message>
-                <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"${appName}","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId:-}","userId":"%X{userId:-}","orderId":"%X{orderId:-}","paymentId":"%X{paymentId:-}","routingKey":"%X{routingKey:-}","message":"%replace(%msg){'"','\"'}"}%n</pattern>
-            </message>
-        </format>
+        <labels>
+            app=talabat
+            service=${appName}
+            level=%level
+            env=docker
+        </labels>
+        <structuredMetadata>off</structuredMetadata>
+        <message class="ch.qos.logback.classic.PatternLayout">
+            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"${appName}","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId:-}","userId":"%X{userId:-}","orderId":"%X{orderId:-}","paymentId":"%X{paymentId:-}","routingKey":"%X{routingKey:-}","message":"%replace(%msg){'&quot;','\\&quot;'}"}%n</pattern>
+        </message>
     </appender>
 
     <logger name="com.team05.fooddelivery.checkout" level="INFO" additivity="false">
