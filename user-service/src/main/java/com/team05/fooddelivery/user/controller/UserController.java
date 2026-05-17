@@ -44,10 +44,10 @@ public class UserController {
         return userService.createUser(user);
     }
 
-    @GetMapping("/{id}")
-    public User getUserById(@PathVariable long id)
+    @GetMapping("/{userId}")
+    public User getUserById(@PathVariable long userId)
     {
-        return userService.findUserById(id);
+        return userService.findUserById(userId);
     }
 
     @PutMapping("/{id}")
