@@ -120,7 +120,6 @@ public class PaymentService {
         }
 
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
@@ -163,7 +162,6 @@ public class PaymentService {
         payment.setPaymentOffers(updatedPayment.getPaymentOffers());
 
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
@@ -260,7 +258,6 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
 
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
@@ -386,7 +383,6 @@ public class PaymentService {
         payment.setTransactionDetails(transactionDetails);
 
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
@@ -475,7 +471,6 @@ public class PaymentService {
         paymentOfferRepository.save(newPaymentOffer);
         offerRepository.save(offer);
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
@@ -560,7 +555,6 @@ public class PaymentService {
         payment.setTransactionDetails(details);
 
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> paymentAuditEvent = new HashMap<>();
         paymentAuditEvent.put("paymentId", savedPayment.getId());
@@ -630,7 +624,6 @@ public class PaymentService {
     // [S5-F10] Get Revenue by Cuisine with Delivery Fee Breakdown
     public List<CuisineRevenueDTO> getRevenueByCuisine(LocalDateTime startDate, LocalDateTime endDate) {
         StopWatch stopWatch = new StopWatch();
-        stopWatch.start();
         if (startDate == null || endDate == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate are required");
         }
@@ -983,7 +976,6 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
 
         Payment savedPayment = paymentRepository.save(payment);
-        log.info("Payment {} saved with status={}", savedPayment.getId(), savedPayment.getStatus());
 
         Map<String, Object> refundedAuditEvent = new HashMap<>();
         refundedAuditEvent.put("paymentId", savedPayment.getId());
