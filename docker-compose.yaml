@@ -54,6 +54,10 @@ services:
     #   start_period: 15s
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-deliveries" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   checkout-postgres:
     image: postgres:17
@@ -81,7 +85,6 @@ services:
     ports:
       - "9090:80"
     depends_on:
-      - postgres
       - user-postgres
     restart: on-failure
     volumes:
