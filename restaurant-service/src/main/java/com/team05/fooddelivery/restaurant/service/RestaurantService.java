@@ -560,7 +560,7 @@ public class RestaurantService {
             return count;
         } catch (FeignException.NotFound ex) {
             log.info("order-service returned 404 for restaurantId={} — treating as 0 active orders", restaurantId);
-            return 0;
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found in order service: " + restaurantId, ex);
         } catch (FeignException ex) {
             log.warn("Feign call to order-service failed: {}", ex.getMessage());
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Order service temporarily unavailable", ex);
