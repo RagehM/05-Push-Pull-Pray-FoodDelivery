@@ -13,14 +13,15 @@ import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 @Component
+@RabbitListener(queues = OrderEventConsumer.QUEUE_NAME, containerFactory = "rabbitListenerContainerFactory")
 public class OrderEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(OrderEventConsumer.class);
@@ -28,6 +29,21 @@ public class OrderEventConsumer {
     private final DeliveryRepository deliveryRepository;
     private final RestaurantServiceClient restaurantServiceClient;
     private final DeliveryEventPublisher deliveryEventPublisher;
+
+    public static final String QUEUE_NAME = "delivery.saga-listener";
+    private static final String ROUTING_ORDER_PLACED = "order.placed";
+    private static final String ROUTING_ORDER_COMPLETED = "order.completed";
+    private static final String ROUTING_ORDER_CANCELLED = "order.cancelled";
+
+    private static final String MDC_ROUTING_KEY = "routingKey";
+    private static final String MDC_ORDER_ID = "orderId";
+    private static final String MDC_DELIVERY_ID = "deliveryId";
+
+    private static final String MSG_CONSUMING = "Consuming {} for {}={}";
+    private static final String MSG_PROCESSED = "Processed {} for {}={}";
+    private static final String MSG_FAILED = "Failed to process {}: {}";
+    private static final String MSG_CALLING = "Calling {}.{} with args={}";
+    private static final String MSG_RETURNED = "{}.{} returned successfully";
 
     public OrderEventConsumer(
             DeliveryRepository deliveryRepository,
@@ -39,35 +55,35 @@ public class OrderEventConsumer {
     }
 
     // Minimal handler for order.placed — infrastructure required by the spec
-    @RabbitListener(queues = "delivery.saga-listener")
+    @RabbitHandler
     public void onOrderPlaced(OrderPlacedEvent event) {
-        MDC.put("routingKey", "order.placed");
-        MDC.put("orderId", String.valueOf(event.orderId()));
+        MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_PLACED);
+        MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
         try {
-            log.info("Consuming {} for {}={}", "order.placed", "orderId", event.orderId());
+            log.info(MSG_CONSUMING, ROUTING_ORDER_PLACED, MDC_ORDER_ID, event.orderId());
             // minimal body — maybe increment a metric or log
-            log.info("Processed {} for {}={}", "order.placed", "orderId", event.orderId());
+            log.info(MSG_PROCESSED, ROUTING_ORDER_PLACED, MDC_ORDER_ID, event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process {}: {}", "order.placed", ex.getMessage());
+            log.error(MSG_FAILED, ROUTING_ORDER_PLACED, ex.getMessage());
             throw ex;
         } finally {
-            MDC.remove("routingKey");
-            MDC.remove("orderId");
+            MDC.remove(MDC_ROUTING_KEY);
+            MDC.remove(MDC_ORDER_ID);
         }
     }
 
     // Handler for order.completed
-    @RabbitListener(queues = "delivery.saga-listener")
+    @RabbitHandler
     public void onOrderCompleted(OrderCompletedEvent event) {
-        MDC.put("routingKey", "order.completed");
-        MDC.put("orderId", String.valueOf(event.orderId()));
+        MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_COMPLETED);
+        MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
         try {
-            log.info("Consuming {} for {}={}", "order.completed", "orderId", event.orderId());
+            log.info(MSG_CONSUMING, ROUTING_ORDER_COMPLETED, MDC_ORDER_ID, event.orderId());
 
             // find latest delivery for this order
             Optional<Delivery> opt = deliveryRepository.findLatestByOrderId(event.orderId());
             if (opt.isEmpty()) {
-                log.info("No delivery row for orderId={} — skipping", event.orderId());
+                log.info("No delivery row for {}={} — skipping", MDC_ORDER_ID, event.orderId());
                 return;
             }
 
@@ -77,16 +93,16 @@ public class OrderEventConsumer {
                     || delivery.getStatus() == DeliveryStatus.PICKED_UP
                     || delivery.getStatus() == DeliveryStatus.IN_TRANSIT)) {
 
-                log.info("Delivery {} for orderId={} is in status {} — skipping", delivery.getId(), event.orderId(), delivery.getStatus());
+                log.info("Delivery {} for {}={} is in status {} — skipping", delivery.getId(), MDC_ORDER_ID, event.orderId(), delivery.getStatus());
                 return;
             }
 
-            MDC.put("deliveryId", String.valueOf(delivery.getId()));
+            MDC.put(MDC_DELIVERY_ID, String.valueOf(delivery.getId()));
 
             // Fetch restaurant name via Feign
-            log.info("Calling {}.{} with args={}", "RestaurantServiceClient", "getRestaurant", event.restaurantId());
+            log.info(MSG_CALLING, "RestaurantServiceClient", "getRestaurant", event.restaurantId());
             var restaurant = restaurantServiceClient.getRestaurant(event.restaurantId());
-            log.info("{}.{} returned successfully", "RestaurantServiceClient", "getRestaurant");
+            log.info(MSG_RETURNED, "RestaurantServiceClient", "getRestaurant");
 
             // finalize delivery
             delivery.setStatus(DeliveryStatus.DELIVERED);
@@ -113,28 +129,28 @@ public class OrderEventConsumer {
             );
             deliveryEventPublisher.publishDeliveryCreated(createdEvent);
 
-            log.info("Processed {} for {}={}", "order.completed", "orderId", event.orderId());
+            log.info(MSG_PROCESSED, ROUTING_ORDER_COMPLETED, MDC_ORDER_ID, event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process {}: {}", "order.completed", ex.getMessage());
+            log.error(MSG_FAILED, ROUTING_ORDER_COMPLETED, ex.getMessage());
             throw ex;
         } finally {
-            MDC.remove("routingKey");
-            MDC.remove("orderId");
-            MDC.remove("deliveryId");
+            MDC.remove(MDC_ROUTING_KEY);
+            MDC.remove(MDC_ORDER_ID);
+            MDC.remove(MDC_DELIVERY_ID);
         }
     }
 
     // Handler for order.cancelled
-    @RabbitListener(queues = "delivery.saga-listener")
+    @RabbitHandler
     public void onOrderCancelled(OrderCancelledEvent event) {
-        MDC.put("routingKey", "order.cancelled");
-        MDC.put("orderId", String.valueOf(event.orderId()));
+        MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_CANCELLED);
+        MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
         try {
-            log.info("Consuming {} for {}={}", "order.cancelled", "orderId", event.orderId());
+            log.info(MSG_CONSUMING, ROUTING_ORDER_CANCELLED, MDC_ORDER_ID, event.orderId());
 
             Optional<Delivery> opt = deliveryRepository.findLatestByOrderId(event.orderId());
             if (opt.isEmpty()) {
-                log.info("No delivery row for orderId={} — nothing to cancel", event.orderId());
+                log.info("No delivery row for {}={} — nothing to cancel", MDC_ORDER_ID, event.orderId());
                 return;
             }
 
@@ -142,11 +158,11 @@ public class OrderEventConsumer {
             if (!(delivery.getStatus() == DeliveryStatus.ASSIGNED
                     || delivery.getStatus() == DeliveryStatus.PICKED_UP
                     || delivery.getStatus() == DeliveryStatus.IN_TRANSIT)) {
-                log.info("Delivery {} for orderId={} is in status {} — skipping cancel", delivery.getId(), event.orderId(), delivery.getStatus());
+                log.info("Delivery {} for {}={} is in status {} — skipping cancel", delivery.getId(), MDC_ORDER_ID, event.orderId(), delivery.getStatus());
                 return;
             }
 
-            MDC.put("deliveryId", String.valueOf(delivery.getId()));
+            MDC.put(MDC_DELIVERY_ID, String.valueOf(delivery.getId()));
 
             delivery.setStatus(DeliveryStatus.CANCELLED);
             deliveryRepository.save(delivery);
@@ -155,14 +171,20 @@ public class OrderEventConsumer {
             DeliveryCancelledEvent cancelledEvent = new DeliveryCancelledEvent(delivery.getId(), event.orderId());
             deliveryEventPublisher.publishDeliveryCancelled(cancelledEvent);
 
-            log.info("Processed {} for {}={}", "order.cancelled", "orderId", event.orderId());
+            log.info(MSG_PROCESSED, ROUTING_ORDER_CANCELLED, MDC_ORDER_ID, event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process {}: {}", "order.cancelled", ex.getMessage());
+            log.error(MSG_FAILED, ROUTING_ORDER_CANCELLED, ex.getMessage());
             throw ex;
         } finally {
-            MDC.remove("routingKey");
-            MDC.remove("orderId");
-            MDC.remove("deliveryId");
+            MDC.remove(MDC_ROUTING_KEY);
+            MDC.remove(MDC_ORDER_ID);
+            MDC.remove(MDC_DELIVERY_ID);
         }
+    }
+
+    @RabbitHandler(isDefault = true)
+    public void onUnknown(Object unknown) {
+        log.warn("Received unknown message type: {}",
+                unknown == null ? "null" : unknown.getClass().getName());
     }
 }
