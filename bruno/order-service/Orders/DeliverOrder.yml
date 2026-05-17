@@ -5,10 +5,8 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8083/api/orders/6/deliver
-  auth:
-    type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDQzNDIyLCJleHAiOjE3NzkxMjk4MjJ9.p1S7KlK-H-CCo26UGwhqQnTjY6VqJqxRFfo5WW0z9XQ
+  url: http://localhost:8083/api/orders/7/deliver
+  auth: inherit
 
 settings:
   encodeUrl: true
