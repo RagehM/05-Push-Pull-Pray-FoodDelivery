@@ -1,17 +1,22 @@
 info:
-  name: RateRestaurant
+  name: createOrder
   type: http
-  seq: 12
+  seq: 5
 
 http:
-  method: PUT
-  url: http://localhost:8082/api/restaurants/1/rate
+  method: POST
+  url: http://localhost:8083/api/orders
   body:
     type: json
     data: |-
       {
-        "orderId": 2,
-        "rating": 5
+        "userId": 1,
+        "restaurantId": 5,
+        "status": "PREPARING",
+        "totalAmount": 180.0,
+        "deliveryAddress": "Matrouh",
+        "metadata": {},
+        "orderDate": "2026-09-30T23:59:59.9999"
       }
   auth:
     type: bearer

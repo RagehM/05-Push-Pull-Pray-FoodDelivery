@@ -323,7 +323,10 @@ services:
       - "8082:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://restaurant-postgres:5432/talabatdb-restaurants
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
     depends_on:
       restaurant-postgres:
         condition: service_healthy

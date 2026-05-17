@@ -2,7 +2,7 @@ package com.team05.fooddelivery.restaurant.messaging.publishers;
 
 import com.team05.fooddelivery.contracts.events.RestaurantRatedEvent;
 import com.team05.fooddelivery.contracts.events.RestaurantStatusChangedEvent;
-import com.team05.fooddelivery.restaurant.config.RabbitMQ;
+import com.team05.fooddelivery.restaurant.config.RestaurantRabbitConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -21,11 +21,11 @@ public class RestaurantEventPublisher {
     }
 
     public void publishStatusChanged(RestaurantStatusChangedEvent event) {
-        publish(RabbitMQ.RESTAURANT_STATUS_CHANGED_ROUTING_KEY, event, event.restaurantId());
+        publish(RestaurantRabbitConfig.RESTAURANT_STATUS_CHANGED_ROUTING_KEY, event, event.restaurantId());
     }
 
     public void publishRated(RestaurantRatedEvent event) {
-        publish(RabbitMQ.RESTAURANT_RATED_ROUTING_KEY, event, event.restaurantId());
+        publish(RestaurantRabbitConfig.RESTAURANT_RATED_ROUTING_KEY, event, event.restaurantId());
     }
 
     private void publish(String routingKey, Object payload, Long restaurantId) {
@@ -35,7 +35,7 @@ public class RestaurantEventPublisher {
             }
             MDC.put("routingKey", routingKey);
             rabbitTemplate.convertAndSend(
-                    RabbitMQ.RESTAURANT_EVENTS_EXCHANGE,
+                    RestaurantRabbitConfig.RESTAURANT_EVENTS_EXCHANGE,
                     routingKey,
                     payload,
                     message -> {
