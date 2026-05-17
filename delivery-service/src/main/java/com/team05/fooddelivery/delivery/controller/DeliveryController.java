@@ -184,7 +184,7 @@ public class DeliveryController {
         return result;
     }
 
-    @GetMapping("deliveries/order/{orderId}/active")
+    @GetMapping("/order/{orderId}/active")
     public DeliveryDTO getActiveDeliveryStatys(@PathVariable Long orderId) {
         log.info("Received {} {}", "GET", "/api/deliveries/order/" + orderId + "/active");
         DeliveryDTO result = deliveryService.getDeliveryActiveStatus(orderId);
