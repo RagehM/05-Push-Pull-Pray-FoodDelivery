@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: restaurant-service
-          image: restaurant-service:latest
-          imagePullPolicy: IfNotPresent
+          image: 05-push-pull-pray-fooddelivery-restaurant-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           envFrom:
