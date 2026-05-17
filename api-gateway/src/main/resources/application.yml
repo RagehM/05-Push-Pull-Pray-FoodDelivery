@@ -18,7 +18,10 @@ spring:
             #        # S3-INFRA owner needs to fill this
             #
             #        # S4-INFRA owner needs to fill this
-            #
+            - id: delivery-service
+              uri: http://delivery-service:8080
+              predicates:
+                - Path=/api/deliveries/**
             #        # S5-INFRA owner needs to fill this
 
 management:
