@@ -1,7 +1,8 @@
-package com.team05.fooddelivery.order.rabbit;
+package com.team05.fooddelivery.order.messaging.publishers;
 
 import java.math.BigDecimal;
 
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import com.team05.fooddelivery.contracts.events.OrderCancelledEvent;
@@ -10,10 +11,10 @@ import com.team05.fooddelivery.contracts.events.OrderPlacedEvent;
 import com.team05.fooddelivery.order.model.Order;
 
 @Component
-public class OrderPublisher {
+public class OrderEventPublisher {
     private final RabbitTemplate rabbitTemplate;
 
-    public OrderPublisher(RabbitTemplate rabbitTemplate) {
+    public OrderEventPublisher(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
     }
 
@@ -25,8 +26,8 @@ public class OrderPublisher {
                 order.getRestaurantId(),
                 BigDecimal.valueOf(order.getTotalAmount())
             );
-
-            rabbitTemplate.convertAndSend("order.events", "order.completed", completedEvent);
+            publish("order.completed", completedEvent, order.getId());
+            // rabbitTemplate.convertAndSend("order.events", "order.completed", completedEvent);
         }
 
         public void publishOrderCancelledEvent(Order order, String reason) {
@@ -36,7 +37,7 @@ public class OrderPublisher {
                 order.getRestaurantId(),
                 reason
             );
-            rabbitTemplate.convertAndSend("order.events", "order.cancelled", cancelledEvent);
+            publish("order.cancelled", cancelledEvent, order.getId());
         }
 
         public void publishOrderPlacedEvent(Order order) {
@@ -46,6 +47,30 @@ public class OrderPublisher {
                 order.getRestaurantId(),
                 BigDecimal.valueOf(order.getTotalAmount())
             );
-            rabbitTemplate.convertAndSend("order.events", "order.placed", placedEvent);
+            publish("order.placed", placedEvent, order.getId());
+        }
+
+        private void publish(String routingKey, Object payload, Long orderId) {
+            try {
+                if (orderId != null) {
+                    MDC.put("orderId", orderId.toString());
+                }
+                MDC.put("routingKey", routingKey);
+                String correlationId = MDC.get("correlationId");
+                rabbitTemplate.convertAndSend(
+                        "order.events",
+                        routingKey,
+                        payload,
+                        message -> {
+                            message.getMessageProperties().setHeader("X-Correlation-ID", correlationId);
+                            return message;
+                        }
+                );
+            } finally {
+                MDC.remove("routingKey");
+                if (orderId != null) {
+                    MDC.remove("orderId");
+                }
+            }
         }
 }

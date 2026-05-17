@@ -16,3 +16,10 @@ spring:
           uri: http://checkout-service:8080
           predicates:
             - Path=/api/payments/**, /api/offers/**
+        
+        - id: delivery-service
+          uri: http://delivery-service:8080
+          predicates:
+            - Path=/api/deliveries/**
+        
+        # S5-INFRA owner needs to fill this
