@@ -1,21 +1,17 @@
 package com.team05.fooddelivery.order.controller;
 
+import com.team05.fooddelivery.contracts.dto.*;
 import com.team05.fooddelivery.order.dto.*;
 import com.team05.fooddelivery.order.model.Order;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
 import com.team05.fooddelivery.order.model.OrderItem;
 import com.team05.fooddelivery.order.service.OrderService;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
 
@@ -111,6 +107,35 @@ public class OrderController {
 
         return ResponseEntity.ok(orderService.getRestaurantRecommendations(userId, finalLimit));
     }
+
+    @GetMapping("/user/{userId}/count")
+    public ResponseEntity<Long> getTotalOrderCountForUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+                orderService.getTotalOrderCountForUser(userId)
+        );
+    }
+
+    @GetMapping("/user/{userId}/active-count")
+    public ResponseEntity<Long> getActiveOrderCountForUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+                orderService.getActiveOrderCountForUser(userId)
+        );
+    }
+
+    @GetMapping("/user/{userId}/summary")
+    public ResponseEntity<OrderSummaryDTO> getUserOrderSummary(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+                orderService.getUserOrderSummary(userId)
+        );
+    }
+
+    @GetMapping("/restaurant/{restaurantId}/summary")
+    public ResponseEntity<RestaurantOrderSummaryDTO> getRestaurantOrderSummary(@PathVariable Long restaurantId) {
+        return ResponseEntity.ok(
+                orderService.getRestaurantOrderSummary(restaurantId)
+        );
+    }
+
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")

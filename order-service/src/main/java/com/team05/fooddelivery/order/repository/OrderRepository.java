@@ -33,6 +33,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         @Param("startDateTime") LocalDateTime startDateTime,
                         @Param("endDateTimeExclusive") LocalDateTime endDateTimeExclusive);
 
+        // TODO M3 CLEANUP: now unused after Feign migration
         // [S3-F2] Check if Restaurant is open
         @Query(value = """
                         SELECT COUNT(*) > 0
@@ -43,6 +44,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Transactional(readOnly = true)
         boolean isRestaurantOpen(@Param("restaurantId") Long restaurantId);
 
+        // TODO M3 CLEANUP: now unused after Feign migration
         // [S3-F3] averaging Restaurant's menu price
         @Query(value = """
                         SELECT AVG(menu.price) FROM menu_items menu
@@ -142,6 +144,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         Object[][] getOrderCountAndCompletionRateDetails(@Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
 
+        // TODO M3 CLEANUP: now unused after Feign migration
         // [S3-F11]
         @Query(value = """
                         SELECT u.name FROM users u WHERE u.id = :userId
@@ -161,7 +164,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Transactional(readOnly = true)
         Optional<String> findRestaurantCuisineTypeById(@Param("restaurantId") Long restaurantId);
 
-
+        // TODO M3 CLEANUP: now unused after Feign migration
         // [S3-F12] Get Restaurant Recommendations for User (VERIFYING USER IDENTITY)
         @Query(value = """
                         SELECT u.id, u.role FROM users u
@@ -171,8 +174,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
         @Query(value = "SELECT COUNT(*) > 0 FROM users u WHERE u.id = :userId", nativeQuery = true)
         boolean existsUserById(@Param("userId") Long userId);
+
         // [CRUD]
         //// Check for existence of user
+        // TODO M3 CLEANUP: now unused after Feign migration
         @Query(value = """
                         SELECT COUNT(*) > 0 FROM users u
                         WHERE u.id = :userId
@@ -180,6 +185,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Transactional(readOnly = true)
         boolean existsByUserId(@Param("userId") Long userId);
 
+        // TODO M3 CLEANUP: now unused after Feign migration
         //// Check for existence of restaurant
         @Query(value = """
                         SELECT COUNT(*) > 0 FROM restaurants r
@@ -201,4 +207,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                 String getName();
                 String getCuisineType();
         }
+        long countByUserId(Long userId);
+
+        long countByRestaurantId(Long restaurantId);
+
+        long countByUserIdAndStatusIn(Long userId, Collection<OrderStatusEnum> statuses);
+
+        List<Order> findByUserId(Long userId);
+
+        List<Order> findByRestaurantId(Long restaurantId);
 }
