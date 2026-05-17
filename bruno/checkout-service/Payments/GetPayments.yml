@@ -5,15 +5,13 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8085/api/payments
+  url: http://localhost:30080/api/payments
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4ODYzMzUzLCJleHAiOjE3Nzg5NDk3NTN9.g03gyDNE5bWJIKZlmW0WwN_oFBQurzIZjT-LId0PVkc
-  params:
-    - name: ""
-      value: ""
-      type: query
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdkYWFzZHNlaEBtYWlsLmNvbSIsInVpZCI6Mywicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDU2NDk4LCJleHAiOjE3NzkxNDI4OTh9.ydp5VbwFsOC5fZJ6k_lOaBfM0fjjyLxGLkUFLD6SzY0
 
 settings:
   encodeUrl: true

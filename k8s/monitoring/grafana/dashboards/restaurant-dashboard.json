@@ -1,59 +1,211 @@
 {
   "title": "Restaurant Service Dashboard",
   "uid": "restaurant-service",
-  "tags": ["talabat", "restaurant-service"],
+  "tags": ["talabat", "restaurant"],
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "panels": [
     {
-      "id": 1,
-      "title": "Error Rate — ERROR log lines per minute (§11.3 Panel 1)",
-      "description": "Counts ERROR-level log lines from restaurant-service per minute. Spike detection — if restaurant-service logs many ERRORs, something is wrong.",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "id": 10,
+      "type": "logs",
+      "title": "[LogQL] All Logs — {app=\"talabat\", service=\"restaurant-service\"}",
+      "description": "Raw full log stream for the restaurant-service.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"} | json [1m]))",
-          "legendFormat": "Errors per minute"
+          "expr": "{app=\"talabat\", service=\"restaurant-service\"}",
+          "legendFormat": "",
+          "refId": "A"
         }
-      ],
-      "datasource": "Loki"
+      ]
     },
     {
-      "id": 2,
-      "title": "Feign Call Outcomes — success vs failure (§11.3 Panel 4)",
-      "description": "Tracks successful Feign calls to order-service vs FeignException catches. Detects when order-service is degraded and restaurant-service Feign calls start failing.",
+      "id": 11,
       "type": "timeseries",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "title": "[LogQL] Log Volume by Level — restaurant-service",
+      "description": "Rate of INFO / WARN / ERROR logs over time.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*returned successfully.*\" [5m]))",
-          "legendFormat": "Feign Success"
-        },
-        {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Feign call to.*failed.*\" [5m]))",
-          "legendFormat": "Feign Failures"
+          "expr": "sum by (level) (rate({app=\"talabat\", service=\"restaurant-service\"}[1m]))",
+          "legendFormat": "{{level}}",
+          "refId": "A"
         }
       ],
-      "datasource": "Loki"
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      }
     },
     {
-      "id": 3,
-      "title": "RabbitMQ Event Audit — published vs consumed (§11.3 Panel 3)",
-      "description": "Shows restaurant.status-changed and restaurant.rated events published, and order.placed/completed/cancelled events consumed. Filtered by routingKey MDC field.",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "id": 12,
+      "type": "logs",
+      "title": "[LogQL] WARN & ERROR Logs — restaurant-service",
+      "description": "Only WARN and ERROR logs for quick issue detection.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Published.*\" [5m]))",
-          "legendFormat": "Events Published"
-        },
+          "expr": "{app=\"talabat\", service=\"restaurant-service\", level=~\"WARN|ERROR\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "[PromQL] HTTP Request Rate — Restaurant Service",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Consuming.*\" [5m]))",
-          "legendFormat": "Events Consumed"
+          "expr": "sum by (uri, method, status) (rate(http_server_requests_seconds_count{job=\"restaurant-service\"}[5m]))",
+          "legendFormat": "{{method}} {{uri}} [{{status}}]",
+          "refId": "A"
         }
       ],
-      "datasource": "Loki"
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "description": "Requests per second per endpoint."
+    },
+    {
+      "id": 21,
+      "title": "[PromQL] JVM Heap Memory Usage — Restaurant Service",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{job=\"restaurant-service\", area=\"heap\"}",
+          "legendFormat": "Heap Used — {{id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{job=\"restaurant-service\", area=\"heap\"}",
+          "legendFormat": "Heap Max — {{id}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "description": "Heap memory pressure monitoring."
+    },
+    {
+      "id": 22,
+      "title": "[PromQL] Feign Call Outcomes — Restaurant Service",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"restaurant-service\", status=~\"2..\"}[5m]))",
+          "legendFormat": "Successful Calls",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"restaurant-service\", status=~\"4..|5..\"}[5m]))",
+          "legendFormat": "Failed Calls",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "description": "Tracks successful vs failed outbound/service calls."
     }
-  ],
-  "schemaVersion": 36,
-  "version": 1
+  ]
 }
