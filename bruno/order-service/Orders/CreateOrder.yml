@@ -13,7 +13,7 @@ http:
     type: json
     data: |-
       {
-        "userId": 1,
+        "userId": 3,
         "restaurantId": 1,
         "status": "PREPARING",
         "totalAmount": 180.0,

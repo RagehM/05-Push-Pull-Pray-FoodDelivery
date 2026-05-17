@@ -30,8 +30,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -88,17 +86,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    @Cacheable(value = "user-service::user", key = "#id")
-    public User findUserById(long id)
-    {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+    private void enforceOwnership(Long callerUserId, String callerRole, long resourceUserId) {
+        if ("ADMIN".equalsIgnoreCase(callerRole)) return;
+        if (callerUserId == null || callerUserId != resourceUserId) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
         }
+    }
+
+//    @Cacheable(value = "user-service::user", key = "#id")
+    public User findUserById(long id, Long callerUserId, String callerRole)
+    {
+        enforceOwnership(callerUserId, callerRole, id);
         return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -145,16 +143,9 @@ public class UserService {
 
             }
     )
-    public User updateUser(User user, Long id)
+    public User updateUser(User user, Long id, Long callerUserId, String callerRole)
     {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
-        }
+        enforceOwnership(callerUserId, callerRole, id);
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
         if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())&& user.getEmail().equals(updatedUser.getEmail())==false){
@@ -188,16 +179,9 @@ public class UserService {
             @CacheEvict(value = "user-service::S1-F8", key = "#id"),
             @CacheEvict(value = "user-service::S1-F9", allEntries = true)
     })
-    public void deleteUser(Long id)
+    public void deleteUser(Long id, Long callerUserId, String callerRole)
     {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
-        }
+        enforceOwnership(callerUserId, callerRole, id);
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
 
@@ -562,18 +546,10 @@ public class UserService {
     }
 
     @Cacheable(value = "user-service::S1-F12", key = "#id")
-    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-
+    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size, Long callerUserId, String callerRole) {
+        enforceOwnership(callerUserId, callerRole, id);
 
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
-        }
 
         if (size == 0) {
             size = 10;

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -53,28 +54,34 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable long id)
+    public User getUserById(@PathVariable long id,
+                            @RequestHeader(value = "X-User-Id", required = false) Long callerUserId,
+                            @RequestHeader(value = "X-User-Role", required = false) String callerRole)
     {
         log.info("Received {} {}", "GET", "/api/users/" + id);
-        User result = userService.findUserById(id);
+        User result = userService.findUserById(id, callerUserId, callerRole);
         log.info("Returning {} for {} {}", 200, "GET", "/api/users/" + id);
         return result;
     }
 
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable long id, @RequestBody User user)
+    public User updateUser(@PathVariable long id, @RequestBody User user,
+                           @RequestHeader(value = "X-User-Id", required = false) Long callerUserId,
+                           @RequestHeader(value = "X-User-Role", required = false) String callerRole)
     {
         log.info("Received {} {}", "PUT", "/api/users/" + id);
-        User result = userService.updateUser(user, id);
+        User result = userService.updateUser(user, id, callerUserId, callerRole);
         log.info("Returning {} for {} {}", 200, "PUT", "/api/users/" + id);
         return result;
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable long id)
+    public void deleteUser(@PathVariable long id,
+                           @RequestHeader(value = "X-User-Id", required = false) Long callerUserId,
+                           @RequestHeader(value = "X-User-Role", required = false) String callerRole)
     {
         log.info("Received {} {}", "DELETE", "/api/users/" + id);
-        userService.deleteUser(id);
+        userService.deleteUser(id, callerUserId, callerRole);
         log.info("Returning {} for {} {}", 204, "DELETE", "/api/users/" + id);
     }
 
@@ -193,10 +200,14 @@ public class UserController {
     }
 
     @GetMapping("/{id}/activity")
-    public ResponseEntity<ActivityFeedDTO> getUserActivityFeed(@PathVariable long id, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size)
+    public ResponseEntity<ActivityFeedDTO> getUserActivityFeed(@PathVariable long id,
+                                                               @RequestParam(defaultValue = "0") int page,
+                                                               @RequestParam(defaultValue = "10") int size,
+                                                               @RequestHeader(value = "X-User-Id", required = false) Long callerUserId,
+                                                               @RequestHeader(value = "X-User-Role", required = false) String callerRole)
     {
         log.info("Received {} {}", "GET", "/api/users/" + id + "/activity");
-        ResponseEntity<ActivityFeedDTO> result = ResponseEntity.ok(userService.getUserActivityFeed(id, page, size));
+        ResponseEntity<ActivityFeedDTO> result = ResponseEntity.ok(userService.getUserActivityFeed(id, page, size, callerUserId, callerRole));
         log.info("Returning {} for {} {}", 200, "GET", "/api/users/" + id + "/activity");
         return result;
     }
