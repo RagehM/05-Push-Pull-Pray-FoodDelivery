@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8085/api/deliveries
+  url: http://localhost:8084/api/deliveries
   body:
     type: json
     data: |-
@@ -14,7 +14,7 @@ http:
         "driverName": "Ahmed",
         "latitude": 30.0444,
         "longitude": 31.2357,
-        "status": "IN_TRANSIT",
+        "status": "PICKED_UP",
         "metadata": {
           "estimatedArrival": 40,
           "vehicleType": "bike",
