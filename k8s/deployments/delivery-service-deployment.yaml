@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery-service
+  namespace: talabat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: delivery-service
+  template:
+    metadata:
+      labels:
+        app: delivery-service
+    spec:
+      containers:
+        - name: delivery-service
+          image: 05-push-pull-pray-fooddelivery-delivery-service:latest
+          imagePullPolicy: Never # Using local image, use "minikube image load 05-push-pull-pray-fooddelivery-delivery-service:0.0.1-SNAPSHOT"
+          ports:
+            - containerPort: 8080
+          # resources:
+          #   requests:
+          #     cpu: 100m
+          #     memory: 256Mi
+          #     ephemeral-storage: 1Gi
+          #   limits:
+          #     cpu: 500m
+          #     memory: 512Mi
+          #     ephemeral-storage: 2Gi
+          envFrom:
+            - configMapRef:
+                name: delivery-service-configmap
+            - secretRef:
+                name: delivery-postgres-secret
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: jwt-secret
+          readinessProbe:
+            httpGet:
+              path: /api/deliveries/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/deliveries/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30

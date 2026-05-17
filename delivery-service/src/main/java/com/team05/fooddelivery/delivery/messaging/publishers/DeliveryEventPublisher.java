@@ -15,6 +15,17 @@ public class DeliveryEventPublisher {
     private static final Logger log = LoggerFactory.getLogger(DeliveryEventPublisher.class);
     private static final String EXCHANGE = "delivery.events";
 
+    private static final String ROUTING_DELIVERY_CREATED = "delivery.created";
+    private static final String ROUTING_DELIVERY_STATUS_CHANGED = "delivery.status.changed";
+    private static final String ROUTING_DELIVERY_CANCELLED = "delivery.cancelled";
+
+    private static final String MDC_ROUTING_KEY = "routingKey";
+    private static final String MDC_ORDER_ID = "orderId";
+    private static final String MDC_DELIVERY_ID = "deliveryId";
+
+    private static final String MSG_PUBLISHED = "Published {} for {}={}";
+    private static final String MSG_FAILED = "Failed to process {}: {}";
+
     private final RabbitTemplate rabbitTemplate;
 
     public DeliveryEventPublisher(RabbitTemplate rabbitTemplate) {
@@ -22,41 +33,41 @@ public class DeliveryEventPublisher {
     }
 
     public void publishDeliveryCreated(DeliveryCreatedEvent event) {
-        String routingKey = "delivery.created";
-        MDC.put("routingKey", routingKey);
+        String routingKey = ROUTING_DELIVERY_CREATED;
+        MDC.put(MDC_ROUTING_KEY, routingKey);
         try {
             rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
-            log.info("Published {} for {}={}", routingKey, "Delivery", event.deliveryId());
+            log.info(MSG_PUBLISHED, routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
-            log.error("Failed to process {}: {}", routingKey, ex.getMessage());
+            log.error(MSG_FAILED, routingKey, ex.getMessage());
         } finally {
-            MDC.remove("routingKey");
+            MDC.remove(MDC_ROUTING_KEY);
         }
     }
 
     public void publishDeliveryStatusChanged(DeliveryStatusChangedEvent event) {
-        String routingKey = "delivery.status.changed";
-        MDC.put("routingKey", routingKey);
+        String routingKey = ROUTING_DELIVERY_STATUS_CHANGED;
+        MDC.put(MDC_ROUTING_KEY, routingKey);
         try {
             rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
-            log.info("Published {} for {}={}", routingKey, "Delivery", event.deliveryId());
+            log.info(MSG_PUBLISHED, routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
-            log.error("Failed to process {}: {}", routingKey, ex.getMessage());
+            log.error(MSG_FAILED, routingKey, ex.getMessage());
         } finally {
-            MDC.remove("routingKey");
+            MDC.remove(MDC_ROUTING_KEY);
         }
     }
 
     public void publishDeliveryCancelled(DeliveryCancelledEvent event) {
-        String routingKey = "delivery.cancelled";
-        MDC.put("routingKey", routingKey);
+        String routingKey = ROUTING_DELIVERY_CANCELLED;
+        MDC.put(MDC_ROUTING_KEY, routingKey);
         try {
             rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
-            log.info("Published {} for {}={}", routingKey, "Delivery", event.deliveryId());
+            log.info(MSG_PUBLISHED, routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
-            log.error("Failed to process {}: {}", routingKey, ex.getMessage());
+            log.error(MSG_FAILED, routingKey, ex.getMessage());
         } finally {
-            MDC.remove("routingKey");
+            MDC.remove(MDC_ROUTING_KEY);
         }
     }
 }
