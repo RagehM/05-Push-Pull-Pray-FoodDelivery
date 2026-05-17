@@ -10,4 +10,4 @@ spec:
     app: order-service
   ports:
     - port: 8080
-      targetPort: 8008
+      targetPort: 8080
