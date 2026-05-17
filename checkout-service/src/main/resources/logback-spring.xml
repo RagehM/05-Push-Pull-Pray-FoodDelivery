@@ -5,13 +5,11 @@
                     defaultValue="http://loki:3100/loki/api/v1/push"/>
     <springProperty scope="context" name="appName"
                     source="spring.application.name" defaultValue="checkout-service"/>
-
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${appName} correlationId=%X{correlationId:-} userId=%X{userId:-} orderId=%X{orderId:-} paymentId=%X{paymentId:-} routingKey=%X{routingKey:-} thread=%thread logger=%logger{36} msg="%replace(%msg){'&quot;','\\&quot;'}"%n</pattern>
         </encoder>
     </appender>
-
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
             <url>${lokiUrl}</url>
@@ -27,7 +25,6 @@
             <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"${appName}","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId:-}","userId":"%X{userId:-}","orderId":"%X{orderId:-}","paymentId":"%X{paymentId:-}","routingKey":"%X{routingKey:-}","message":"%replace(%msg){'&quot;','\\&quot;'}"}%n</pattern>
         </message>
     </appender>
-
     <logger name="com.team05.fooddelivery.checkout" level="INFO" additivity="false">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="LOKI"/>

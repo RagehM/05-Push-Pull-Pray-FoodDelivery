@@ -20,25 +20,19 @@ import java.util.Map;
 @EnableRabbit
 public class RabbitMQ {
 
-    // ── Exchanges ─────────────────────────────────────────────────────────────
     public static final String RESTAURANT_EVENTS_EXCHANGE = "restaurant.events";
-    public static final String ORDER_EVENTS_EXCHANGE      = "order.events";
+    public static final String ORDER_EVENTS_EXCHANGE = "order.events";
 
-    // ── Routing keys this service PUBLISHES ───────────────────────────────────
     public static final String RESTAURANT_STATUS_CHANGED_ROUTING_KEY = "restaurant.status-changed";
-    public static final String RESTAURANT_RATED_ROUTING_KEY          = "restaurant.rated";
+    public static final String RESTAURANT_RATED_ROUTING_KEY = "restaurant.rated";
 
-    // ── Routing keys this service CONSUMES ────────────────────────────────────
-    public static final String ORDER_PLACED_ROUTING_KEY    = "order.placed";
+    public static final String ORDER_PLACED_ROUTING_KEY = "order.placed";
     public static final String ORDER_COMPLETED_ROUTING_KEY = "order.completed";
     public static final String ORDER_CANCELLED_ROUTING_KEY = "order.cancelled";
 
-    // ── Consumer queue + DLQ ──────────────────────────────────────────────────
-    public static final String RESTAURANT_SAGA_LISTENER_QUEUE = "restaurant.order.saga-listener";
-    public static final String RESTAURANT_SAGA_LISTENER_DLQ   = "restaurant.order.saga-listener.dlq";
-    public static final String RESTAURANT_SAGA_LISTENER_DLX   = "restaurant.order.saga-listener.dlx";
-
-    // ── Exchange beans ────────────────────────────────────────────────────────
+    public static final String RESTAURANT_ORDER_SAGA_QUEUE = "restaurant.order.saga-listener";
+    public static final String RESTAURANT_ORDER_SAGA_DLQ = "restaurant.order.saga-listener.dlq";
+    public static final String RESTAURANT_ORDER_SAGA_DLX = "restaurant.order.saga-listener.dlx";
 
     @Bean
     TopicExchange restaurantEventsExchange() {
@@ -51,70 +45,64 @@ public class RabbitMQ {
     }
 
     @Bean
-    TopicExchange restaurantSagaDeadLetterExchange() {
-        return new TopicExchange(RESTAURANT_SAGA_LISTENER_DLX, true, false);
+    TopicExchange restaurantOrderSagaDeadLetterExchange() {
+        return new TopicExchange(RESTAURANT_ORDER_SAGA_DLX, true, false);
     }
 
-    // ── Queue beans ───────────────────────────────────────────────────────────
-
     @Bean
-    Queue restaurantSagaListenerQueue() {
+    Queue restaurantOrderSagaListenerQueue() {
         return new Queue(
-                RESTAURANT_SAGA_LISTENER_QUEUE,
+                RESTAURANT_ORDER_SAGA_QUEUE,
                 true,
                 false,
                 false,
                 Map.of(
-                        "x-dead-letter-exchange",    RESTAURANT_SAGA_LISTENER_DLX,
-                        "x-dead-letter-routing-key", RESTAURANT_SAGA_LISTENER_DLQ
+                        "x-dead-letter-exchange", RESTAURANT_ORDER_SAGA_DLX,
+                        "x-dead-letter-routing-key", RESTAURANT_ORDER_SAGA_DLQ
                 )
         );
     }
 
     @Bean
-    Queue restaurantSagaListenerDeadLetterQueue() {
-        return new Queue(RESTAURANT_SAGA_LISTENER_DLQ, true);
+    Queue restaurantOrderSagaDeadLetterQueue() {
+        return new Queue(RESTAURANT_ORDER_SAGA_DLQ, true);
     }
-
-    // ── Binding beans ─────────────────────────────────────────────────────────
 
     @Bean
     Binding orderPlacedBinding(
-            @Qualifier("restaurantSagaListenerQueue") Queue restaurantSagaListenerQueue,
-            @Qualifier("orderEventsExchange")         TopicExchange orderEventsExchange) {
-        return BindingBuilder.bind(restaurantSagaListenerQueue)
+            @Qualifier("restaurantOrderSagaListenerQueue") Queue restaurantOrderSagaListenerQueue,
+            @Qualifier("orderEventsExchange") TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(restaurantOrderSagaListenerQueue)
                 .to(orderEventsExchange)
                 .with(ORDER_PLACED_ROUTING_KEY);
     }
 
     @Bean
     Binding orderCompletedBinding(
-            @Qualifier("restaurantSagaListenerQueue") Queue restaurantSagaListenerQueue,
-            @Qualifier("orderEventsExchange")         TopicExchange orderEventsExchange) {
-        return BindingBuilder.bind(restaurantSagaListenerQueue)
+            @Qualifier("restaurantOrderSagaListenerQueue") Queue restaurantOrderSagaListenerQueue,
+            @Qualifier("orderEventsExchange") TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(restaurantOrderSagaListenerQueue)
                 .to(orderEventsExchange)
                 .with(ORDER_COMPLETED_ROUTING_KEY);
     }
 
     @Bean
     Binding orderCancelledBinding(
-            @Qualifier("restaurantSagaListenerQueue") Queue restaurantSagaListenerQueue,
-            @Qualifier("orderEventsExchange")         TopicExchange orderEventsExchange) {
-        return BindingBuilder.bind(restaurantSagaListenerQueue)
+            @Qualifier("restaurantOrderSagaListenerQueue") Queue restaurantOrderSagaListenerQueue,
+            @Qualifier("orderEventsExchange") TopicExchange orderEventsExchange) {
+        return BindingBuilder.bind(restaurantOrderSagaListenerQueue)
                 .to(orderEventsExchange)
                 .with(ORDER_CANCELLED_ROUTING_KEY);
     }
 
     @Bean
-    Binding restaurantSagaDeadLetterBinding(
-            @Qualifier("restaurantSagaListenerDeadLetterQueue") Queue restaurantSagaListenerDeadLetterQueue,
-            @Qualifier("restaurantSagaDeadLetterExchange")      TopicExchange restaurantSagaDeadLetterExchange) {
-        return BindingBuilder.bind(restaurantSagaListenerDeadLetterQueue)
-                .to(restaurantSagaDeadLetterExchange)
-                .with(RESTAURANT_SAGA_LISTENER_DLQ);
+    Binding restaurantOrderSagaDeadLetterBinding(
+            @Qualifier("restaurantOrderSagaDeadLetterQueue") Queue restaurantOrderSagaDeadLetterQueue,
+            @Qualifier("restaurantOrderSagaDeadLetterExchange") TopicExchange restaurantOrderSagaDeadLetterExchange) {
+        return BindingBuilder.bind(restaurantOrderSagaDeadLetterQueue)
+                .to(restaurantOrderSagaDeadLetterExchange)
+                .with(RESTAURANT_ORDER_SAGA_DLQ);
     }
-
-    // ── Infrastructure beans ──────────────────────────────────────────────────
 
     @Bean
     MessageConverter rabbitMessageConverter() {
@@ -122,11 +110,12 @@ public class RabbitMQ {
     }
 
     @Bean
-    RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
-                                  MessageConverter rabbitMessageConverter) {
-        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-        rabbitTemplate.setMessageConverter(rabbitMessageConverter);
-        return rabbitTemplate;
+    RabbitTemplate rabbitTemplate(
+            ConnectionFactory connectionFactory,
+            MessageConverter rabbitMessageConverter) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(rabbitMessageConverter);
+        return template;
     }
 
     @Bean

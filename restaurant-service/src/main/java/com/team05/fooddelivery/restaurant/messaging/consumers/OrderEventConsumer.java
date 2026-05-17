@@ -3,7 +3,7 @@ package com.team05.fooddelivery.restaurant.messaging.consumers;
 import com.team05.fooddelivery.contracts.events.OrderCancelledEvent;
 import com.team05.fooddelivery.contracts.events.OrderCompletedEvent;
 import com.team05.fooddelivery.contracts.events.OrderPlacedEvent;
-import com.team05.fooddelivery.restaurant.config.RestaurantRabbitConfig;
+import com.team05.fooddelivery.restaurant.config.RabbitMQ;
 import com.team05.fooddelivery.restaurant.service.RestaurantSagaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RabbitListener(
-        queues = RestaurantRabbitConfig.RESTAURANT_ORDER_SAGA_QUEUE,
+        queues = RabbitMQ.RESTAURANT_ORDER_SAGA_QUEUE,
         containerFactory = "rabbitListenerContainerFactory"
 )
 public class OrderEventConsumer {
@@ -32,7 +32,7 @@ public class OrderEventConsumer {
     public void onOrderPlaced(
             OrderPlacedEvent event,
             @Header(value = "X-Correlation-ID", required = false) String correlationId) {
-        setupMdc(RestaurantRabbitConfig.ORDER_PLACED_ROUTING_KEY, correlationId, event.restaurantId(), event.orderId());
+        setupMdc(RabbitMQ.ORDER_PLACED_ROUTING_KEY, correlationId, event.restaurantId(), event.orderId());
         try {
             log.info("Consuming order.placed for orderId={}", event.orderId());
             restaurantSagaService.handleOrderPlaced(event);
@@ -49,7 +49,7 @@ public class OrderEventConsumer {
     public void onOrderCompleted(
             OrderCompletedEvent event,
             @Header(value = "X-Correlation-ID", required = false) String correlationId) {
-        setupMdc(RestaurantRabbitConfig.ORDER_COMPLETED_ROUTING_KEY, correlationId, event.restaurantId(), event.orderId());
+        setupMdc(RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, correlationId, event.restaurantId(), event.orderId());
         try {
             log.info("Consuming order.completed for orderId={}", event.orderId());
             restaurantSagaService.handleOrderCompleted(event);
@@ -66,7 +66,7 @@ public class OrderEventConsumer {
     public void onOrderCancelled(
             OrderCancelledEvent event,
             @Header(value = "X-Correlation-ID", required = false) String correlationId) {
-        setupMdc(RestaurantRabbitConfig.ORDER_CANCELLED_ROUTING_KEY, correlationId, event.restaurantId(), event.orderId());
+        setupMdc(RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, correlationId, event.restaurantId(), event.orderId());
         try {
             log.info("Consuming order.cancelled for orderId={}", event.orderId());
             restaurantSagaService.handleOrderCancelled(event);

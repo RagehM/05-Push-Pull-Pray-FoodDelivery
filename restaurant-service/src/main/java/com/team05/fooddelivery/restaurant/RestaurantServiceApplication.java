@@ -12,7 +12,6 @@ import org.springframework.data.elasticsearch.repository.config.EnableElasticsea
 
 @SpringBootApplication
 @EnableCaching
-//s2-f11
 @EnableElasticsearchRepositories(basePackageClasses = RestaurantSearchRepository.class)
 @EnableFeignClients(clients = {OrderServiceClient.class})
 public class RestaurantServiceApplication {
