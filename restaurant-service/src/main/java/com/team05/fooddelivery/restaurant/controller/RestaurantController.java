@@ -94,7 +94,11 @@ public class RestaurantController {
     // [S2-F3] Get Restaurant Order Revenue Summary (M3: Feign → order-service)
     @GetMapping("/{id}/order-summary")
     public ResponseEntity<RestaurantRevenueDTO> getOrderSummary(@PathVariable Long id) {
-        return ResponseEntity.ok(restaurantService.getOrderSummary(id));
+        log.info("Received GET /api/restaurants/{}/revenue", id);
+        RestaurantRevenueDTO restaurantRevenueDTO = restaurantService.getOrderSummary(id);
+        log.info("Returning 200 for GET /api/restaurants/{}/revenue", id);
+        return ResponseEntity.ok(restaurantRevenueDTO);
+
     }
 
 
@@ -132,7 +136,7 @@ public class RestaurantController {
     }
 
     // [S2-F7] Rate a Restaurant After Order (Transactional)
-    @PutMapping("/{id}/rate")
+    @PostMapping("/{id}/rate")
     public ResponseEntity<Void> rateRestaurant(
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
