@@ -465,6 +465,41 @@ public class UserService {
 
     }
 
+
+    public void incrementUserOrderStats(Long userId, java.math.BigDecimal totalAmount) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found: " + userId));
+        int newOrders   = (user.getTotalOrders() == null ? 0 : user.getTotalOrders()) + 1;
+        int amountToAdd = totalAmount != null ? totalAmount.intValue() : 0;
+        int newSpent    = (user.getTotalSpent()  == null ? 0 : user.getTotalSpent())  + amountToAdd;
+        user.setTotalOrders(newOrders);
+        user.setTotalSpent(newSpent);
+        userRepository.save(user);
+    }
+
+    public void decrementUserOrderStats(Long userId, Long orderId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found: " + userId));
+        java.math.BigDecimal orderAmount = java.math.BigDecimal.ZERO;
+        try {
+            com.team05.fooddelivery.contracts.dto.OrderDTO order = orderServiceClient.getOrder(orderId);
+            if (order != null && order.totalAmount() != null) {
+                orderAmount = order.totalAmount();
+            }
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(UserService.class)
+                    .warn("Could not fetch order {} amount from order-service to reverse spend: {}",
+                            orderId, e.getMessage());
+        }
+        int newOrders = Math.max(0, (user.getTotalOrders() == null ? 0 : user.getTotalOrders()) - 1);
+        int newSpent  = Math.max(0, (user.getTotalSpent()  == null ? 0 : user.getTotalSpent())  - orderAmount.intValue());
+        user.setTotalOrders(newOrders);
+        user.setTotalSpent(newSpent);
+        userRepository.save(user);
+    }
+
     @Cacheable(value = "user-service::S1-F12", key = "#id")
     public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

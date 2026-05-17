@@ -50,6 +50,10 @@ public class User {
     @JsonIgnore
     private List<DeliveryAddress> deliveryAddresses;
 
+    private Integer totalOrders;
+
+    private Integer totalSpent;
+
     @PrePersist void prePersist() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
@@ -143,5 +147,21 @@ public class User {
 
     public void setDeliveryAddresses(List<DeliveryAddress> deliveryAddresses) {
         this.deliveryAddresses = deliveryAddresses;
+    }
+
+    public Integer getTotalOrders() {
+        return totalOrders;
+    }
+
+    public void setTotalOrders(Integer totalOrders) {
+        this.totalOrders = totalOrders;
+    }
+
+    public Integer getTotalSpent() {
+        return totalSpent;
+    }
+
+    public void setTotalSpent(Integer totalSpent) {
+        this.totalSpent = totalSpent;
     }
 }
