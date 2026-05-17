@@ -9,7 +9,7 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.messaging.publishers.OrderPublisher;
+import com.team05.fooddelivery.order.messaging.publishers.OrderEventPublisher;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
@@ -18,6 +18,15 @@ import com.team05.fooddelivery.order.repository.OrderRepository;
 import com.team05.fooddelivery.order.repository.mongo.MongoOrderEventRepository;
 import com.team05.fooddelivery.order.repository.neo4j.UserNodeRepository;
 import com.team05.fooddelivery.order.dto.InteractionRecordingResponseDTO;
+import com.team05.fooddelivery.contracts.dto.OrderSummaryDTO;
+import com.team05.fooddelivery.contracts.dto.RestaurantOrderSummaryDTO;
+import com.team05.fooddelivery.contracts.dto.UserDTO;
+import com.team05.fooddelivery.contracts.dto.RestaurantDTO;
+import com.team05.fooddelivery.contracts.dto.AvgPriceDTO;
+import com.team05.fooddelivery.contracts.feign.RestaurantServiceClient;
+import com.team05.fooddelivery.contracts.feign.UserServiceClient;
+// import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
+import com.team05.fooddelivery.contracts.feign.DeliveryServiceClient;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -30,8 +39,9 @@ import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
-import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,13 +49,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Collection;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.security.core.Authentication;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
@@ -60,28 +68,124 @@ public class OrderService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
     private final Neo4jClient neo4jClient;
-    private final OrderPublisher orderPublisher;
+    private final OrderEventPublisher orderPublisher;
 
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
+    private final RestaurantServiceClient restaurantServiceClient;
+    private final UserServiceClient userServiceClient;
+    private final DeliveryServiceClient deliveryServiceClient;
+    // private final CheckoutServiceClient checkoutServiceClient;
 
 
     public OrderService(OrderRepository orderRepository,
                         MongoOrderEventRepository mongoOrderEventRepository,
                         UserNodeRepository userNodeRepository,
                         OrderInteractionGraphService orderInteractionGraphService,
-                        Neo4jClient neo4jClient,
-                        OrderPublisher orderPublisher) {
+                        Neo4jClient neo4jClient, 
+                        RestaurantServiceClient restaurantServiceClient, 
+                        UserServiceClient userServiceClient,
+                        DeliveryServiceClient deliveryServiceClient,
+                        // CheckoutServiceClient checkoutServiceClient,
+                        OrderEventPublisher orderPublisher) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.userNodeRepository = userNodeRepository;
         this.orderInteractionGraphService = orderInteractionGraphService;
         this.neo4jClient = neo4jClient;
+        this.restaurantServiceClient = restaurantServiceClient;
+        this.userServiceClient = userServiceClient;
+        this.deliveryServiceClient = deliveryServiceClient;
+        // this.checkoutServiceClient = checkoutServiceClient;
         this.orderPublisher = orderPublisher;
         this.observers.add(
                 new MongoEventLogger<>(this.mongoOrderEventRepository, EventType.ORDER)
         );
     }
+
+    @Transactional(readOnly = true)
+    public long getTotalOrderCountForUser(Long userId) {
+        return orderRepository.countByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public long getActiveOrderCountForUser(Long userId) {
+
+        Collection<OrderStatusEnum> activeStatuses = List.of(
+                OrderStatusEnum.PLACED,
+                OrderStatusEnum.CONFIRMED,
+                OrderStatusEnum.PREPARING,
+                OrderStatusEnum.COMPLETING,
+                OrderStatusEnum.PAYMENT_PENDING
+        );
+
+        return orderRepository.countByUserIdAndStatusIn(userId, activeStatuses);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderSummaryDTO getUserOrderSummary(Long userId) {
+
+        List<Order> orders = orderRepository.findByUserId(userId);
+
+        long totalOrders = orders.size();
+
+        long deliveredOrders = orders.stream()
+                .filter(order -> order.getStatus() == OrderStatusEnum.DELIVERED)
+                .count();
+
+        long cancelledOrders = orders.stream()
+                .filter(order -> order.getStatus() == OrderStatusEnum.CANCELLED)
+                .count();
+
+        BigDecimal totalSpent = orders.stream()
+                .filter(order -> order.getStatus() == OrderStatusEnum.DELIVERED)
+                .map(order -> order.getTotalAmount() == null
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(order.getTotalAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal avgOrderAmount = deliveredOrders == 0
+                ? BigDecimal.ZERO
+                : totalSpent.divide(BigDecimal.valueOf(deliveredOrders), 2, RoundingMode.HALF_UP);
+
+        return new OrderSummaryDTO(
+                totalOrders,
+                deliveredOrders,
+                cancelledOrders,
+                totalSpent,
+                avgOrderAmount
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public RestaurantOrderSummaryDTO getRestaurantOrderSummary(Long restaurantId) {
+
+        List<Order> orders = orderRepository.findByRestaurantId(restaurantId);
+
+        Long totalOrders = (long) orders.size();
+
+        Long deliveredOrders = orders.stream()
+                .filter(order -> order.getStatus() == OrderStatusEnum.DELIVERED)
+                .count();
+
+        BigDecimal totalRevenue = orders.stream()
+                .filter(order -> order.getStatus() == OrderStatusEnum.DELIVERED)
+                .map(order -> order.getTotalAmount() == null
+                        ? BigDecimal.ZERO
+                        : BigDecimal.valueOf(order.getTotalAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal avgOrderValue = deliveredOrders == 0
+                ? BigDecimal.ZERO
+                : totalRevenue.divide(BigDecimal.valueOf(deliveredOrders), 2, RoundingMode.HALF_UP);
+
+        return new RestaurantOrderSummaryDTO(
+                totalOrders,
+                totalRevenue,
+                avgOrderValue
+        );
+    }
+
     // [S3-F1] Search Orders by Status and Date Range
     @Cacheable(value = "order-service::S3-F1", key = "{#status, #startDate.toString(), #endDate.toString()}")
     public List<Order> searchOrders(OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
@@ -137,14 +241,16 @@ public class OrderService {
                     "only a newly placed order can be confirmed"
             );
         }
-        boolean restaurantExists = orderRepository.existsByRestaurantId(restaurantId);
-        if (!restaurantExists) {
+        RestaurantDTO restaurant;
+
+        try {
+            restaurant = restaurantServiceClient.getRestaurant(restaurantId);
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
-        boolean restaurantOpen = orderRepository.isRestaurantOpen(restaurantId);
-        if (!restaurantOpen) {
-            throw new ResponseStatusException( HttpStatus.BAD_REQUEST,  "Restaurant is not open"
-            );
+
+        if (restaurant.status() == null || !restaurant.status().equalsIgnoreCase("OPEN")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant is not open");
         }
         order.setRestaurantId(restaurantId);
         order.setStatus(OrderStatusEnum.CONFIRMED);
@@ -167,14 +273,17 @@ public class OrderService {
         if (request.deliveryDistance() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "deliveryDistance must be > 0");
         }
-        boolean restaurantExists = orderRepository.existsByRestaurantId(request.restaurantId());
-        if (!restaurantExists) {
+        AvgPriceDTO avgPriceDTO;
+
+        try {
+            avgPriceDTO = restaurantServiceClient.getMenuItemAvgPrice(request.restaurantId());
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
-        Double avgMenuPrice = orderRepository.findAverageMenuItemPriceByRestaurantId(request.restaurantId());
-        if (avgMenuPrice == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant has no menu items right now");
-        }
+
+        double avgMenuPrice = avgPriceDTO.avgPrice() == null
+                ? 0.0
+                : avgPriceDTO.avgPrice().doubleValue();
         double foodCost = avgMenuPrice * request.itemCount();
         double deliveryFee = 10.0 * request.deliveryDistance();
         double serviceFee = foodCost * 0.05;
@@ -234,17 +343,44 @@ public class OrderService {
         if (foundOrder.getStatus() != OrderStatusEnum.PREPARING)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order can only be delivered if it is in preparation");
 
-        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETEING
-        foundOrder.setDeliveredAt(LocalDateTime.now());
-
         if (foundOrder.getTotalAmount() == null || foundOrder.getTotalAmount() == 0) {
             List<OrderItem> orderItems = foundOrder.getOrderItems();
             double total = orderItems.stream().mapToDouble(i-> i.getQuantity() *i.getUnitPrice()).sum();
             foundOrder.setTotalAmount(total);
         }
 
-        // Create payment record with status PENDING. Save order. Return the order after the update.
-        orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
+        // Pre-saga Feign checks
+        //// Check restaurant is open
+        RestaurantDTO restaurant;
+        try {
+            restaurant = restaurantServiceClient.getRestaurant(foundOrder.getRestaurantId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+        if (restaurant.status() == null || !restaurant.status().equalsIgnoreCase("OPEN")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant is not open");
+        }
+        //// Check user is active
+        UserDTO user;
+        try {
+            user = userServiceClient.getUser(foundOrder.getUserId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        if (user.status() == null || !user.status().equalsIgnoreCase("ACTIVE")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not active");
+        }
+        //// Check delivery service has an active delivery
+        try {
+            deliveryServiceClient.getActiveDeliveryForOrder(foundOrder.getId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active delivery not found for this order");
+        }
+        
+
+        foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETING
+        // foundOrder.setDeliveredAt(LocalDateTime.now());
+
         Order savedOrder = orderRepository.save(foundOrder);
         return savedOrder;
 
@@ -456,38 +592,28 @@ public class OrderService {
     // [S3-F11] Record User-Restaurant Ordering Pattern
     public InteractionRecordingResponseDTO recordInteraction(Long orderId) {
         // (a) Validate JWT + USER role
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
-        }
+        // TODO: Make auth using JWT purely, no DB access
+        // // Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        // // if (auth == null || !auth.isAuthenticated()) {
+        // //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        // // }
 
-        // Get userId and Role
-        Object[] userIdAndRole = null;
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
-        }
-        if (userIdAndRole == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-
-        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
-        String role = (String) userIdAndRole[1];
-
-        // boolean isUser = auth.getAuthorities().stream()
-        //         .map(GrantedAuthority::getAuthority)
-        //         .anyMatch(role -> role.equals("ROLE_CUSTOMER"));
-
-        // if (!isUser) {
-        //     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only users can record interactions");
-        // }
+        // // // Get userId and Role
+        // // Object[] userIdAndRole = null;
+        // // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // // if (authentication != null && authentication.isAuthenticated()) {
+        // //     userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
+        // // }
+        // // if (userIdAndRole == null) {
+        // //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        // // }
 
         // (b)
         Order order = getOrderById(orderId);
 
-        if (fetchedUserId != order.getUserId() && !role.equalsIgnoreCase("ADMIN")) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
-        }
+
+
+        
 
         if (order.getStatus() != OrderStatusEnum.DELIVERED) {
             throw new ResponseStatusException(
@@ -510,15 +636,32 @@ public class OrderService {
         }
 
         // (e)
-        String userName = orderRepository.findUserNameById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        String restaurantName = orderRepository.findRestaurantNameById(restaurantId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
-        String cuisineType = orderRepository.findRestaurantCuisineTypeById(restaurantId).orElse(null);
+        String userName;
+
+        UserDTO user;
+        try {
+            user = userServiceClient.getUser(order.getUserId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        if (user.id() != order.getUserId() && !user.role().equalsIgnoreCase("ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+        RestaurantDTO restaurant;
+        try {
+            restaurant = restaurantServiceClient.getRestaurant(order.getRestaurantId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
+        }
+
+        String restaurantName = restaurant.name();
+        String cuisineType = restaurant.cuisineType();
 
         // (f)
         boolean lostIdempotencyRace = orderInteractionGraphService.upsertOrderedFromEdge(
-                orderId, userId, userName, restaurantId, restaurantName, cuisineType);
+                orderId, userId, user.email(), restaurantId, restaurantName, cuisineType);
         if (lostIdempotencyRace) {
             return new InteractionRecordingResponseDTO(
                     orderId, userId, restaurantId,
@@ -554,26 +697,16 @@ public class OrderService {
 
         int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
 
-        if (!orderRepository.existsUserById(userId)) {
+        UserDTO user;
+        try {
+            user = userServiceClient.getUser(userId);
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
 
-        // Get userId and Role
-        Object[] userIdAndRole = null;
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
-        }
-        if (userIdAndRole == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-
-        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
-        String role = (String) userIdAndRole[1];
 
 
-
-        if (fetchedUserId != userId && !role.equalsIgnoreCase("ADMIN")) {
+        if (user.id() != userId && !user.role().equalsIgnoreCase("ADMIN")) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
 
@@ -604,23 +737,22 @@ public class OrderService {
             return new ArrayList<>();
         }
 
-        Set<Long> restaurantIds = rows.stream()
-                .map(RecommendationRow::restaurantId)
-                .collect(Collectors.toSet());
-        Map<Long, OrderRepository.RestaurantInfoRow> infoById = orderRepository.findRestaurantInfoByIds(restaurantIds)
-                .stream()
-                .collect(Collectors.toMap(OrderRepository.RestaurantInfoRow::getRestaurantId, r -> r));
-
         List<RestaurantRecommendationDTO> recommendations = rows.stream()
                 .map(r -> {
-                    OrderRepository.RestaurantInfoRow info = infoById.get(r.restaurantId());
-                    if (info == null) return null;
-                    return new RestaurantRecommendationDTO.Builder()
-                            .id(info.getRestaurantId())
-                            .name(info.getName())
-                            .cuisineType(info.getCuisineType())
-                            .score(r.score())
-                            .build();
+                    try {
+                        RestaurantDTO restaurant =
+                                restaurantServiceClient.getRestaurant(r.restaurantId());
+
+                        return new RestaurantRecommendationDTO.Builder()
+                                .id(restaurant.id())
+                                .name(restaurant.name())
+                                .cuisineType(restaurant.cuisineType())
+                                .score(r.score())
+                                .build();
+
+                    } catch (Exception e) {
+                        return null;
+                    }
                 })
                 .filter(r -> r != null)
                 .toList();
@@ -674,17 +806,19 @@ public class OrderService {
     @Transactional
     @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
     public Order createOrder(Order order) {
-        boolean userExists = orderRepository.existsByUserId(order.getUserId());
-        if (!userExists) {
+        try {
+            userServiceClient.getUser(order.getUserId());
+        } catch (Exception e) {
+            // System.out.println("User not found: " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found");
         }
-        if(order.getRestaurantId() != null){
-            boolean restaurantExists = orderRepository.existsByRestaurantId(order.getRestaurantId());
-            if (!restaurantExists) {
+        if (order.getRestaurantId() != null) {
+            try {
+                restaurantServiceClient.getRestaurant(order.getRestaurantId());
+            } catch (Exception e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Restaurant not found");
+            }
         }
-        }
-
 
         Order savedOrder = orderRepository.save(order);
         Map<String, Object> params = new HashMap<>();
@@ -728,11 +862,11 @@ public class OrderService {
         }
 
         if (updatedOrder.getRestaurantId() != null){
-            boolean restaurantExists = orderRepository.existsByRestaurantId(updatedOrder.getRestaurantId());
-            if (!restaurantExists) {
+            try {
+                restaurantServiceClient.getRestaurant(updatedOrder.getRestaurantId());
+            } catch (Exception e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New restaurant you're trying to set does not exist");
             }
-
             existingOrder.setRestaurantId(updatedOrder.getRestaurantId());
         }
 

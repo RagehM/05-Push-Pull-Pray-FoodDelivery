@@ -1,9 +1,14 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.contracts.dto.OrderDTO;
+import com.team05.fooddelivery.contracts.dto.OrderSummaryDTO;
+import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
+import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
+import com.team05.fooddelivery.user.messaging.publishers.UserEventPublisher;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
@@ -23,7 +28,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,15 +36,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static org.springframework.data.mongodb.repository.Aggregation.*;
 
 @Service
 public class UserService {
@@ -49,16 +47,22 @@ public class UserService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
     private final MongoTemplate mongoTemplate;
+    private final UserEventPublisher publisher;
+    private final OrderServiceClient orderServiceClient;
+    private final CheckoutServiceClient checkoutServiceClient;
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate, UserEventPublisher publisher, OrderServiceClient orderServiceClient, CheckoutServiceClient checkoutServiceClient) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;
+        this.publisher = publisher;
+        this.checkoutServiceClient = checkoutServiceClient;
         this.observers.add(
                 new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
         this.mongoTemplate = mongoTemplate;
+        this.orderServiceClient = orderServiceClient;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -260,13 +264,15 @@ public class UserService {
             }
     )    public ResponseStatusException deactivateUserAccount(Long id){
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        List<Object> activeOrders=userRepository.findOrdersByUserId(id);
-        if(activeOrders.size()>0){
+        int activeOrders= orderServiceClient.getActiveOrderCount(user.getId());
+        if(activeOrders > 0){
             throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
         }
         user.setStatus(UserStatus.DEACTIVATED);
 
         userRepository.save(user);
+
+        publisher.publishDeactivatedUser(user);
 
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
@@ -283,7 +289,23 @@ public class UserService {
         {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
         }
-        List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
+        List<User> allUsers = userRepository.findAll();
+        List<Object[]> result = new ArrayList<>();
+
+        for(User user : allUsers)
+        {
+            Object[] row = new Object[4];
+            row[0] = user.getId();
+            row[1] = user.getName();
+            row[2] = checkoutServiceClient.getUserPaymentTotal(user.getId(), startDate.toString(), endDate.toString());
+            row[3] = orderServiceClient.getTotalOrderCount(user.getId());
+            result.add(row);
+        }
+        result = result.stream()
+                .sorted((o1,o2) ->
+                        Double.compare(((Number) o2[2]).doubleValue(),((Number) o1[2]).doubleValue()))
+                .limit(limit)
+                .collect(Collectors.toList());
         return result.stream().map(row -> {
             Long userID = ((Number) row[0]).longValue();
             String userName = (String) row[1];
@@ -311,31 +333,17 @@ public class UserService {
     @Cacheable(value = "user-service::S1-F3", key = "#userId")
     public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        List<Object[]> orders = userRepository.findTotalOrders(userId);
-        List<Object[]> deliveredOrders = userRepository.findDeliveredOrders(userId);
-        List<Object[]> cancelledOrders = userRepository.findCancelledOrders(userId);
-
-        Double totalSpent;
-        if(!deliveredOrders.isEmpty()){
-            totalSpent = deliveredOrders.stream()
-                    .map(order -> ((Number) order[5]).doubleValue())  // total_amount is at index 5
-                    .reduce(0.0, Double::sum);
-        } else {
-            totalSpent = 0.0;
-        }
-
-        Double averageOrderAmount = !orders.isEmpty() ? totalSpent / deliveredOrders.size() : 0.0;
-
-
+//
+        OrderSummaryDTO orders = orderServiceClient.getUserOrderSummary(userId);
 
         return UserOrderSummaryDTO.builder()
                 .userId(user.getId())
                 .name(user.getName())
-                .totalOrders(orders.size())
-                .deliveredOrders(deliveredOrders.size())
-                .cancelledOrders(cancelledOrders.size())
-                .totalSpent(totalSpent)
-                .averageOrderAmount(averageOrderAmount)
+                .totalOrders(orders.totalOrders().intValue())
+                .deliveredOrders(orders.deliveredOrders().intValue())
+                .cancelledOrders(orders.cancelledOrders().intValue())
+                .totalSpent(orders.totalSpent().doubleValue())
+                .averageOrderAmount(orders.avgOrderAmount().doubleValue())
                 .build();
     }
 
@@ -347,11 +355,18 @@ public class UserService {
         if (minimumOrders == null || minimumOrders < 0) {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Minimum orders cannot be null or less than 0");
         }
-        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet, minimumOrders);
-        List<User> users = new ArrayList<>();
+        List<User> users = userRepository.findUserByPreferencesContaining("dietaryRestrictions", diet);
+        List<User> result = new ArrayList<>();
+        for (User user : users)
+        {
+            long totalOrders = orderServiceClient.getTotalOrderCount(user.getId());
+            if(totalOrders >= minimumOrders)
+            {
+                result.add(user);
+            }
+        }
 
-        result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
-        return users;
+        return result;
     }
     @Transactional
     @Caching(
@@ -451,6 +466,41 @@ public class UserService {
 
     }
 
+
+    public void incrementUserOrderStats(Long userId, java.math.BigDecimal totalAmount) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found: " + userId));
+        int newOrders   = (user.getTotalOrders() == null ? 0 : user.getTotalOrders()) + 1;
+        int amountToAdd = totalAmount != null ? totalAmount.intValue() : 0;
+        int newSpent    = (user.getTotalSpent()  == null ? 0 : user.getTotalSpent())  + amountToAdd;
+        user.setTotalOrders(newOrders);
+        user.setTotalSpent(newSpent);
+        userRepository.save(user);
+    }
+
+    public void decrementUserOrderStats(Long userId, Long orderId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found: " + userId));
+        java.math.BigDecimal orderAmount = java.math.BigDecimal.ZERO;
+        try {
+            OrderDTO order = orderServiceClient.getOrder(orderId);
+            if (order != null && order.totalAmount() != null) {
+                orderAmount = order.totalAmount();
+            }
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(UserService.class)
+                    .warn("Could not fetch order {} amount from order-service to reverse spend: {}",
+                            orderId, e.getMessage());
+        }
+        int newOrders = Math.max(0, (user.getTotalOrders() == null ? 0 : user.getTotalOrders()) - 1);
+        int newSpent  = Math.max(0, (user.getTotalSpent()  == null ? 0 : user.getTotalSpent())  - orderAmount.intValue());
+        user.setTotalOrders(newOrders);
+        user.setTotalSpent(newSpent);
+        userRepository.save(user);
+    }
+
     @Cacheable(value = "user-service::S1-F12", key = "#id")
     public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -489,4 +539,6 @@ public class UserService {
 
         return feed;
     }
+
+
 }
