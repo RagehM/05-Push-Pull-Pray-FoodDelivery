@@ -13,7 +13,7 @@ http:
     type: json
     data: |-
       {
-        "orderId": 6,
+        "orderId": 1,
         "userId": 1,
         "amount": 200,
         "method": "CREDIT_CARD",
@@ -25,7 +25,7 @@ http:
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTM0NjgxLCJleHAiOjE3NzkwMjEwODF9.HBPxLjQ9azLEYVcguRPHvcXmsHivixs1pasnD29irjc
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDA3OTMxLCJleHAiOjE3NzkwOTQzMzF9.X8RlG83P2XAFfxSf2ZBw7p8b5rpgZhUo3tR3NkzUKPM
 
 settings:
   encodeUrl: true

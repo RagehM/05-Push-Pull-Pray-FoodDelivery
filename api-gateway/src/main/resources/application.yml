@@ -5,10 +5,23 @@ spring:
     gateway:
       routes:
         # S1-INFRA owner needs to fill this
-        
+
         # S2-INFRA owner needs to fill this
         
+        # S3-INFRA — order-service route
+        - id: order-service
+          uri: http://order-service:8080
+          predicates:
+            - Path=/api/orders/**
+
         # S3-INFRA owner needs to fill this
+
+        # S4-INFRA owner needs to fill this
+
+        - id: checkout-service
+          uri: http://checkout-service:8080
+          predicates:
+            - Path=/api/payments/**, /api/offers/**
         
         - id: delivery-service
           uri: http://delivery-service:8080
