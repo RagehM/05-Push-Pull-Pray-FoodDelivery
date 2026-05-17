@@ -106,7 +106,7 @@ public class AuthService {
         log.info("{} {} saved with status={}", "User", user.getId(), user.getStatus());
 
         publisher.publishRegisteredUser(user);
-
+        
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
         authEvent.put("action", "REGISTERED");

@@ -44,7 +44,7 @@ spring:
           initial-interval: 1000
           max-retries: 3
     #          max-attempts: 3
-
+    
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}

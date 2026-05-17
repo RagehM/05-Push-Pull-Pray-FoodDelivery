@@ -56,7 +56,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Query(value = """
                         SELECT COUNT(*) FROM orders ord
                         WHERE ord.restaurant_id = :restaurantId
-                            AND ord.status IN ('PLACED', 'CONFIRMED', 'PREPARING')
+                            AND ord.status IN ('PLACED', 'CONFIRMED', 'PREPARING', 'COMPLETING', 'PAYMENT_PENDING', 'PAYMENT_FAILED')
                         """, nativeQuery = true)
         Long countActiveOrdersByRestaurantId(@Param("restaurantId") Long restaurantId);
 

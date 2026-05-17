@@ -7,15 +7,13 @@ http:
   method: POST
   url: http://localhost:8083/api/orders
   headers:
-    - name: X-User-Id
-      value: "3"
-    - name: X-User-Role
-      value: ADMIN
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzcxMjc3NiwiZXhwIjoxNzc3Nzk5MTc2fQ.jyqcxbHIkFwedaoExZ4kxzdhu8kRDtYepg5KYTbXNt0
   body:
     type: json
     data: |-
       {
-        "userId": 3,
+        "userId": 1,
         "restaurantId": 1,
         "status": "PLACED",
         "totalAmount": 180.0,
