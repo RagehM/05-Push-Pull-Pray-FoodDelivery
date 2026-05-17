@@ -373,15 +373,11 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not active");
         }
         //// Check delivery service has an active delivery
-        // try {
-        //     deliveryServiceClient.getActiveDeliveryForOrder(foundOrder.getId());
-        // } catch (Exception e) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active delivery not found for this order");
-        // }
-
-        // Create payment record with status PENDING. Save order. Return the order after the update.
-        // orderRepository.createPaymentWithPendingStatus(foundOrder.getId(), foundOrder.getUserId(), foundOrder.getTotalAmount());
-        //// This is now done though the RabbitMQ event that is published in the wrapper method
+        try {
+            deliveryServiceClient.getActiveDeliveryForOrder(foundOrder.getId());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active delivery not found for this order");
+        }
         
 
         foundOrder.setStatus(OrderStatusEnum.COMPLETING); // Order status set changed from MS2 DELIVERED to MS3 COMPLETING
