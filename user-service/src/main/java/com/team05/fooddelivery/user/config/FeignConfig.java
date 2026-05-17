@@ -46,6 +46,14 @@ public class FeignConfig {
             if (auth != null && !auth.isBlank()) {
                 template.header(HttpHeaders.AUTHORIZATION, auth);
             }
+            String userId = req.getHeader("X-User-Id");
+            if (userId != null && !userId.isBlank()) {
+                template.header("X-User-Id", userId);
+            }
+            String userRole = req.getHeader("X-User-Role");
+            if (userRole != null && !userRole.isBlank()) {
+                template.header("X-User-Role", userRole);
+            }
         };
     }
 

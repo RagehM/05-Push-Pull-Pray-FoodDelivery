@@ -1,18 +1,16 @@
-package com.team05.fooddelivery.order.config;
+package com.team05.fooddelivery.restaurant.config;
 
-import com.team05.fooddelivery.order.security.CorrelationIdFilter;
 import feign.Logger;
 import feign.Request;
 import feign.RequestInterceptor;
 import feign.Retryer;
-import org.slf4j.MDC;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -57,13 +55,6 @@ public class FeignConfig {
         };
     }
 
-    @Bean
-    public RequestInterceptor feignCorrelationIdInterceptor() {
-        return template -> {
-            String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
-            if (correlationId != null && !correlationId.isBlank()) {
-                template.header(CorrelationIdFilter.HEADER, correlationId);
-            }
-        };
-    }
 }
+
+

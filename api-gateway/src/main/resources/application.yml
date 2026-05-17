@@ -1,35 +1,41 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: api-gateway
   cloud:
     gateway:
-      routes:
-        # S1-INFRA owner needs to fill this
-        
-        # S2-INFRA: restaurant-service routes
-        - id: restaurant-service
-          uri: http://restaurant-service.talabat.svc.cluster.local:8080
-          predicates:
-            - Path=/api/restaurants/**
-        
-        # S3-INFRA — order-service route
-        - id: order-service
-          uri: http://order-service:8080
-          predicates:
-            - Path=/api/orders/**
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: http://user-service:8080
+              predicates:
+                - Path=/api/users/**, /api/auth/**, /api/delivery-addresses/**
 
-        # S3-INFRA owner needs to fill this
+            - id: restaurant-service
+              uri: http://restaurant-service:8080
+              predicates:
+                - Path=/api/restaurants/**, /api/menu-items/**
 
-        # S4-INFRA owner needs to fill this
+            - id: order-service
+              uri: http://order-service:8080
+              predicates:
+                - Path=/api/orders/**, /api/order-items/**
 
-        - id: checkout-service
-          uri: http://checkout-service:8080
-          predicates:
-            - Path=/api/payments/**, /api/offers/**
-        
-        - id: delivery-service
-          uri: http://delivery-service:8080
-          predicates:
-            - Path=/api/deliveries/**
-        
-        # S5-INFRA owner needs to fill this
+            - id: delivery-service
+              uri: http://delivery-service:8080
+              predicates:
+                - Path=/api/deliveries/**
+
+            - id: checkout-service
+              uri: http://checkout-service:8080
+              predicates:
+                - Path=/api/payments/**, /api/offers/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
