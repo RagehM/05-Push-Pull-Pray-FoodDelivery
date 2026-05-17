@@ -346,10 +346,10 @@ services:
       SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
       SPRING_NEO4J_URI: bolt://neo4j:7687
       JWT_SECRET: ${JWT_SECRET}
-      FEIGN_USER_SERVICE_URL: http://user-service:8080
-      FEIGN_RESTAURANT_SERVICE_URL: http://restaurant-service:8080
-      FEIGN_DELIVERY_SERVICE_URL: http://delivery-service:8080
-      FEIGN_CHECKOUT_SERVICE_URL: http://checkout-service:8080
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
+      FEIGN_DELIVERY-SERVICE_URL: http://delivery-service:8080
+      FEIGN_CHECKOUT-SERVICE_URL: http://checkout-service:8080
     depends_on:
       order-postgres:
         condition: service_healthy
@@ -385,9 +385,9 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: ${JWT_SECRET}
-      FEIGN_USER_SERVICE_URL: http://user-service:8080
-      FEIGN_ORDER_SERVICE_URL: http://order-service:8080
-      FEIGN_RESTAURANT_SERVICE_URL: http://restaurant-service:8080
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_ORDER-SERVICE_URL: http://order-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
     depends_on:
       checkout-postgres:
         condition: service_healthy
@@ -407,6 +407,7 @@ services:
       - order-service
       - delivery-service
       - checkout-service
+
 
 volumes:
     pgadmin-data:

@@ -12,12 +12,16 @@ import com.team05.fooddelivery.order.service.OrderService;
 
 import jakarta.transaction.Transactional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Service
 public class SagaTriggerService {
     private Map<Integer, String> pendingPaymentAndDeliveryEvents;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private static final Logger log = LoggerFactory.getLogger(SagaTriggerService.class);
 
         public SagaTriggerService(OrderService orderService, OrderRepository orderRepository) {
             this.orderService = orderService;
@@ -46,13 +50,39 @@ public class SagaTriggerService {
             (existingEvent.equals("delivery.created") && receivedEvent.equals("payment.completed"))) {
                 // Proceed with order completion logic, e.g. update
                 Order order = orderService.getOrderById(orderId);
+                String previousStatus = order.getStatus().toString();
                 order.setStatus(OrderStatusEnum.PAYMENT_PENDING);
                 orderRepository.save(order);
+
+                log.info("Order {} transitioning {} → {}", orderId, previousStatus, OrderStatusEnum.PAYMENT_PENDING);
+                log.info("{} {} saved with status={}", "Order", orderId, OrderStatusEnum.PAYMENT_PENDING);
 
                 // Remove the entry from pending events
                 pendingPaymentAndDeliveryEvents.remove(orderId.hashCode());
             }
 
 
+    }
+
+    @Transactional
+    public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
+        Order order = orderService.getOrderById(orderId);
+        String previousStatus = order.getStatus().toString();
+        if (receivedEvent.equals("payment.completed")) {
+            order.setStatus(OrderStatusEnum.PAID);
+            orderRepository.save(order);
+            log.info("Order {} transitioning {} → {}", orderId, previousStatus, OrderStatusEnum.PAID);
+            log.info("{} {} saved with status={}", "Order", orderId, OrderStatusEnum.PAID);
+        } else if (receivedEvent.equals("payment.failed")) {
+            order.setStatus(OrderStatusEnum.PAYMENT_FAILED);
+            orderRepository.save(order);
+            log.info("Order {} transitioning {} → {}", orderId, previousStatus, OrderStatusEnum.PAYMENT_FAILED);
+            log.info("{} {} saved with status={}", "Order", orderId, OrderStatusEnum.PAYMENT_FAILED);
+        } else if (receivedEvent.equals("payment.refunded")) {
+            order.setStatus(OrderStatusEnum.REFUNDED);
+            orderRepository.save(order);
+            log.info("Order {} transitioning {} → {}", orderId, previousStatus, OrderStatusEnum.REFUNDED);
+            log.info("{} {} saved with status={}", "Order", orderId, OrderStatusEnum.REFUNDED);
+        }
     }
 }

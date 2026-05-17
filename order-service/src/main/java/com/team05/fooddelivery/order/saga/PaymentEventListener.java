@@ -1,5 +1,7 @@
 package com.team05.fooddelivery.order.saga;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -15,21 +17,26 @@ import com.team05.fooddelivery.contracts.events.PaymentRefundedEvent;
 @RabbitListener(queues = "order.saga-feedback")
 public class PaymentEventListener {
     private final SagaTriggerService sagaTriggerService;
+    public static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);
 
     
     public PaymentEventListener(SagaTriggerService sagaTriggerService) {
         this.sagaTriggerService = sagaTriggerService;
     }
 
-    
+     
     @RabbitHandler
     public void handlePaymentInitiatedEvent(
         PaymentInitiatedEvent event,
         @Header(value = "X-Correlation-ID", required = false) String correlationId) {
         try{
+            logConsumedEvent("payment.initiated", event.paymentId());
             setupMdc("payment.initiated", correlationId, event.orderId(), null, null, null, event.paymentId());
             sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.initiated");
-            System.out.println("Payment Initiated Event Received");
+            logProcessedEvent("payment.initiated", event.paymentId());
+        } catch (Exception e) {
+            logFailedEvent("payment.initiated", e.getMessage());
+            throw e;
         } finally {
             clearMdc();
         }
@@ -39,9 +46,13 @@ public class PaymentEventListener {
     @RabbitHandler
     public void handlePaymentCompletedEvent(PaymentCompletedEvent event) {
         try{
+            logConsumedEvent("payment.completed", event.paymentId());
             setupMdc("payment.completed", null, event.orderId(), null, null, null, event.paymentId());
-            sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.completed");
-            System.out.println("Payment Completed Event Received");
+            sagaTriggerService.processOtherPaymentEvents(event.orderId(), "payment.completed");
+            logProcessedEvent("payment.completed", event.paymentId());
+        } catch (Exception e) {
+            logFailedEvent("payment.completed", e.getMessage());
+            throw e;
         } finally {
             clearMdc();
         }
@@ -50,9 +61,13 @@ public class PaymentEventListener {
     @RabbitHandler
     public void handlePaymentFailedEvent(PaymentFailedEvent event) {
         try{
+            logConsumedEvent("payment.failed", event.paymentId());
             setupMdc("payment.failed", null, event.orderId(), null, null, null, event.paymentId());
-            sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.failed");
-            System.out.println("Payment Failed Event Received");
+            sagaTriggerService.processOtherPaymentEvents(event.orderId(), "payment.failed");
+            logProcessedEvent("payment.failed", event.paymentId());
+        } catch (Exception e) {
+            logFailedEvent("payment.failed", e.getMessage());
+            throw e;
         } finally {
             clearMdc();
         }
@@ -61,12 +76,28 @@ public class PaymentEventListener {
     @RabbitHandler
     public void handlePaymentRefundedEvent(PaymentRefundedEvent event) {
         try{
+            logConsumedEvent("payment.refunded", event.paymentId());
             setupMdc("payment.refunded", null, event.orderId(), null, null, null, event.paymentId());
-            sagaTriggerService.processDeliveryCreatedAndPaymentInitiatedEvent(event.orderId(), "payment.refunded");
-            System.out.println("Payment Refunded Event Received");
+            sagaTriggerService.processOtherPaymentEvents(event.orderId(), "payment.refunded");
+            logProcessedEvent("payment.refunded", event.paymentId());
+        } catch (Exception e) {
+            logFailedEvent("payment.refunded", e.getMessage());
+            throw e;
         } finally {
             clearMdc();
         }
+    }
+
+    public void logConsumedEvent(String routingKey, Long paymentId) {
+        log.info("Consumed {} for {}={}", routingKey, "Payment", paymentId);
+    }
+
+    public void logProcessedEvent(String routingKey, Long paymentId) {
+        log.info("Processed {} for {}={}", routingKey, "Payment", paymentId);
+    }
+
+    public void logFailedEvent(String routingKey, String reason) {
+        log.error("Failed to process {}: {}", routingKey, reason);
     }
 
     private void setupMdc(String routingKey, String correlationId, Long orderId, Long userId, Long restaurantId, Long deliveryId, Long paymentId) {

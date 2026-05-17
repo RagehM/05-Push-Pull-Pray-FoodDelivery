@@ -2,6 +2,8 @@ package com.team05.fooddelivery.order.service;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -19,6 +21,7 @@ public class OrderItemService {
 
     private final OrderItemRepository orderItemRepository;
     private final OrderService orderService;
+    private static final Logger log = LoggerFactory.getLogger(OrderItemService.class);
 
 
     public OrderItemService(OrderItemRepository orderItemRepository, OrderService orderService) {
@@ -53,12 +56,11 @@ public class OrderItemService {
     public OrderItem createOrderItem(Long orderId, OrderItem orderItem) {
         Order order = orderService.getOrderById(orderId);
         String itemName = orderItemRepository.getMenuItemName(orderItem.getMenuItemId());
-        if (itemName == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Menu item not found with id: " + orderItem.getMenuItemId());
-        }
         orderItem.setOrder(order);
         orderItem.setItemName(itemName);
-        return orderItemRepository.save(orderItem);
+        OrderItem savedOrderItem = orderItemRepository.save(orderItem);
+        log.info("{} {} saved with status = {}", "Order Item", savedOrderItem.getId(), savedOrderItem.getStatus());
+        return savedOrderItem;
     }
 
     @Transactional
@@ -101,7 +103,9 @@ public class OrderItemService {
             existingOrderItem.setMetadata(orderItem.getMetadata());
         }
 
-        return orderItemRepository.save(existingOrderItem);
+        OrderItem savedOrderItem = orderItemRepository.save(existingOrderItem);
+        log.info("{} {} saved with status = {}", "Order Item", savedOrderItem.getId(), savedOrderItem.getStatus());
+        return savedOrderItem;
     }
 
     @Transactional
