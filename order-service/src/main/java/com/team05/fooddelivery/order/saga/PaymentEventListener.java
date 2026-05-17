@@ -8,7 +8,6 @@ import com.team05.fooddelivery.contracts.events.PaymentInitiatedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentCompletedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentFailedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentRefundedEvent;
-import com.team05.fooddelivery.order.service.OrderService;
 
 @Component
 @RabbitListener(queues = "order.saga-feedback")

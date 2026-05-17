@@ -138,7 +138,7 @@ public class DeliveryController {
         return deliveryService.getDeliveryPerformanceSummary(driverName, startDate, endDate);
     }
 
-    @GetMapping("deliveries/order/{orderId}/active")
+    @GetMapping("/order/{orderId}/active")
     public DeliveryDTO getActiveDeliveryStatys(@PathVariable Long orderId) {
         return deliveryService.getDeliveryActiveStatus(orderId);
     }

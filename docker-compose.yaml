@@ -36,14 +36,31 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - user-pgdata:/var/lib/postgresql
-    # healthcheck:
-    #   test: ["CMD-SHELL", "test -f /tmp/healthy"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 10
-    #   start_period: 15s
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-users" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  order-postgres:
+    image: postgres:17
+    container_name: fooddelivery-order-db
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: talabatdb-orders
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - order-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d talabatdb-orders" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   checkout-postgres:
     image: postgres:17
     container_name: fooddelivery-checkout-db
@@ -216,12 +233,18 @@ services:
     ports:
       - "8083:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-postgres:5432/talabatdb-orders
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_MONGODB_URI: mongodb://root:rootpass@mongo:27017/fooddeliverymongo?authSource=admin
       SPRING_NEO4J_URI: bolt://neo4j:7687
       JWT_SECRET: ${JWT_SECRET}
+      FEIGN_USER-SERVICE_URL: http://user-service:8080
+      FEIGN_RESTAURANT-SERVICE_URL: http://restaurant-service:8080
+      FEIGN_DELIVERY-SERVICE_URL: http://delivery-service:8080
+      FEIGN_CHECKOUT-SERVICE_URL: http://checkout-service:8080
     depends_on:
-      postgres:
+      order-postgres:
         condition: service_healthy
 
   checkout-service:
@@ -356,5 +379,6 @@ volumes:
     neo4j-data:
     cassandra-data:
     user-pgdata:
+    order-pgdata:
 
 
