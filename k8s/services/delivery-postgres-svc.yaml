@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery-postgres
+  namespace: talabat
+spec:
+  clusterIP: None
+  selector:
+    app: delivery-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
