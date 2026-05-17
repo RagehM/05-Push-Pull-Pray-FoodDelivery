@@ -827,7 +827,7 @@ public class OrderService {
 
         Map<String, Object> details = new HashMap<>();
         details.put("orderId", savedOrder.getId());
-        details.put("userId", 1);
+        details.put("userId", savedOrder.getUserId());
         details.put("restaurantId", savedOrder.getRestaurantId());
         details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
         details.put("totalAmount", savedOrder.getTotalAmount());

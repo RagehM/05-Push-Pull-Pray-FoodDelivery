@@ -23,12 +23,13 @@ public class UserLoaderHandler extends AuthHandler {
         if (username == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): missing subject claim");
         }
-        try {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails, ctx.requiredRole()));
-        } catch (UsernameNotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): user not found");
-        }
+//        try {
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+//            return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails, ctx.requiredRole()));
+//        } catch (UsernameNotFoundException e) {
+//            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized (UserLoader): user not found");
+//        }
+        return nextHandler.handle(new AuthContext(ctx.request(), ctx.token(), userDetails, ctx.requiredRole()));
     }
 
 }
