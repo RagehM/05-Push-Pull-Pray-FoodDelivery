@@ -402,6 +402,4 @@ volumes:
     user-pgdata:
     restaurant-pgdata:
     order-pgdata:
-    delivery-pgdata:
-
 
