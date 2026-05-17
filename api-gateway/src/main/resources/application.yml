@@ -18,7 +18,7 @@ spring:
               uri: http://order-service:8080
               predicates:
                 - Path=/api/orders/**
-                -
+
             - id: delivery-service
               uri: http://delivery-service:8080
               predicates:

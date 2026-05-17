@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -17,6 +19,7 @@ import java.util.UUID;
 
 @Component
 public class JwtGatewayFilter implements GlobalFilter, Ordered {
+    private static final Logger log = LoggerFactory.getLogger(JwtGatewayFilter.class);
     private static final String AUTH_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -63,6 +66,7 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
 
             return chain.filter(exchange.mutate().request(mutated).build());
         } catch (Exception e) {
+            log.warn("JWT validation failed for path {}: {} - {}", path, e.getClass().getSimpleName(), e.getMessage());
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
