@@ -15,10 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -107,12 +104,12 @@ public class UserController {
     }
 
     @PutMapping("/{id}/deactivate")
-    public ResponseStatusException deactivateUserAccount(@PathVariable long id)
+    public ResponseEntity<String> deactivateUserAccount(@PathVariable long id)
     {
         log.info("Received {} {}", "PUT", "/api/users/" + id + "/deactivate");
-        ResponseStatusException result = userService.deactivateUserAccount(id);
+        String result = userService.deactivateUserAccount(id);
         log.info("Returning {} for {} {}", 200, "PUT", "/api/users/" + id + "/deactivate");
-        return result;
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/preferences/search")
