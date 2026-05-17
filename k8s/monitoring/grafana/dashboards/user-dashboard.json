@@ -65,6 +65,7 @@
     },
     {
       "id": 3,
+      "title": "Log Rate by Level",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -86,71 +87,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "lineWidth": 2 }
-        }
-      }
-    },
-    {
-      "id": 4,
-      "type": "timeseries",
-      "title": "[PromQL] HTTP Request Rate — /api/users/**",
-      "description": "Requests per second per endpoint for user-service.",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "sum by (uri, method, status) (rate(http_server_requests_seconds_count{job=\"user-service\"}[5m]))",
-          "legendFormat": "{{method}} {{uri}} [{{status}}]",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
           "custom": {
             "lineWidth": 2
           }
         }
       }
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "[PromQL] HTTP Latency P99 — User Service",
-      "description": "P99 request latency per endpoint for user-service.",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 24
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.99, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"user-service\"}[5m])))",
-          "legendFormat": "P99: {{uri}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "lineWidth": 2
-          }
-        }
-      ]
     },
     {
       "id": 4,
