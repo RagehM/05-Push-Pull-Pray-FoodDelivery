@@ -5,12 +5,13 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8083/api/orders/1/deliver
-  auth: inherit
+  url: http://localhost:8083/api/orders/2/deliver
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTc3NDEwLCJleHAiOjE3NzkwNjM4MTB9.JeVzwIiyDyMGBcBg5mFpVmTacliMjSjw134QoReV6Ag
 
 settings:
   encodeUrl: true
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-
