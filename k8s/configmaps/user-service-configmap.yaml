@@ -13,3 +13,7 @@ data:
   FEIGN_ORDER_SERVICE_URL: http://order-service:8080
   FEIGN_CHECKOUT_SERVICE_URL: http://checkout-service:8080
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: prometheus,health,info
+  LOGGING_LOKI_URL: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+

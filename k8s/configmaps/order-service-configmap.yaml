@@ -7,7 +7,16 @@ data:
   SPRING_DATASOURCE_URL: jdbc:postgresql://order-postgres:5432/talabatdb-orders
   SPRING_DATASOURCE_USERNAME: user
   SPRING_RABBITMQ_HOST: rabbitmq
+
+  SPRING_NEO4J_URI: bolt://neo4j:7687
+  SPRING_NEO4J_AUTHENTICATION_USERNAME: neo4j
+  SPRING_NEO4J_AUTHENTICATION_PASSWORD: neo4jpass
+
   FEIGN_USER_SERVICE_URL: http://user-service:8080
   FEIGN_RESTAURANT_SERVICE_URL: http://restaurant-service:8080
   FEIGN_DELIVERY_SERVICE_URL: http://delivery-service:8080
   FEIGN_CHECKOUT_SERVICE_URL: http://checkout-service:8080
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: prometheus,health,info
+  LOGGING_LOKI_URL: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always

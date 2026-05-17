@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: api-gateway-container
-          image: your-docker-repo/api-gateway:latest # Replace with your actual image name
+          image: 05-push-pull-pray-fooddelivery-api-gateway:latest # Replace with your actual image name
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           env:

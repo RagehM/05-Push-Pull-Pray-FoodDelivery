@@ -14,6 +14,9 @@ data:
       http_listen_port: 3100
 
     ingester:
+      wal:
+        enabled: true
+        dir: /loki/wal
       lifecycler:
         address: 127.0.0.1
         ring:
@@ -53,3 +56,7 @@ data:
     table_manager:
       retention_deletes_enabled: false
       retention_period: 0s
+
+    compactor:
+      working_directory: /loki/compactor
+      shared_store: filesystem
