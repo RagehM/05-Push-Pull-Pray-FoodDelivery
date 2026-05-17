@@ -9,7 +9,7 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.messaging.publishers.OrderPublisher;
+import com.team05.fooddelivery.order.messaging.publishers.OrderEventPublisher;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
@@ -68,7 +68,7 @@ public class OrderService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
     private final Neo4jClient neo4jClient;
-    private final OrderPublisher orderPublisher;
+    private final OrderEventPublisher orderPublisher;
 
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
@@ -87,7 +87,7 @@ public class OrderService {
                         UserServiceClient userServiceClient,
                         DeliveryServiceClient deliveryServiceClient,
                         // CheckoutServiceClient checkoutServiceClient,
-                        OrderPublisher orderPublisher) {
+                        OrderEventPublisher orderPublisher) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.userNodeRepository = userNodeRepository;
@@ -827,7 +827,7 @@ public class OrderService {
 
         Map<String, Object> details = new HashMap<>();
         details.put("orderId", savedOrder.getId());
-        details.put("userId", savedOrder.getUserId());
+        details.put("userId", 1);
         details.put("restaurantId", savedOrder.getRestaurantId());
         details.put("status", savedOrder.getStatus() != null ? savedOrder.getStatus().name() : null);
         details.put("totalAmount", savedOrder.getTotalAmount());
