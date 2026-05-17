@@ -974,4 +974,8 @@ public class OrderService {
             observer.onEvent(eventType, payload);
         }
     }
+
+    public int getActiveOrderCountForRestaurant(Long restaurantId) {
+        return orderRepository.countActiveOrdersByRestaurantId(restaurantId).intValue();
+    }
 }
