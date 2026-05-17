@@ -56,7 +56,7 @@ public class PaymentEventPublisher {
                         return message;
                     }
             );
-            log.info("Published {} for paymentId={}", routingKey, paymentId);
+            log.info("Published {} for {}={}", routingKey, "paymentId", paymentId);
         } finally {
             MDC.remove("routingKey");
             if (paymentId != null) {

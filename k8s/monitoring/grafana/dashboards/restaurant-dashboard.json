@@ -1,59 +1,100 @@
 {
   "title": "Restaurant Service Dashboard",
   "uid": "restaurant-service",
-  "tags": ["talabat", "restaurant-service"],
+  "tags": ["talabat", "restaurant"],
+  "schemaVersion": 38,
   "panels": [
     {
       "id": 1,
-      "title": "Error Rate — ERROR log lines per minute (§11.3 Panel 1)",
-      "description": "Counts ERROR-level log lines from restaurant-service per minute. Spike detection — if restaurant-service logs many ERRORs, something is wrong.",
+      "title": "HTTP Request Rate — Restaurant Service",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"} | json [1m]))",
-          "legendFormat": "Errors per minute"
+          "expr": "rate(http_server_requests_seconds_count{job=\"restaurant-service\"}[5m])",
+          "legendFormat": "{{method}} {{uri}} {{status}}"
         }
       ],
-      "datasource": "Loki"
+      "description": "Requests per second per endpoint — shows load on restaurant-service"
     },
     {
       "id": 2,
-      "title": "Feign Call Outcomes — success vs failure (§11.3 Panel 4)",
-      "description": "Tracks successful Feign calls to order-service vs FeignException catches. Detects when order-service is degraded and restaurant-service Feign calls start failing.",
+      "title": "HTTP Latency P99 — Restaurant Service",
       "type": "timeseries",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*returned successfully.*\" [5m]))",
-          "legendFormat": "Feign Success"
-        },
-        {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Feign call to.*failed.*\" [5m]))",
-          "legendFormat": "Feign Failures"
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"restaurant-service\"}[5m])) by (le, uri))",
+          "legendFormat": "P99 {{uri}}"
         }
       ],
-      "datasource": "Loki"
+      "description": "P99 latency per endpoint — detects slow Feign-enriched dashboard/summary responses"
     },
     {
       "id": 3,
-      "title": "RabbitMQ Event Audit — published vs consumed (§11.3 Panel 3)",
-      "description": "Shows restaurant.status-changed and restaurant.rated events published, and order.placed/completed/cancelled events consumed. Filtered by routingKey MDC field.",
+      "title": "JVM Heap Usage — Restaurant Service",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Published.*\" [5m]))",
+          "expr": "jvm_memory_used_bytes{job=\"restaurant-service\", area=\"heap\"}",
+          "legendFormat": "Heap Used"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{job=\"restaurant-service\", area=\"heap\"}",
+          "legendFormat": "Heap Max"
+        }
+      ],
+      "description": "JVM heap — alert if used approaches max"
+    },
+    {
+      "id": 4,
+      "title": "Error Rate — Restaurant Service",
+      "type": "timeseries",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count_over_time({service=\"restaurant-service\", level=\"ERROR\"}[1m])",
+          "legendFormat": "Errors/min"
+        }
+      ],
+      "description": "ERROR log lines per minute — spike means saga consumer or Feign failure"
+    },
+    {
+      "id": 5,
+      "title": "RabbitMQ Event Audit — Restaurant Service",
+      "type": "timeseries",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count_over_time({service=\"restaurant-service\"} |= \"Published\" [5m])",
           "legendFormat": "Events Published"
         },
         {
-          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Consuming.*\" [5m]))",
+          "expr": "count_over_time({service=\"restaurant-service\"} |= \"Consuming\" [5m])",
           "legendFormat": "Events Consumed"
         }
       ],
-      "datasource": "Loki"
+      "description": "Published vs consumed event counts per 5 min — detects consumer lag"
+    },
+    {
+      "id": 6,
+      "title": "Feign Call Outcomes — Restaurant Service",
+      "type": "timeseries",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count_over_time({service=\"restaurant-service\"} |= \"returned successfully\" [5m])",
+          "legendFormat": "Feign Success"
+        },
+        {
+          "expr": "count_over_time({service=\"restaurant-service\"} |= \"Feign call to\" |= \"failed\" [5m])",
+          "legendFormat": "Feign Failures"
+        }
+      ],
+      "description": "Detects when order-service is degraded from restaurant-service perspective"
     }
   ],
-  "schemaVersion": 36,
-  "version": 1
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s"
 }

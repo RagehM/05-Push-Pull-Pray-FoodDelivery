@@ -242,6 +242,16 @@ public class OrderController {
         return returnValue;
     }
 
+    @GetMapping("/restaurant/{restaurantId}/active-count")
+    public ResponseEntity<Integer> getActiveOrderCountForRestaurant(@PathVariable Long restaurantId) {
+        log.info("Received {} {}", "GET", "/api/orders/restaurant/" + restaurantId + "/active-count");
+        ResponseEntity<Integer> returnValue = ResponseEntity.ok(
+                orderService.getActiveOrderCountForRestaurant(restaurantId)
+        );
+        log.info("Returning {} for {} {}", returnValue.getBody(), "GET", "/api/orders/restaurant/" + restaurantId + "/active-count");
+        return returnValue;
+    }
+
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")

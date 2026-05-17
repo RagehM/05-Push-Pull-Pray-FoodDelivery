@@ -64,6 +64,12 @@
         { "expr": "hikaricp_connections_pending{job=\"restaurant-service\"}", "legendFormat": "Pending", "refId": "C" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
     },
     {
       "id": 4,
@@ -73,10 +79,23 @@
       "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "jvm_memory_used_bytes{job=\"restaurant-service\", area=\"heap\"}", "legendFormat": "Heap Used — {{id}}", "refId": "A" },
-        { "expr": "jvm_memory_max_bytes{job=\"restaurant-service\", area=\"heap\"}", "legendFormat": "Heap Max — {{id}}", "refId": "B" }
+        {
+          "expr": "jvm_memory_used_bytes{job=\"restaurant-service\", area=\"heap\"}",
+          "legendFormat": "Heap Used — {{id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{job=\"restaurant-service\", area=\"heap\"}",
+          "legendFormat": "Heap Max — {{id}}",
+          "refId": "B"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2 } } }
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "lineWidth": 2 }
+        }
+      }
     },
     {
       "id": 5,
@@ -114,11 +133,18 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
+          "expr": "sum(rate({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"}[1m]))",
           "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"} | json [1m]))",
           "legendFormat": "Errors/min",
           "refId": "A"
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
       "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
     },
     {

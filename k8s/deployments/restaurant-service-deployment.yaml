@@ -1,44 +1,53 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-service
+  name: restaurant-service
   namespace: talabat
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: order-service
+      app: restaurant-service
   template:
     metadata:
       labels:
-        app: order-service
+        app: restaurant-service
     spec:
       containers:
-        - name: order-service
-          image: 05-push-pull-pray-fooddelivery-order-service:latest
-          imagePullPolicy: Never # Using local image, use "minikube image load 05-push-pull-pray-fooddelivery-order-service:latest"
+        - name: restaurant-service
+          image: restaurant-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: order-service-configmap
+                name: restaurant-service-configmap
             - secretRef:
-                name: order-postgres-secret
+                name: restaurant-postgres-secret
           env:
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: jwt-secret
                   key: jwt-secret
+            - name: JWT_EXPIRATION
+              value: "86400000"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: restaurant-postgres-secret
+                  key: POSTGRES_PASSWORD
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 5
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30
+            failureThreshold: 3

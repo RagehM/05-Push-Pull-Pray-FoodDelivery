@@ -225,6 +225,8 @@ public class OrderService {
 
         //// TODO: Look into the idempotency and deduplication of this event in case of retries and failures
         notifyObservers(OrderEventActions.ORDER_CONFIRMED, params);
+
+        orderPublisher.publishOrderPlacedEvent(confirmedOrder);
         
         return confirmedOrder;
     }
@@ -973,5 +975,9 @@ public class OrderService {
         for (EntityObserver observer : observers) {
             observer.onEvent(eventType, payload);
         }
+    }
+
+    public int getActiveOrderCountForRestaurant(Long restaurantId) {
+        return orderRepository.countActiveOrdersByRestaurantId(restaurantId).intValue();
     }
 }
