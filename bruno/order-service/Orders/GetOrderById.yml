@@ -5,10 +5,10 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8083/api/orders/1
+  url: http://localhost:8083/api/orders
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDE0MjI4LCJleHAiOjE3NzgxMDA2Mjh9.B7Vc3K6N7zADkYxhoN6QyZtKL26mVwGM9E7oMnT722I
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDQzNDIyLCJleHAiOjE3NzkxMjk4MjJ9.p1S7KlK-H-CCo26UGwhqQnTjY6VqJqxRFfo5WW0z9XQ
 
 settings:
   encodeUrl: true

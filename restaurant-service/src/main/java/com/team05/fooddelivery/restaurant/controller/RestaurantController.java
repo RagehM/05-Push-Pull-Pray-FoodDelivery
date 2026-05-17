@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.team05.fooddelivery.restaurant.service.MenuItemService;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import com.team05.fooddelivery.restaurant.model.elasticsearch.RestaurantSearchDocument;
@@ -92,19 +91,16 @@ public class RestaurantController {
         return ResponseEntity.ok(result);
     }
 
-    // [S2-F3] Get Restaurant Order Revenue Summary
-    @GetMapping("/{id}/revenue")
-    public ResponseEntity<RestaurantRevenueDTO> getRevenueSummary(
-            @PathVariable Long id,
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
+    // [S2-F3] Get Restaurant Order Revenue Summary (M3: Feign → order-service)
+    @GetMapping("/{id}/order-summary")
+    public ResponseEntity<RestaurantRevenueDTO> getOrderSummary(@PathVariable Long id) {
         log.info("Received GET /api/restaurants/{}/revenue", id);
-        LocalDateTime start = LocalDateTime.parse(startDate + "T00:00:00");
-        LocalDateTime end = LocalDateTime.parse(endDate + "T23:59:59");
-        RestaurantRevenueDTO result = restaurantService.getRevenueSummary(id, start, end);
+        RestaurantRevenueDTO restaurantRevenueDTO = restaurantService.getOrderSummary(id);
         log.info("Returning 200 for GET /api/restaurants/{}/revenue", id);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(restaurantRevenueDTO);
+
     }
+
 
     // [S2-F4] Update Restaurant Status (Transactional)
     @PutMapping("/{id}/status")
@@ -146,7 +142,7 @@ public class RestaurantController {
             @RequestBody Map<String, Object> body) {
         log.info("Received POST /api/restaurants/{}/rate", id);
         Long orderId = Long.valueOf(body.get("orderId").toString());
-        Integer rating = Integer.valueOf(body.get("rating").toString());
+        Double rating = Double.valueOf(body.get("rating").toString());
         restaurantService.rateRestaurant(id, orderId, rating);
         log.info("Returning 200 for POST /api/restaurants/{}/rate", id);
         return ResponseEntity.ok().build();
