@@ -26,9 +26,9 @@ public class DeliveryEventPublisher {
         MDC.put("routingKey", routingKey);
         try {
             rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
-            log.info("sent {} for Delivery:{}", routingKey, event.deliveryId());
+            log.info("Published {} for {}={}", routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
-            log.error("error publishing {} for Delivery:{} - {}", routingKey, event.deliveryId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", routingKey, ex.getMessage());
         } finally {
             MDC.remove("routingKey");
         }
@@ -39,9 +39,9 @@ public class DeliveryEventPublisher {
         MDC.put("routingKey", routingKey);
         try {
             rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
-            log.info("sent {} for Delivery:{}", routingKey, event.deliveryId());
+            log.info("Published {} for {}={}", routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
-            log.error("error publishing {} for Delivery:{} - {}", routingKey, event.deliveryId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", routingKey, ex.getMessage());
         } finally {
             MDC.remove("routingKey");
         }
@@ -52,9 +52,9 @@ public class DeliveryEventPublisher {
         MDC.put("routingKey", routingKey);
         try {
             rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
-            log.info("sent {} for Delivery:{}", routingKey, event.deliveryId());
+            log.info("Published {} for {}={}", routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
-            log.error("error publishing {} for Delivery:{} - {}", routingKey, event.deliveryId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", routingKey, ex.getMessage());
         } finally {
             MDC.remove("routingKey");
         }

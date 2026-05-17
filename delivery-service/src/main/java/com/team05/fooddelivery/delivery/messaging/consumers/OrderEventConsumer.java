@@ -44,11 +44,11 @@ public class OrderEventConsumer {
         MDC.put("routingKey", "order.placed");
         MDC.put("orderId", String.valueOf(event.orderId()));
         try {
-            log.info("consuming order.placed for orderId={}", event.orderId());
+            log.info("Consuming {} for {}={}", "order.placed", "orderId", event.orderId());
             // minimal body — maybe increment a metric or log
-            log.info("processed order.placed for orderId={}", event.orderId());
+            log.info("Processed {} for {}={}", "order.placed", "orderId", event.orderId());
         } catch (Exception ex) {
-            log.error("error processing order.placed for orderId={} - {}", event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", "order.placed", ex.getMessage());
             throw ex;
         } finally {
             MDC.remove("routingKey");
@@ -62,7 +62,7 @@ public class OrderEventConsumer {
         MDC.put("routingKey", "order.completed");
         MDC.put("orderId", String.valueOf(event.orderId()));
         try {
-            log.info("consuming order.completed for orderId={}", event.orderId());
+            log.info("Consuming {} for {}={}", "order.completed", "orderId", event.orderId());
 
             // find latest delivery for this order
             Optional<Delivery> opt = deliveryRepository.findLatestByOrderId(event.orderId());
@@ -84,9 +84,9 @@ public class OrderEventConsumer {
             MDC.put("deliveryId", String.valueOf(delivery.getId()));
 
             // Fetch restaurant name via Feign
-            log.info("Calling RestaurantServiceClient.getRestaurant with id={}", event.restaurantId());
+            log.info("Calling {}.{} with args={}", "RestaurantServiceClient", "getRestaurant", event.restaurantId());
             var restaurant = restaurantServiceClient.getRestaurant(event.restaurantId());
-            log.info("RestaurantServiceClient returned for id={}", event.restaurantId());
+            log.info("{}.{} returned successfully", "RestaurantServiceClient", "getRestaurant");
 
             // finalize delivery
             delivery.setStatus(DeliveryStatus.DELIVERED);
@@ -113,9 +113,9 @@ public class OrderEventConsumer {
             );
             deliveryEventPublisher.publishDeliveryCreated(createdEvent);
 
-            log.info("Processed order.completed for orderId={}", event.orderId());
+            log.info("Processed {} for {}={}", "order.completed", "orderId", event.orderId());
         } catch (Exception ex) {
-            log.error("error processing order.completed for orderId={} - {}", event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", "order.completed", ex.getMessage());
             throw ex;
         } finally {
             MDC.remove("routingKey");
@@ -130,7 +130,7 @@ public class OrderEventConsumer {
         MDC.put("routingKey", "order.cancelled");
         MDC.put("orderId", String.valueOf(event.orderId()));
         try {
-            log.info("consuming order.cancelled for orderId={}", event.orderId());
+            log.info("Consuming {} for {}={}", "order.cancelled", "orderId", event.orderId());
 
             Optional<Delivery> opt = deliveryRepository.findLatestByOrderId(event.orderId());
             if (opt.isEmpty()) {
@@ -155,9 +155,9 @@ public class OrderEventConsumer {
             DeliveryCancelledEvent cancelledEvent = new DeliveryCancelledEvent(delivery.getId(), event.orderId());
             deliveryEventPublisher.publishDeliveryCancelled(cancelledEvent);
 
-            log.info("Processed order.cancelled for orderId={}", event.orderId());
+            log.info("Processed {} for {}={}", "order.cancelled", "orderId", event.orderId());
         } catch (Exception ex) {
-            log.error("error processing order.cancelled for orderId={} - {}", event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", "order.cancelled", ex.getMessage());
             throw ex;
         } finally {
             MDC.remove("routingKey");
