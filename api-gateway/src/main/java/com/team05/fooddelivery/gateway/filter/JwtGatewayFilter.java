@@ -9,30 +9,41 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import javax.crypto.SecretKey;
 import java.util.UUID;
 
 @Component
 public class JwtGatewayFilter implements GlobalFilter, Ordered {
     private static final String AUTH_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
+    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String USER_ROLE_HEADER = "X-User-Role";
+    private final SecretKey signingKey;
+
+    public JwtGatewayFilter(@Value("${JWT_SECRET}") String jwtSecret) {
+        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        String correlationId = exchange.getRequest().getHeaders().getFirst("X-Correlation-ID");
+        String correlationId = exchange.getRequest().getHeaders().getFirst(CORRELATION_ID_HEADER);
         if (correlationId == null || correlationId.isBlank()) {
             correlationId = UUID.randomUUID().toString();
         }
         final String finalCorrelationId = correlationId;
+        exchange.getResponse().getHeaders().set(CORRELATION_ID_HEADER, finalCorrelationId);
 
         if (path.startsWith("/api/auth/")) {
             ServerHttpRequest mutated = exchange.getRequest().mutate()
-                    .header("X-Correlation-ID", finalCorrelationId)
+                    .header(CORRELATION_ID_HEADER, finalCorrelationId)
                     .build();
             return chain.filter(exchange.mutate().request(mutated).build());
         }
@@ -45,20 +56,23 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
 
         try {
             String token = authHeader.substring(BEARER_PREFIX.length());
-            String secret = System.getenv("JWT_SECRET");
             Claims claims = Jwts.parser()
-                    .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)))
+                    .verifyWith(signingKey)
                     .build()
-                    .parseClaimsJws(token)
+                    .parseSignedClaims(token)
                     .getPayload();
 
-            String userId = claims.getSubject();
+            Long userId = claims.get("uid", Long.class);
             String role = claims.get("role", String.class);
+            if (userId == null) {
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                return exchange.getResponse().setComplete();
+            }
 
             ServerHttpRequest mutated = exchange.getRequest().mutate()
-                    .header("X-User-Id", userId != null ? userId : "")
-                    .header("X-User-Role", role != null ? role : "")
-                    .header("X-Correlation-ID", finalCorrelationId)
+                    .header(USER_ID_HEADER, String.valueOf(userId))
+                    .header(USER_ROLE_HEADER, role != null ? role : "")
+                    .header(CORRELATION_ID_HEADER, finalCorrelationId)
                     .build();
 
             return chain.filter(exchange.mutate().request(mutated).build());

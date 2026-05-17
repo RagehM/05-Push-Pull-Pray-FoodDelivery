@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8081/api/users/1
+  url: http://localhost:30080/api/users/3
   headers:
     - name: X-User-Id
       value: "3"
@@ -13,7 +13,7 @@ http:
       value: CUSTOMER
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6NCwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDI1NTgzLCJleHAiOjE3NzkxMTE5ODN9.QkomCzSSMEubZ8ZiqafzXUC8I8BaHzUKquKqK_uhRgQ
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDMwMzQwLCJleHAiOjE3NzkxMTY3NDB9.C6gyvC7dTMA-6rhGU7LhTqK9TZZieZ_MdoKdMe0Fvhs
 
 settings:
   encodeUrl: true

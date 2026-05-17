@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-gateway
-  namespace: microservices-app
+  namespace: talabat
 spec:
   replicas: 1
   selector:
@@ -18,3 +18,9 @@ spec:
           image: your-docker-repo/api-gateway:latest # Replace with your actual image name
           ports:
             - containerPort: 8080
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: jwt-secret

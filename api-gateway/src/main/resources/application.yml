@@ -14,11 +14,16 @@ spring:
               predicates:
                 - Path=/api/users/**, /api/auth/**, /api/delivery-addresses/**
 
+            - id: restaurant-service
+              uri: http://restaurant-service:8080
+              predicates:
+                - Path=/api/restaurants/**, /api/menu-items/**
+
             - id: order-service
               uri: http://order-service:8080
               predicates:
-                - Path=/api/orders/**
-                -
+                - Path=/api/orders/**, /api/order-items/**
+
             - id: delivery-service
               uri: http://delivery-service:8080
               predicates:
