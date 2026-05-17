@@ -196,12 +196,12 @@ services:
     container_name: fooddelivery-pgadmin
     ports:
       - "9090:80"
-    depends_on:
-      - user-postgres
-      - restaurant-postgres
-      - order-postgres
-      - delivery-postgres
-      - checkout-postgres
+    # depends_on:
+    #   - user-postgres
+    #   - restaurant-postgres
+    #   - order-postgres
+    #   - delivery-postgres
+    #   - checkout-postgres
     restart: on-failure
     volumes:
       - pgadmin-data:/var/lib/pgadmin
