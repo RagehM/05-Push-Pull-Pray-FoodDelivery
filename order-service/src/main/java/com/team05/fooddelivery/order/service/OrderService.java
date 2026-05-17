@@ -9,7 +9,7 @@ import com.team05.fooddelivery.order.enums.OrderItemStatusEnum;
 import com.team05.fooddelivery.order.dto.OrderCostEstimateDTO;
 import com.team05.fooddelivery.order.dto.OrderEstimateRequest;
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
-import com.team05.fooddelivery.order.messaging.publishers.OrderPublisher;
+import com.team05.fooddelivery.order.messaging.publishers.OrderEventPublisher;
 import com.team05.fooddelivery.order.dto.OrderDetailsDTO;
 import com.team05.fooddelivery.order.dto.OrderItemDetailsDTO;
 import com.team05.fooddelivery.order.model.Order;
@@ -39,7 +39,6 @@ import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import com.team05.shared.model.mongo.MongoEvent.EventType;
 import com.team05.shared.model.mongo.OrderEvent.OrderEventActions;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -55,7 +54,6 @@ import java.util.Collection;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.security.core.Authentication;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
 @Service
@@ -70,7 +68,7 @@ public class OrderService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final MongoOrderEventRepository mongoOrderEventRepository;
     private final Neo4jClient neo4jClient;
-    private final OrderPublisher orderPublisher;
+    private final OrderEventPublisher orderPublisher;
 
     private final UserNodeRepository userNodeRepository;
     private final OrderInteractionGraphService orderInteractionGraphService;
@@ -89,7 +87,7 @@ public class OrderService {
                         UserServiceClient userServiceClient,
                         DeliveryServiceClient deliveryServiceClient,
                         // CheckoutServiceClient checkoutServiceClient,
-                        OrderPublisher orderPublisher) {
+                        OrderEventPublisher orderPublisher) {
         this.orderRepository = orderRepository;
         this.mongoOrderEventRepository = mongoOrderEventRepository;
         this.userNodeRepository = userNodeRepository;
@@ -594,38 +592,28 @@ public class OrderService {
     // [S3-F11] Record User-Restaurant Ordering Pattern
     public InteractionRecordingResponseDTO recordInteraction(Long orderId) {
         // (a) Validate JWT + USER role
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
-        }
+        // TODO: Make auth using JWT purely, no DB access
+        // // Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        // // if (auth == null || !auth.isAuthenticated()) {
+        // //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        // // }
 
-        // Get userId and Role
-        Object[] userIdAndRole = null;
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
-        }
-        if (userIdAndRole == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-
-        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
-        String role = (String) userIdAndRole[1];
-
-        // boolean isUser = auth.getAuthorities().stream()
-        //         .map(GrantedAuthority::getAuthority)
-        //         .anyMatch(role -> role.equals("ROLE_CUSTOMER"));
-
-        // if (!isUser) {
-        //     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only users can record interactions");
-        // }
+        // // // Get userId and Role
+        // // Object[] userIdAndRole = null;
+        // // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // // if (authentication != null && authentication.isAuthenticated()) {
+        // //     userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
+        // // }
+        // // if (userIdAndRole == null) {
+        // //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        // // }
 
         // (b)
         Order order = getOrderById(orderId);
 
-        if (fetchedUserId != order.getUserId() && !role.equalsIgnoreCase("ADMIN")) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
-        }
+
+
+        
 
         if (order.getStatus() != OrderStatusEnum.DELIVERED) {
             throw new ResponseStatusException(
@@ -650,16 +638,20 @@ public class OrderService {
         // (e)
         String userName;
 
+        UserDTO user;
         try {
-            UserDTO user = userServiceClient.getUser(userId);
-            userName = user.email();
+            user = userServiceClient.getUser(order.getUserId());
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        RestaurantDTO restaurant;
 
+        if (user.id() != order.getUserId() && !user.role().equalsIgnoreCase("ADMIN")) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+        RestaurantDTO restaurant;
         try {
-            restaurant = restaurantServiceClient.getRestaurant(restaurantId);
+            restaurant = restaurantServiceClient.getRestaurant(order.getRestaurantId());
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found");
         }
@@ -669,7 +661,7 @@ public class OrderService {
 
         // (f)
         boolean lostIdempotencyRace = orderInteractionGraphService.upsertOrderedFromEdge(
-                orderId, userId, userName, restaurantId, restaurantName, cuisineType);
+                orderId, userId, user.email(), restaurantId, restaurantName, cuisineType);
         if (lostIdempotencyRace) {
             return new InteractionRecordingResponseDTO(
                     orderId, userId, restaurantId,
@@ -705,28 +697,16 @@ public class OrderService {
 
         int finalLimit = (limit == null || limit <= 0) ? 5 : limit;
 
+        UserDTO user;
         try {
-            userServiceClient.getUser(userId);
+            user = userServiceClient.getUser(userId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
 
-        // Get userId and Role
-        Object[] userIdAndRole = null;
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            userIdAndRole = orderRepository.verifyUserIsWhoIsMakingRequest(authentication.getName())[0];
-        }
-        if (userIdAndRole == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-
-        Long fetchedUserId = ((Long) userIdAndRole[0]).longValue();
-        String role = (String) userIdAndRole[1];
 
 
-
-        if (fetchedUserId != userId && !role.equalsIgnoreCase("ADMIN")) {
+        if (user.id() != userId && !user.role().equalsIgnoreCase("ADMIN")) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
 

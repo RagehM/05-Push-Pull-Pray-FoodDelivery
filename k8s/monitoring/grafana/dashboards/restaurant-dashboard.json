@@ -1,0 +1,59 @@
+{
+  "title": "Restaurant Service Dashboard",
+  "uid": "restaurant-service",
+  "tags": ["talabat", "restaurant-service"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Error Rate — ERROR log lines per minute (§11.3 Panel 1)",
+      "description": "Counts ERROR-level log lines from restaurant-service per minute. Spike detection — if restaurant-service logs many ERRORs, something is wrong.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"} | json [1m]))",
+          "legendFormat": "Errors per minute"
+        }
+      ],
+      "datasource": "Loki"
+    },
+    {
+      "id": 2,
+      "title": "Feign Call Outcomes — success vs failure (§11.3 Panel 4)",
+      "description": "Tracks successful Feign calls to order-service vs FeignException catches. Detects when order-service is degraded and restaurant-service Feign calls start failing.",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*returned successfully.*\" [5m]))",
+          "legendFormat": "Feign Success"
+        },
+        {
+          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Feign call to.*failed.*\" [5m]))",
+          "legendFormat": "Feign Failures"
+        }
+      ],
+      "datasource": "Loki"
+    },
+    {
+      "id": 3,
+      "title": "RabbitMQ Event Audit — published vs consumed (§11.3 Panel 3)",
+      "description": "Shows restaurant.status-changed and restaurant.rated events published, and order.placed/completed/cancelled events consumed. Filtered by routingKey MDC field.",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Published.*\" [5m]))",
+          "legendFormat": "Events Published"
+        },
+        {
+          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*Consuming.*\" [5m]))",
+          "legendFormat": "Events Consumed"
+        }
+      ],
+      "datasource": "Loki"
+    }
+  ],
+  "schemaVersion": 36,
+  "version": 1
+}
