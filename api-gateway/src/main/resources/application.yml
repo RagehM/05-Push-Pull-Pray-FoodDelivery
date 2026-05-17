@@ -7,6 +7,12 @@ spring:
         # S1-INFRA owner needs to fill this
 
         # S2-INFRA owner needs to fill this
+        
+        # S3-INFRA — order-service route
+        - id: order-service
+          uri: http://order-service:8080
+          predicates:
+            - Path=/api/orders/**
 
         # S3-INFRA owner needs to fill this
 
