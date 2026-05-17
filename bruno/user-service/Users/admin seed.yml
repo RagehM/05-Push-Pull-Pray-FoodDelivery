@@ -6,7 +6,9 @@ info:
 http:
   method: GET
   url: http://localhost:8081/api/seed
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFhc2RzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6Mywicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDQ4MjE5LCJleHAiOjE3NzkxMzQ2MTl9.GwS9JX4oygGR2P5qEWUlv4Autgi9_ReKZRjnbH1YMUc
 
 settings:
   encodeUrl: true

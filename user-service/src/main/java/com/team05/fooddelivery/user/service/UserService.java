@@ -257,7 +257,7 @@ public class UserService {
                     @CacheEvict(value = "user-service::S1-F8", key = "#id")
 
             }
-    )    public ResponseStatusException deactivateUserAccount(Long id){
+    )    public String deactivateUserAccount(Long id){
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         log.info("Calling {}.{} with args={}", "OrderServiceClient", "getActiveOrderCount", user.getId());
         int activeOrders;
@@ -283,7 +283,7 @@ public class UserService {
         authEvent.put("action", "USER_DEACTIVATED");
 
         notifyObservers("USER_DEACTIVATED", authEvent);
-        return  new ResponseStatusException(HttpStatus.OK, "User account deactivated successfully");
+        return "User account deactivated successfully";
     }
 
     @Cacheable(value = "user-service::S1-F6", key = "#startDate + '-' + #endDate + '-' + #limit")
