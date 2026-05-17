@@ -300,11 +300,36 @@ services:
     ports:
       - "8082:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fooddeliverydb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://restaurant-postgres:5432/talabatdb-restaurants
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
       JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
     depends_on:
-      postgres:
+      restaurant-postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  restaurant-postgres:
+    image: postgres:17
+    container_name: talabat-restaurant-postgres
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: talabatdb-restaurants
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - restaurant-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d talabatdb-restaurants"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -373,6 +398,7 @@ volumes:
     neo4j-data:
     cassandra-data:
     user-pgdata:
+    restaurant-pgdata:
     order-pgdata:
     delivery-pgdata:
 
