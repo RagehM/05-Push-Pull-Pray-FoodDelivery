@@ -93,10 +93,9 @@ public class UserService {
         }
     }
 
-//    @Cacheable(value = "user-service::user", key = "#id")
+    @Cacheable(value = "user-service::user", key = "#id")
     public User findUserById(long id, Long callerUserId, String callerRole)
     {
-        enforceOwnership(callerUserId, callerRole, id);
         return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
