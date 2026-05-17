@@ -13,6 +13,8 @@ import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.messaging.handler.annotation.Header;
+import com.team05.fooddelivery.delivery.security.CorrelationIdFilter;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -56,9 +58,12 @@ public class OrderEventConsumer {
 
     // Minimal handler for order.placed — infrastructure required by the spec
     @RabbitHandler
-    public void onOrderPlaced(OrderPlacedEvent event) {
+    public void onOrderPlaced(OrderPlacedEvent event, @Header(value = CorrelationIdFilter.HEADER, required = false) String correlationId) {
         MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_PLACED);
         MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+        if (correlationId != null && !correlationId.isBlank()) {
+            MDC.put(CorrelationIdFilter.MDC_KEY, correlationId);
+        }
         try {
             log.info(MSG_CONSUMING, ROUTING_ORDER_PLACED, MDC_ORDER_ID, event.orderId());
             // minimal body — maybe increment a metric or log
@@ -69,14 +74,18 @@ public class OrderEventConsumer {
         } finally {
             MDC.remove(MDC_ROUTING_KEY);
             MDC.remove(MDC_ORDER_ID);
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
         }
     }
 
     // Handler for order.completed
     @RabbitHandler
-    public void onOrderCompleted(OrderCompletedEvent event) {
+    public void onOrderCompleted(OrderCompletedEvent event, @Header(value = CorrelationIdFilter.HEADER, required = false) String correlationId) {
         MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_COMPLETED);
         MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+        if (correlationId != null && !correlationId.isBlank()) {
+            MDC.put(CorrelationIdFilter.MDC_KEY, correlationId);
+        }
         try {
             log.info(MSG_CONSUMING, ROUTING_ORDER_COMPLETED, MDC_ORDER_ID, event.orderId());
 
@@ -137,14 +146,18 @@ public class OrderEventConsumer {
             MDC.remove(MDC_ROUTING_KEY);
             MDC.remove(MDC_ORDER_ID);
             MDC.remove(MDC_DELIVERY_ID);
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
         }
     }
 
     // Handler for order.cancelled
     @RabbitHandler
-    public void onOrderCancelled(OrderCancelledEvent event) {
+    public void onOrderCancelled(OrderCancelledEvent event, @Header(value = CorrelationIdFilter.HEADER, required = false) String correlationId) {
         MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_CANCELLED);
         MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+        if (correlationId != null && !correlationId.isBlank()) {
+            MDC.put(CorrelationIdFilter.MDC_KEY, correlationId);
+        }
         try {
             log.info(MSG_CONSUMING, ROUTING_ORDER_CANCELLED, MDC_ORDER_ID, event.orderId());
 
@@ -179,6 +192,7 @@ public class OrderEventConsumer {
             MDC.remove(MDC_ROUTING_KEY);
             MDC.remove(MDC_ORDER_ID);
             MDC.remove(MDC_DELIVERY_ID);
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
         }
     }
 
