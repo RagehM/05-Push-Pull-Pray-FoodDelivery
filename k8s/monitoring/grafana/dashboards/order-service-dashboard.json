@@ -1,0 +1,238 @@
+{
+  "id": null,
+  "uid": "order-service",
+  "title": "Order Service Dashboard",
+  "tags": ["talabat", "order", "s3"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "[PromQL] HTTP Request Rate — /api/orders/**",
+      "description": "Requests per second per endpoint. Identifies which order-service endpoints are under the most load during peak hours.",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (uri, method, status) (rate(http_server_requests_seconds_count{job=\"order-service\"}[5m]))",
+          "legendFormat": "{{method}} {{uri}} [{{status}}]",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "[PromQL] HTTP Latency P50 / P95 / P99 — Order Endpoints",
+      "description": "P99 latency on GET /api/orders/restaurant/{id}/summary reveals Feign enrichment performance. High P99 indicates slow downstream calls.",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"order-service\"}[5m])))",
+          "legendFormat": "P50: {{uri}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"order-service\"}[5m])))",
+          "legendFormat": "P95: {{uri}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"order-service\"}[5m])))",
+          "legendFormat": "P99: {{uri}}",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "[PromQL] JVM Heap Memory Usage — order-service",
+      "description": "Memory pressure monitoring — order-service heap at 90% after processing 10,000 saga events indicates potential OOM.",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{job=\"order-service\", area=\"heap\"}",
+          "legendFormat": "Heap Used — {{id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{job=\"order-service\", area=\"heap\"}",
+          "legendFormat": "Heap Max — {{id}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "[PromQL] HikariCP Connection Pool — Active vs Max",
+      "description": "Pool exhaustion alert — order-service using all connections during saga state transitions with concurrent Feign calls.",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{job=\"order-service\"}",
+          "legendFormat": "Active",
+          "refId": "A"
+        },
+        {
+          "expr": "hikaricp_connections_max{job=\"order-service\"}",
+          "legendFormat": "Max",
+          "refId": "B"
+        },
+        {
+          "expr": "hikaricp_connections_pending{job=\"order-service\"}",
+          "legendFormat": "Pending",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "[LogQL] Error Rate — order-service",
+      "description": "Count of ERROR-level log lines per minute. Spike detection — if order-service logs 50 ERRORs in one minute, something is wrong.",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"talabat\", service=\"order-service\", level=\"ERROR\"}[1m]))",
+          "legendFormat": "Errors/min",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "[LogQL] Correlation ID Trace — Cross-Service Request Tracing",
+      "description": "Filter all log lines by a specific X-Correlation-ID across all services. Trace a single order creation request from api-gateway through order-service, delivery-service, and checkout-service.",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{app=\"talabat\", service=\"order-service\"} | json | correlationId != \"\" | line_format \"[{{.level}}] correlationId={{.correlationId}} orderId={{.orderId}} — {{.message}}\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "dedupStrategy": "none" }
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "[LogQL] RabbitMQ Event Audit — order.events",
+      "description": "Lines emitted by event publishers and consumers filtered by routing key. Shows order.placed, order.completed, and order.cancelled events published vs consumed.",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{app=\"talabat\", service=\"order-service\"} | json | routingKey =~ \"order\\\\..*\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "dedupStrategy": "none" }
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "[LogQL] Saga State Transitions — Order Lifecycle",
+      "description": "Visualize the complete saga flow for an order: COMPLETING → PAYMENT_PENDING → PAID → DELIVERING → DELIVERED. Filter by orderId.",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{app=\"talabat\", service=\"order-service\"} | json | orderId != \"\" | message =~ \".*transitioning.*\" | line_format \"[{{.level}}] orderId={{.orderId}} — {{.message}}\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "dedupStrategy": "none" }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "[LogQL] Feign Call Outcomes — Success vs Failure",
+      "description": "Detect when downstream services are degraded — order-service Feign calls to restaurant-service, delivery-service, or checkout-service start throwing exceptions.",
+      "gridPos": { "x": 0, "y": 40, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"talabat\", service=\"order-service\"} |= \"returned successfully\" [5m]))",
+          "legendFormat": "Success/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate({app=\"talabat\", service=\"order-service\"} |= \"Feign call\" |= \"failed\" [5m]))",
+          "legendFormat": "Failure/sec",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "[LogQL] Slow Operation Warnings",
+      "description": "Log lines where elapsed time exceeded a threshold. Alerts when operations like Neo4j recommendation queries or multi-Feign enrichments take > 1s.",
+      "gridPos": { "x": 12, "y": 40, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({app=\"talabat\", service=\"order-service\", level=\"WARN\"} |= \"Slow\" [5m]))",
+          "legendFormat": "Slow ops/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    }
+  ]
+}
