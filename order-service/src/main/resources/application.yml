@@ -58,7 +58,9 @@ feign:
   user-service:
     url: http://user-service:8080
   delivery-service:
-    url: http://delivery-service:8080
+    url: http://delivery-service:8080  
+  checkout-service:
+    url: http://checkout-service:8080
 
 management:
   endpoints:
@@ -69,6 +71,15 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+  feign:
+    restaurant-service:
+      url: http://restaurant-service:8080
+    user-service:
+      url: http://user-service:8080
+    delivery-service:
+      url: http://delivery-service:8080
+    checkout-service:
+      url: http://checkout-service:8080
 
 #spring.application.name=order-service
 #server.port=8080

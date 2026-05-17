@@ -5,23 +5,25 @@ info:
 
 http:
   method: POST
-  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
+  url: http://localhost:8084/api/deliveries
   body:
     type: json
     data: |-
       {
-        "orderId": 1,
+        "orderId": 2,
         "driverName": "Ahmed",
         "latitude": 30.0444,
         "longitude": 31.2357,
-        "status": "IN_TRANSIT",
+        "status": "PICKED_UP",
         "metadata": {
           "estimatedArrival": 40,
           "vehicleType": "bike",
           "speed": 20
         }
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTc0Mzc4LCJleHAiOjE3NzkwNjA3Nzh9.mSJA-ez9HaMETnufdwz0apl_dHMa_HEALdPgmpFeroY
 
 runtime:
   scripts:
