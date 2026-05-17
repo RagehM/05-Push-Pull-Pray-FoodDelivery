@@ -1,0 +1,17 @@
+info:
+  name: Healthcheck
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: http://localhost:8084/api/deliveries/health
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTc0Mzc4LCJleHAiOjE3NzkwNjA3Nzh9.mSJA-ez9HaMETnufdwz0apl_dHMa_HEALdPgmpFeroY
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
