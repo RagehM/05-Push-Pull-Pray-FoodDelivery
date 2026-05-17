@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8081/api/auth/register
+  url: http://localhost:30080/api/auth/register
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3Njg2NjQ5OCwiZXhwIjoxNzc2ODcwMDk4fQ.bRJK8gPNyHO9cIHXqOULIpriuUwPat5VtgIHSTb195k
@@ -15,9 +15,9 @@ http:
     data: |-
       {
         "name": "rageh",
-        "email": "rageh112@mail.com",
+        "email": "raasdasdgasdeh@mail.com",
         "password": 123,
-        "phone": "01097218121026990"
+        "phone": "12aasdsdasd3"
       }
   auth: inherit
 

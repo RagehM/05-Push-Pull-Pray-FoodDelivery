@@ -5,13 +5,13 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8083/api/orders
+  url: http://localhost:30080/api/orders
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzM2ODU0MywiZXhwIjoxNzc3NDU0OTQzfQ.tNyb9Hy4UyBFCdK069p-flP_AU6MDAWIQy5XisYw_98
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDE0MjI4LCJleHAiOjE3NzgxMDA2Mjh9.B7Vc3K6N7zADkYxhoN6QyZtKL26mVwGM9E7oMnT722I
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTc0Mzc4LCJleHAiOjE3NzkwNjA3Nzh9.mSJA-ez9HaMETnufdwz0apl_dHMa_HEALdPgmpFeroY
 
 settings:
   encodeUrl: true

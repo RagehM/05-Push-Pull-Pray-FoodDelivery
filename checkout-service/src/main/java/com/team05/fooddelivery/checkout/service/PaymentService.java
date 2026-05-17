@@ -8,6 +8,7 @@ import com.team05.fooddelivery.checkout.dto.RevenueReportDTO;
 import com.team05.fooddelivery.checkout.enums.OfferDiscountType;
 import com.team05.fooddelivery.checkout.enums.PaymentMethod;
 import com.team05.fooddelivery.checkout.enums.PaymentStatus;
+import com.team05.fooddelivery.checkout.messaging.publishers.PaymentEventPublisher;
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.model.Payment;
 import com.team05.fooddelivery.checkout.model.PaymentOffer;
@@ -19,10 +20,22 @@ import com.team05.fooddelivery.checkout.dto.RefundResult;
 import com.team05.fooddelivery.checkout.strategy.NoRefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategy;
 import com.team05.fooddelivery.checkout.strategy.RefundStrategySelector;
+import com.team05.fooddelivery.contracts.dto.OrderDTO;
+import com.team05.fooddelivery.contracts.dto.RestaurantDTO;
+import com.team05.fooddelivery.contracts.dto.UserDTO;
+import org.springframework.util.StopWatch;
+import com.team05.fooddelivery.contracts.events.PaymentCompletedEvent;
+import com.team05.fooddelivery.contracts.events.PaymentFailedEvent;
+import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
+import com.team05.fooddelivery.contracts.feign.RestaurantServiceClient;
+import com.team05.fooddelivery.contracts.feign.UserServiceClient;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.model.mongo.PaymentAuditEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
+import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,20 +45,28 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
 public class PaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepository;
     private final OfferRepository offerRepository;
@@ -54,14 +75,30 @@ public class PaymentService {
     private final List<EntityObserver> observers = new ArrayList<>();
     private final RefundStrategySelector refundStrategySelector;
     private final CacheManager cacheManager;
-
-    public PaymentService(PaymentRepository paymentRepository, OfferRepository offerRepository, PaymentOfferRepository paymentOfferRepository, MongoPaymentAuditEventRepository paymentAuditEventRepository, RefundStrategySelector refundStrategySelector, CacheManager cacheManager) {
+    private final UserServiceClient userServiceClient;
+    private final OrderServiceClient orderServiceClient;
+    private final RestaurantServiceClient restaurantServiceClient;
+    private final PaymentEventPublisher paymentEventPublisher;
+    public PaymentService(PaymentRepository paymentRepository,
+                          OfferRepository offerRepository,
+                          PaymentOfferRepository paymentOfferRepository,
+                          MongoPaymentAuditEventRepository paymentAuditEventRepository,
+                          RefundStrategySelector refundStrategySelector,
+                          CacheManager cacheManager,
+                          UserServiceClient userServiceClient,
+                          OrderServiceClient orderServiceClient,
+                          RestaurantServiceClient restaurantServiceClient,
+                          PaymentEventPublisher paymentEventPublisher) {
         this.paymentRepository = paymentRepository;
         this.offerRepository = offerRepository;
         this.paymentOfferRepository = paymentOfferRepository;
         this.paymentAuditEventRepository = paymentAuditEventRepository;
         this.refundStrategySelector = refundStrategySelector;
         this.cacheManager = cacheManager;
+        this.userServiceClient = userServiceClient;
+        this.orderServiceClient = orderServiceClient;
+        this.restaurantServiceClient = restaurantServiceClient;
+        this.paymentEventPublisher = paymentEventPublisher;
         this.observers.add(
                 new MongoEventLogger<>(this.paymentAuditEventRepository, MongoEvent.EventType.PAYMENT_AUDIT)
         );
@@ -73,11 +110,13 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment createPayment(Payment payment) {
-        if(paymentRepository.userExists(payment.getUserId()) == false) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        fetchUserOrThrow(payment.getUserId());
+        fetchOrderOrThrow(payment.getOrderId());
+        if (payment.getStatus() == null) {
+            payment.setStatus(PaymentStatus.PENDING);
         }
-        if(paymentRepository.orderExists(payment.getOrderId()) == false) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        if (payment.getMethod() == null) {
+            payment.setMethod(PaymentMethod.CASH_ON_DELIVERY);
         }
 
         Payment savedPayment = paymentRepository.save(payment);
@@ -86,11 +125,6 @@ public class PaymentService {
         paymentAuditEvent.put("paymentId", savedPayment.getId());
         paymentAuditEvent.put("amount", savedPayment.getAmount());
         paymentAuditEvent.put("method", savedPayment.getMethod().name());
-
-//        Map<String, Object> auditDetails = new HashMap<>(savedPayment.getTransactionDetails());
-//        auditDetails.put("status", savedPayment.getStatus().name());
-//
-//        paymentAuditEvent.put("details", auditDetails);
 
         notifyObservers("PAYMENT_CREATED", paymentAuditEvent);
 
@@ -239,13 +273,8 @@ public class PaymentService {
     // [S5-F3] User Payment Summary (DTO)
     @Cacheable(value = "checkout-service::S5-F3", key = "#userId")
     public UserPaymentSummaryDTO getUserPaymentSummary(Long userId) {
-        // Verify user exists via cross-service native SQL query
-        long userCount = paymentRepository.countUsersById(userId);
-        if (userCount == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId);
-        }
+        fetchUserOrThrow(userId);
 
-        // Query COMPLETED payments grouped by method
         List<Object[]> rows = paymentRepository.findCompletedPaymentSummaryByUserId(userId);
 
         Map<String, Double> methodBreakdown = new HashMap<>();
@@ -271,7 +300,7 @@ public class PaymentService {
     }
 
     // [S5-F4] Process Payment for Order (Transactional)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Caching(evict = {
             @CacheEvict(value = "checkout-service::S5-F1", allEntries = true),
             @CacheEvict(value = "checkout-service::S5-F3", allEntries = true),
@@ -281,32 +310,19 @@ public class PaymentService {
             @CacheEvict(value = "checkout-service::S5-F11", allEntries = true)
     })
     public Payment processPaymentForOrder(Long orderId, ProcessPaymentRequestDTO dto, boolean simulateFailure) {
-
-        // Guard 1: order must exist
-        if (!paymentRepository.orderExists(orderId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        Long resolvedOrderId = orderId != null ? orderId : dto != null ? dto.orderId() : null;
+        if (resolvedOrderId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "orderId is required");
         }
 
-        // Guard 2: order must be DELIVERED
-        String orderStatus = paymentRepository.findOrderStatusById(orderId);
-        if (!"DELIVERED".equals(orderStatus)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Order is not DELIVERED. Current status: " + orderStatus
-            );
-        }
+        Payment payment = lockPendingPayment(resolvedOrderId);
 
-        // Guard 3: no COMPLETED payment should exist
-        if (paymentRepository.completedPaymentExistsForOrder(orderId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order already paid");
+        if (dto != null && dto.userId() != null && !dto.userId().equals(payment.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request userId does not match payment owner");
         }
-
-        // Guard 4: must have a PENDING payment
-        Payment payment = paymentRepository.findPendingPaymentByOrderId(orderId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No pending payment found for order: " + orderId
-                ));
+        if (dto != null && dto.amount() != null && Math.abs(payment.getAmount() - dto.amount()) > 0.01d) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request amount does not match pending payment amount");
+        }
 
         Map<String, Object> createdPaymentAuditEvent = new HashMap<>();
         createdPaymentAuditEvent.put("paymentId", payment.getId());
@@ -321,16 +337,6 @@ public class PaymentService {
             transactionDetails = new HashMap<>();
         }
 
-        // Compute delivery fee: order.metadata.deliveryType → restaurant.details.deliveryFee → 10% of subtotal
-        List<Object[]> deliveryRows = paymentRepository.findOrderDeliveryData(orderId);
-        if (!deliveryRows.isEmpty()) {
-            Object[] row = deliveryRows.get(0);
-            String deliveryTypeFee = (String) row[0];
-            Double orderTotal = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            String restaurantFeeStr = (String) row[2];
-            transactionDetails.put("deliveryFee", computeDeliveryFee(deliveryTypeFee, orderTotal, restaurantFeeStr));
-        }
-
         if (dto != null) {
             if (dto.cardLastFour() != null) {
                 transactionDetails.put("cardLastFour", dto.cardLastFour());
@@ -340,10 +346,33 @@ public class PaymentService {
             }
         }
 
+        payment.setStatus(PaymentStatus.PROCESSING);
+        payment.setTransactionDetails(transactionDetails);
+        paymentRepository.save(payment);
+
+        OrderDTO order;
+        try {
+            order = fetchOrderOrThrow(resolvedOrderId);
+        } catch (RuntimeException ex) {
+            payment.setStatus(PaymentStatus.PENDING);
+            paymentRepository.save(payment);
+            throw ex;
+        }
+
+        if (!"PAYMENT_PENDING".equals(order.status())) {
+            payment.setStatus(PaymentStatus.PENDING);
+            paymentRepository.save(payment);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Order is not PAYMENT_PENDING. Current status: " + order.status()
+            );
+        }
+
         String action;
         if (simulateFailure) {
             payment.setStatus(PaymentStatus.FAILED);
             transactionDetails.put("gatewayResponse", "declined");
+            transactionDetails.put("failureReason", "Payment processing failed");
             action = "FAILED";
         } else {
             payment.setStatus(PaymentStatus.COMPLETED);
@@ -362,6 +391,21 @@ public class PaymentService {
         paymentAuditEvent.put("details", savedPayment.getTransactionDetails());
 
         notifyObservers(action, paymentAuditEvent);
+
+        if (savedPayment.getStatus() == PaymentStatus.COMPLETED) {
+            paymentEventPublisher.publishPaymentCompleted(new PaymentCompletedEvent(
+                    savedPayment.getId(),
+                    savedPayment.getOrderId(),
+                    toBigDecimal(savedPayment.getAmount())
+            ));
+        }
+        else if (savedPayment.getStatus() == PaymentStatus.FAILED) {
+            paymentEventPublisher.publishPaymentFailed(new PaymentFailedEvent(
+                    savedPayment.getId(),
+                    savedPayment.getOrderId(),
+                    "Payment processing failed"
+            ));
+        }
 
         return savedPayment;
     }
@@ -484,35 +528,28 @@ public class PaymentService {
             }
     )
     public Payment retryFailedPayment(Long id) {
-        // Find payment – 404 if not found
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Payment not found with id: " + id));
 
-        // Validate status must be FAILED – 400 otherwise
         if (payment.getStatus() != PaymentStatus.FAILED) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Payment cannot be retried. Current status: " + payment.getStatus());
         }
 
-        // Update status to COMPLETED
         payment.setStatus(PaymentStatus.COMPLETED);
 
-        // Update JSONB transactionDetails
         Map<String, Object> details = payment.getTransactionDetails();
         if (details == null) {
             details = new HashMap<>();
         }
 
-        // Increment retryAttempt (default 0 if missing)
         int retryAttempt = 0;
         if (details.containsKey("retryAttempt")) {
             retryAttempt = ((Number) details.get("retryAttempt")).intValue();
         }
         details.put("retryAttempt", retryAttempt + 1);
-
-        // Overwrite gatewayResponse with "approved"
         details.put("gatewayResponse", "approved");
 
         payment.setTransactionDetails(details);
@@ -564,7 +601,6 @@ public class PaymentService {
                 ))
                 .toList();
 
-        // Aggregate discount
         Double totalDiscount = appliedOffers.stream()
                 .mapToDouble(AppliedOfferDTO::discountApplied)
                 .sum();
@@ -587,16 +623,21 @@ public class PaymentService {
 
     // [S5-F10] Get Revenue by Cuisine with Delivery Fee Breakdown
     public List<CuisineRevenueDTO> getRevenueByCuisine(LocalDateTime startDate, LocalDateTime endDate) {
+        StopWatch stopWatch = new StopWatch();
+        if (startDate == null || endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startDate and endDate are required");
+        }
+
         Map<String, Object> queryDetails = new HashMap<>();
-        queryDetails.put("startDate", startDate != null ? startDate.toString() : null);
-        queryDetails.put("endDate", endDate != null ? endDate.toString() : null);
+        queryDetails.put("startDate", startDate.toString());
+        queryDetails.put("endDate", endDate.toString());
 
         Map<String, Object> auditPayload = new HashMap<>();
         auditPayload.put("paymentId", -1L);
         auditPayload.put("details", queryDetails);
         notifyObservers("ANALYTICS_VIEWED", auditPayload);
 
-        String cacheKey = startDate.toString() + ':' + endDate.toString();
+        String cacheKey = startDate + ":" + endDate;
         org.springframework.cache.Cache cache = cacheManager.getCache("checkout-service::S5-F10");
         if (cache != null) {
             List<CuisineRevenueDTO> cached = cache.get(cacheKey, List.class);
@@ -606,26 +647,138 @@ public class PaymentService {
         if (endDate.isBefore(startDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is before Start date");
         }
-        List<Object[]> rows = paymentRepository.findRevenueByCuisineAndDateRange(startDate, endDate);
+        List<Payment> payments = paymentRepository.findAllByStatusAndCreatedAtBetween(
+                PaymentStatus.COMPLETED,
+                startDate,
+                endDate
+        );
 
-        List<CuisineRevenueDTO> result = rows.stream().map(row -> {
-            String cuisineType = (String) row[0];
-            Long orderCount = ((Number) row[1]).longValue();
-            Double totalRevenue = ((Number) row[2]).doubleValue();
-            Double deliveryFeeRevenue = ((Number) row[3]).doubleValue();
-            Double foodRevenue = totalRevenue - deliveryFeeRevenue;
+        Map<Long, String> cuisineCache = new HashMap<>();
+        Map<String, CuisineAccumulator> byCuisine = new LinkedHashMap<>();
 
-            return CuisineRevenueDTO.builder()
-                    .cuisineType(cuisineType)
-                    .foodRevenue(foodRevenue)
-                    .deliveryFeeRevenue(deliveryFeeRevenue)
-                    .totalRevenue(totalRevenue)
-                    .orderCount(orderCount)
-                    .build();
-        }).toList();
+        for (Payment payment : payments) {
+            if (payment.getOrderId() == null) {
+                continue;
+            }
+
+            OrderDTO order = fetchOrderOrThrow(payment.getOrderId());
+            Long restaurantId = order.restaurantId();
+            String cuisineType = cuisineCache.computeIfAbsent(restaurantId, id -> {
+                RestaurantDTO restaurant = fetchRestaurantOrThrow(id);
+                return restaurant.cuisineType() != null ? restaurant.cuisineType() : "UNKNOWN";
+            });
+
+            CuisineAccumulator accumulator = byCuisine.computeIfAbsent(cuisineType, ignored -> new CuisineAccumulator());
+            accumulator.totalRevenue += payment.getAmount();
+            accumulator.deliveryFeeRevenue += extractDeliveryFee(payment);
+            accumulator.orderIds.add(payment.getOrderId());
+        }
+
+        List<CuisineRevenueDTO> result = byCuisine.entrySet().stream()
+                .map(entry -> CuisineRevenueDTO.builder()
+                        .cuisineType(entry.getKey())
+                        .foodRevenue(entry.getValue().totalRevenue - entry.getValue().deliveryFeeRevenue)
+                        .deliveryFeeRevenue(entry.getValue().deliveryFeeRevenue)
+                        .totalRevenue(entry.getValue().totalRevenue)
+                        .orderCount((long) entry.getValue().orderIds.size())
+                        .build())
+                .toList();
 
         if (cache != null) cache.put(cacheKey, result);
+
+        stopWatch.stop();
+        long elapsedMs = stopWatch.getTotalTimeMillis();
+        if (elapsedMs > 1000) {
+            log.warn("Slow S5-F10 cuisine analytics took {}ms", elapsedMs);
+        }
+
         return result;
+    }
+
+    private Payment lockPendingPayment(Long orderId) {
+        Optional<Payment> pendingPayment = paymentRepository
+                .findLockedFirstByOrderIdAndStatusOrderByCreatedAtDesc(orderId, PaymentStatus.PENDING);
+        if (pendingPayment.isPresent()) {
+            return pendingPayment.get();
+        }
+
+        Optional<Payment> existingPayment = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
+        if (existingPayment.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Payment is already being processed or has already been handled. Current status: " + existingPayment.get().getStatus());
+        }
+
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "No pending payment found for order: " + orderId);
+    }
+
+    private OrderDTO fetchOrderOrThrow(Long orderId) {
+        try {
+            log.info("Calling order-service.getOrder with orderId={}", orderId);
+            OrderDTO order = orderServiceClient.getOrder(orderId);
+            log.info("order-service.getOrder returned successfully");
+            return order;
+        } catch (FeignException.NotFound ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found with id: " + orderId, ex);
+        } catch (FeignException ex) {
+            log.warn("Feign call to order-service failed: {}", ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Order service temporarily unavailable", ex);
+        }
+    }
+
+    private RestaurantDTO fetchRestaurantOrThrow(Long restaurantId) {
+        try {
+            log.info("Calling restaurant-service.getRestaurant with restaurantId={}", restaurantId);
+            RestaurantDTO restaurant = restaurantServiceClient.getRestaurant(restaurantId);
+            log.info("restaurant-service.getRestaurant returned successfully");
+            return restaurant;
+        } catch (FeignException.NotFound ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found with id: " + restaurantId, ex);
+        } catch (FeignException ex) {
+            log.warn("Feign call to restaurant-service failed: {}", ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Restaurant service temporarily unavailable", ex);
+        }
+    }
+
+    private double extractDeliveryFee(Payment payment) {
+        Map<String, Object> details = payment.getTransactionDetails();
+        if (details != null) {
+            Object rawDeliveryFee = details.get("deliveryFee");
+            if (rawDeliveryFee instanceof Number number) {
+                return number.doubleValue();
+            }
+            if (rawDeliveryFee instanceof String feeString) {
+                try {
+                    return Double.parseDouble(feeString);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return payment.getAmount() * 0.10d;
+    }
+
+    private BigDecimal toBigDecimal(Double value) {
+        return value == null ? BigDecimal.ZERO : BigDecimal.valueOf(value);
+    }
+
+    private static final class CuisineAccumulator {
+        private double totalRevenue;
+        private double deliveryFeeRevenue;
+        private final Set<Long> orderIds = new HashSet<>();
+    }
+
+    private UserDTO fetchUserOrThrow(Long userId) {
+        try {
+            log.info("Calling user-service.getUser with userId={}", userId);
+            UserDTO user = userServiceClient.getUser(userId);
+            log.info("user-service.getUser returned successfully");
+            return user;
+        } catch (FeignException.NotFound ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId, ex);
+        } catch (FeignException ex) {
+            log.warn("Feign call to user-service failed: {}", ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "User service temporarily unavailable", ex);
+        }
     }
 
     // [S5-F11] Get Payment Method Breakdown
@@ -634,7 +787,6 @@ public class PaymentService {
             key = "T(String).valueOf(#startDate) + ':' + T(String).valueOf(#endDate)"
     )
     public List<PaymentMethodDTO> getPaymentMethodBreakdown(LocalDate startDate, LocalDate endDate) {
-        // (b) Validate the date range — 400 if startDate is after endDate.
         if (startDate == null || endDate == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "startDate and endDate are required");
@@ -644,26 +796,19 @@ public class PaymentService {
                     "startDate must be on or before endDate");
         }
 
-        // Expand to a fully-closed [00:00:00, 23:59:59.999] window matching
-        // server-time-zone PG TIMESTAMPS / Mongo timestamps.
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end   = endDate.atTime(23, 59, 59, 999_000_000);
 
-        // (c) Pull only events whose transactionDetails.status is COMPLETED or FAILED.
         Set<String> actions = Set.of("COMPLETED", "FAILED");
         List<PaymentAuditEvent> events =
                 paymentAuditEventRepository.findByActionInAndTimestampBetween(actions, start, end);
 
         if (events == null || events.isEmpty()) {
-            // (f) Empty list when no data — do NOT 404.
             return List.of();
         }
 
-        // (d) Aggregate per method. EnumMap keeps the result deterministic and
-        // skips events whose `method` is missing or unrecognised — per the
-        // M2 spec, such events "silently vanish from the breakdown".
-        Map<PaymentMethod, long[]>   counts = new EnumMap<>(PaymentMethod.class); // [success, failure]
-        Map<PaymentMethod, Double>   totals = new EnumMap<>(PaymentMethod.class); // sum of COMPLETED amounts
+        Map<PaymentMethod, long[]> counts = new EnumMap<>(PaymentMethod.class);
+        Map<PaymentMethod, Double> totals = new EnumMap<>(PaymentMethod.class);
 
         for (PaymentAuditEvent ev : events) {
             String rawMethod = ev.getMethod();
@@ -671,7 +816,6 @@ public class PaymentService {
                 continue;
             }
 
-            // Use the action field directly — that's what was persisted (e.g. "COMPLETED" / "FAILED")
             String status = ev.getAction();
             if (status == null) {
                 continue;
@@ -684,12 +828,12 @@ public class PaymentService {
                 continue;
             }
 
-            long[] c = counts.computeIfAbsent(method, k -> new long[2]);
+            long[] countsByMethod = counts.computeIfAbsent(method, ignored -> new long[2]);
             if (PaymentAuditEvent.Actions.COMPLETED.equals(status)) {
-                c[0] += 1; // successCount
+                countsByMethod[0] += 1;
                 totals.merge(method, ev.getAmount(), Double::sum);
             } else if (PaymentAuditEvent.Actions.FAILED.equals(status)) {
-                c[1] += 1; // failureCount
+                countsByMethod[1] += 1;
             }
         }
 
@@ -704,6 +848,70 @@ public class PaymentService {
             result.add(new PaymentMethodDTO(entry.getKey(), success, failure, rate, total));
         }
         return result;
+    }
+
+    @Transactional
+    public Payment createPendingPayment(Long orderId, Long userId, java.math.BigDecimal totalAmount) {
+        Optional<Payment> existing = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
+        if (existing.isPresent()) {
+            log.info("Idempotency: payment already exists for orderId={} (status={}) — skipping creation",
+                    orderId, existing.get().getStatus());
+            return existing.get();
+        }
+
+        fetchUserOrThrow(userId);
+
+        Payment payment = new Payment();
+        payment.setOrderId(orderId);
+        payment.setUserId(userId);
+        payment.setAmount(totalAmount != null ? totalAmount.doubleValue() : 0.0);
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setMethod(PaymentMethod.CASH_ON_DELIVERY);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        java.util.Map<String, Object> auditPayload = new java.util.HashMap<>();
+        auditPayload.put("paymentId", savedPayment.getId());
+        auditPayload.put("amount", savedPayment.getAmount());
+        auditPayload.put("method", savedPayment.getMethod().name());
+        notifyObservers("PAYMENT_CREATED", auditPayload);
+
+        log.info("Payment {} saved with status=PENDING for orderId={}", savedPayment.getId(), orderId);
+        return savedPayment;
+    }
+
+    @Transactional
+    public Optional<Payment> refundPaymentForCancelledOrder(Long orderId) {
+        Optional<Payment> paymentOpt = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
+        if (paymentOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Payment payment = paymentOpt.get();
+        if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.COMPLETED) {
+            log.info("Payment {} for orderId={} is already {} — skipping refund",
+                    payment.getId(), orderId, payment.getStatus());
+            return Optional.empty();
+        }
+
+        java.util.Map<String, Object> details = payment.getTransactionDetails();
+        if (details == null) details = new java.util.HashMap<>();
+        details.put("refundReason", "order_cancelled");
+        details.put("refundedAt", LocalDateTime.now().toString());
+        payment.setTransactionDetails(details);
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        Payment saved = paymentRepository.save(payment);
+
+        java.util.Map<String, Object> auditPayload = new java.util.HashMap<>();
+        auditPayload.put("paymentId", saved.getId());
+        auditPayload.put("amount", saved.getAmount());
+        auditPayload.put("method", saved.getMethod().name());
+        auditPayload.put("details", details);
+        notifyObservers("REFUNDED", auditPayload);
+
+        log.info("Payment {} saved with status=REFUNDED for orderId={}", saved.getId(), orderId);
+        return Optional.of(saved);
     }
 
     // [S5-F12] Process Order Refund with Delivery Fee Handling
@@ -785,5 +993,50 @@ public class PaymentService {
         notifyObservers("REFUNDED", refundedAuditEvent);
 
         return ResponseEntity.ok(savedPayment);
+    }
+
+    public BigDecimal getUserPaymentTotal(Long userId,
+                                          LocalDate startDate,
+                                          LocalDate endDate) {
+        log.info("user payment total requested userId={} startDate={} endDate={}",
+                userId, startDate, endDate);
+
+
+        LocalDateTime start = (startDate != null) ? startDate.atStartOfDay()    : null;
+        LocalDateTime end   = (endDate   != null) ? endDate.atTime(23, 59, 59) : null;
+
+        BigDecimal total = paymentRepository
+                .sumCompletedPaymentsByUserAndDateRange(userId, start, end);
+        if (total == null) {
+            total = BigDecimal.ZERO;
+        }
+
+        log.info("user payment total computed userId={} total={}", userId, total);
+        return total;
+    }
+
+    private void verifyUserExists(Long userId) {
+        try {
+            UserDTO user = userServiceClient.getUser(userId);
+            if (user == null || user.id() == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found");
+            }
+        } catch (feign.FeignException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + userId + " not found", e);
+        } catch (feign.FeignException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot view user " + userId, e);
+        } catch (feign.FeignException e) {
+            log.warn("user-service unavailable for user {}: {}", userId, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "user-service unavailable while verifying user " + userId, e);
+        }
+    }
+
+    private static double toDouble(Object o) {
+        if (o == null) return 0.0;
+        if (o instanceof BigDecimal bd) return bd.doubleValue();
+        if (o instanceof Number n) return n.doubleValue();
+        return Double.parseDouble(o.toString());
     }
 }

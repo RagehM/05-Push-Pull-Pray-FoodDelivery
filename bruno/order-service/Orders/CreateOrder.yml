@@ -7,15 +7,17 @@ http:
   method: POST
   url: http://localhost:8083/api/orders
   headers:
-    - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzcxMjc3NiwiZXhwIjoxNzc3Nzk5MTc2fQ.jyqcxbHIkFwedaoExZ4kxzdhu8kRDtYepg5KYTbXNt0
+    - name: X-User-Id
+      value: "3"
+    - name: X-User-Role
+      value: ADMIN
   body:
     type: json
     data: |-
       {
-        "userId": 1,
+        "userId": 3,
         "restaurantId": 1,
-        "status": "DELIVERED",
+        "status": "PREPARING",
         "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},
@@ -23,7 +25,7 @@ http:
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDE0MjI4LCJleHAiOjE3NzgxMDA2Mjh9.B7Vc3K6N7zADkYxhoN6QyZtKL26mVwGM9E7oMnT722I
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTc3NDEwLCJleHAiOjE3NzkwNjM4MTB9.JeVzwIiyDyMGBcBg5mFpVmTacliMjSjw134QoReV6Ag
 
 settings:
   encodeUrl: true

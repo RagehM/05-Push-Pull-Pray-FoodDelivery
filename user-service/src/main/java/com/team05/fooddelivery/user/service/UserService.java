@@ -1,9 +1,13 @@
 package com.team05.fooddelivery.user.service;
 
+import com.team05.fooddelivery.contracts.dto.OrderSummaryDTO;
+import com.team05.fooddelivery.contracts.feign.CheckoutServiceClient;
+import com.team05.fooddelivery.contracts.feign.OrderServiceClient;
 import com.team05.fooddelivery.user.dto.*;
 import com.team05.fooddelivery.user.dto.TopCustomerDTO;
 import com.team05.fooddelivery.user.enums.UserRole;
 import com.team05.fooddelivery.user.enums.UserStatus;
+import com.team05.fooddelivery.user.messaging.publishers.UserEventPublisher;
 import com.team05.fooddelivery.user.model.DeliveryAddress;
 import com.team05.fooddelivery.user.model.User;
 import com.team05.fooddelivery.user.repository.DeliveryAddressRepository;
@@ -14,6 +18,8 @@ import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -23,42 +29,41 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static org.springframework.data.mongodb.repository.Aggregation.*;
 
 @Service
 public class UserService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final List<EntityObserver> observers = new ArrayList<>();
     private final AuthEventRepository authEventRepository;
     private final MongoTemplate mongoTemplate;
+    private final UserEventPublisher publisher;
+    private final OrderServiceClient orderServiceClient;
+    private final CheckoutServiceClient checkoutServiceClient;
 
     @Autowired
-    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate) {
+    public UserService(UserRepository userRepository, DeliveryAddressRepository deliveryAddressRepository, AuthEventRepository authEventRepository, MongoTemplate mongoTemplate, UserEventPublisher publisher, OrderServiceClient orderServiceClient, CheckoutServiceClient checkoutServiceClient) {
         this.userRepository = userRepository;
         this.deliveryAddressRepository=deliveryAddressRepository;
         this.authEventRepository = authEventRepository;
+        this.publisher = publisher;
+        this.checkoutServiceClient = checkoutServiceClient;
         this.observers.add(
                 new MongoEventLogger<>(this.authEventRepository, MongoEvent.EventType.AUTH)
         );
         this.mongoTemplate = mongoTemplate;
+        this.orderServiceClient = orderServiceClient;
     }
 
     private void notifyObservers(String eventType, Object payload) {
@@ -81,17 +86,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    @Cacheable(value = "user-service::user", key = "#id")
-    public User findUserById(long id)
-    {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
+    private void enforceOwnership(Long callerUserId, String callerRole, long resourceUserId) {
+        if ("ADMIN".equalsIgnoreCase(callerRole)) return;
+        if (callerUserId == null || callerUserId != resourceUserId) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
         }
+    }
+
+//    @Cacheable(value = "user-service::user", key = "#id")
+    public User findUserById(long id, Long callerUserId, String callerRole)
+    {
+        enforceOwnership(callerUserId, callerRole, id);
         return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -115,6 +120,7 @@ public class UserService {
             user.setCreatedAt(LocalDateTime.now());
         }
         User saved = userRepository.save(user);
+        log.info("{} {} saved with status={}", "User", saved.getId(), saved.getStatus());
 
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", saved.getId());  // now ID exists
@@ -137,16 +143,9 @@ public class UserService {
 
             }
     )
-    public User updateUser(User user, Long id)
+    public User updateUser(User user, Long id, Long callerUserId, String callerRole)
     {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
-        }
+        enforceOwnership(callerUserId, callerRole, id);
         User updatedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         updatedUser.setName(user.getName() == null ? updatedUser.getName() : user.getName());
         if(user.getEmail()!=null && userRepository.existsByEmail(user.getEmail())&& user.getEmail().equals(updatedUser.getEmail())==false){
@@ -163,6 +162,7 @@ public class UserService {
         updatedUser.setStatus(user.getStatus() == null? updatedUser.getStatus(): user.getStatus());
 
         User updatedSaved = userRepository.save(updatedUser);
+        log.info("{} {} saved with status={}", "User", updatedSaved.getId(), updatedSaved.getStatus());
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", updatedUser.getId());
         authEvent.put("action", "USER_UPDATED");
@@ -179,16 +179,9 @@ public class UserService {
             @CacheEvict(value = "user-service::S1-F8", key = "#id"),
             @CacheEvict(value = "user-service::S1-F9", allEntries = true)
     })
-    public void deleteUser(Long id)
+    public void deleteUser(Long id, Long callerUserId, String callerRole)
     {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
-        }
+        enforceOwnership(callerUserId, callerRole, id);
         User deletedUser = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(deletedUser);
 
@@ -208,7 +201,13 @@ public class UserService {
             return new ArrayList<>();
         }
 
-        return userRepository.searchUsers(name, email, role);
+        long start = System.currentTimeMillis();
+        List<User> searchResult = userRepository.searchUsers(name, email, role);
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "searchUsers", elapsed);
+        }
+        return searchResult;
     }
 
 
@@ -238,6 +237,7 @@ public class UserService {
         updatedUser.setPreferences(currentUserPreferences);
 
         User updatedSaved = userRepository.save(updatedUser);
+        log.info("{} {} saved with status={}", "User", updatedSaved.getId(), updatedSaved.getStatus());
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", updatedUser.getId());
         authEvent.put("action", "USER_UPDATED");
@@ -260,13 +260,24 @@ public class UserService {
             }
     )    public ResponseStatusException deactivateUserAccount(Long id){
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        List<Object> activeOrders=userRepository.findOrdersByUserId(id);
-        if(activeOrders.size()>0){
+        log.info("Calling {}.{} with args={}", "OrderServiceClient", "getActiveOrderCount", user.getId());
+        int activeOrders;
+        try {
+            activeOrders = orderServiceClient.getActiveOrderCount(user.getId());
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getActiveOrderCount");
+        } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            throw e;
+        }
+        if(activeOrders > 0){
             throw new ResponseStatusException(HttpStatus.valueOf(400), "User has active orders. Cannot deactivate account.");
         }
         user.setStatus(UserStatus.DEACTIVATED);
 
         userRepository.save(user);
+        log.info("{} {} saved with status={}", "User", user.getId(), user.getStatus());
+
+        publisher.publishDeactivatedUser(user);
 
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
@@ -283,7 +294,42 @@ public class UserService {
         {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Start date cannot be after end date");
         }
-        List<Object[]> result =  userRepository.findUsersWithHighestSpent(limit,startDate,endDate);
+        long start = System.currentTimeMillis();
+        List<User> allUsers = userRepository.findAll();
+        List<Object[]> result = new ArrayList<>();
+
+        for(User user : allUsers)
+        {
+            Object[] row = new Object[4];
+            row[0] = user.getId();
+            row[1] = user.getName();
+            try {
+                log.info("Calling {}.{} with args={}", "CheckoutServiceClient", "getUserPaymentTotal", user.getId());
+                row[2] = checkoutServiceClient.getUserPaymentTotal(user.getId(), startDate.toString(), endDate.toString());
+                log.info("{}.{} returned successfully", "CheckoutServiceClient", "getUserPaymentTotal");
+            } catch (Exception e) {
+                log.warn("Feign call to {} failed: {}", "checkout-service", e.getMessage());
+                throw e;
+            }
+            try {
+                log.info("Calling {}.{} with args={}", "OrderServiceClient", "getTotalOrderCount", user.getId());
+                row[3] = orderServiceClient.getTotalOrderCount(user.getId());
+                log.info("{}.{} returned successfully", "OrderServiceClient", "getTotalOrderCount");
+            } catch (Exception e) {
+                log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+                throw e;
+            }
+            result.add(row);
+        }
+        result = result.stream()
+                .sorted((o1,o2) ->
+                        Double.compare(((Number) o2[2]).doubleValue(),((Number) o1[2]).doubleValue()))
+                .limit(limit)
+                .collect(Collectors.toList());
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "topCustomersBySpending", elapsed);
+        }
         return result.stream().map(row -> {
             Long userID = ((Number) row[0]).longValue();
             String userName = (String) row[1];
@@ -311,31 +357,24 @@ public class UserService {
     @Cacheable(value = "user-service::S1-F3", key = "#userId")
     public UserOrderSummaryDTO getUserOrderSummary(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        List<Object[]> orders = userRepository.findTotalOrders(userId);
-        List<Object[]> deliveredOrders = userRepository.findDeliveredOrders(userId);
-        List<Object[]> cancelledOrders = userRepository.findCancelledOrders(userId);
-
-        Double totalSpent;
-        if(!deliveredOrders.isEmpty()){
-            totalSpent = deliveredOrders.stream()
-                    .map(order -> ((Number) order[5]).doubleValue())  // total_amount is at index 5
-                    .reduce(0.0, Double::sum);
-        } else {
-            totalSpent = 0.0;
+        log.info("Calling {}.{} with args={}", "OrderServiceClient", "getUserOrderSummary", userId);
+        OrderSummaryDTO orders;
+        try {
+            orders = orderServiceClient.getUserOrderSummary(userId);
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getUserOrderSummary");
+        } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+            throw e;
         }
-
-        Double averageOrderAmount = !orders.isEmpty() ? totalSpent / deliveredOrders.size() : 0.0;
-
-
 
         return UserOrderSummaryDTO.builder()
                 .userId(user.getId())
                 .name(user.getName())
-                .totalOrders(orders.size())
-                .deliveredOrders(deliveredOrders.size())
-                .cancelledOrders(cancelledOrders.size())
-                .totalSpent(totalSpent)
-                .averageOrderAmount(averageOrderAmount)
+                .totalOrders(orders.totalOrders().intValue())
+                .deliveredOrders(orders.deliveredOrders().intValue())
+                .cancelledOrders(orders.cancelledOrders().intValue())
+                .totalSpent(orders.totalSpent().doubleValue())
+                .averageOrderAmount(orders.avgOrderAmount().doubleValue())
                 .build();
     }
 
@@ -347,11 +386,30 @@ public class UserService {
         if (minimumOrders == null || minimumOrders < 0) {
             throw new ResponseStatusException(HttpStatus.valueOf(400), "Minimum orders cannot be null or less than 0");
         }
-        List<Long> result = userRepository.findUsersByDietaryPreferenceAndMinimumOrders(diet, minimumOrders);
-        List<User> users = new ArrayList<>();
-
-        result.forEach(id -> users.add(userRepository.findById(id).orElseThrow()));
-        return users;
+        List<User> users = userRepository.findUserByPreferencesContaining("dietaryRestrictions", diet);
+        List<User> result = new ArrayList<>();
+        long start = System.currentTimeMillis();
+        for (User user : users)
+        {
+            log.info("Calling {}.{} with args={}", "OrderServiceClient", "getTotalOrderCount", user.getId());
+            long totalOrders;
+            try {
+                totalOrders = orderServiceClient.getTotalOrderCount(user.getId());
+                log.info("{}.{} returned successfully", "OrderServiceClient", "getTotalOrderCount");
+            } catch (Exception e) {
+                log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+                throw e;
+            }
+            if(totalOrders >= minimumOrders)
+            {
+                result.add(user);
+            }
+        }
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "findUsersByPreferencesAndMinimumOrders", elapsed);
+        }
+        return result;
     }
     @Transactional
     @Caching(
@@ -437,6 +495,7 @@ public class UserService {
         UserRole oldRole=user.getUserRole();
         user.setRole(role);
         User updatedUser = userRepository.save(user);
+        log.info("{} {} saved with status={}", "User", updatedUser.getId(), updatedUser.getStatus());
 
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
@@ -451,19 +510,46 @@ public class UserService {
 
     }
 
-    @Cacheable(value = "user-service::S1-F12", key = "#id")
-    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Optional<User> authenticatedUser = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            authenticatedUser = userRepository.findByEmail(authentication.getName());
-        }
 
+    public void incrementUserOrderStats(Long userId, java.math.BigDecimal totalAmount) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found: " + userId));
+        int newOrders   = (user.getTotalOrders() == null ? 0 : user.getTotalOrders()) + 1;
+        int amountToAdd = totalAmount != null ? totalAmount.intValue() : 0;
+        int newSpent    = (user.getTotalSpent()  == null ? 0 : user.getTotalSpent())  + amountToAdd;
+        user.setTotalOrders(newOrders);
+        user.setTotalSpent(newSpent);
+        userRepository.save(user);
+    }
+
+    public void decrementUserOrderStats(Long userId, Long orderId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found: " + userId));
+        java.math.BigDecimal orderAmount = java.math.BigDecimal.ZERO;
+        log.info("Calling {}.{} with args={}", "OrderServiceClient", "getOrder", orderId);
+        try {
+            com.team05.fooddelivery.contracts.dto.OrderDTO order = orderServiceClient.getOrder(orderId);
+            log.info("{}.{} returned successfully", "OrderServiceClient", "getOrder");
+            if (order != null && order.totalAmount() != null) {
+                orderAmount = order.totalAmount();
+            }
+        } catch (Exception e) {
+            log.warn("Feign call to {} failed: {}", "order-service", e.getMessage());
+        }
+        int newOrders = Math.max(0, (user.getTotalOrders() == null ? 0 : user.getTotalOrders()) - 1);
+        int newSpent  = Math.max(0, (user.getTotalSpent()  == null ? 0 : user.getTotalSpent())  - orderAmount.intValue());
+        user.setTotalOrders(newOrders);
+        user.setTotalSpent(newSpent);
+        userRepository.save(user);
+    }
+
+    @Cacheable(value = "user-service::S1-F12", key = "#id")
+    public ActivityFeedDTO getUserActivityFeed(long id, int page, int size, Long callerUserId, String callerRole) {
+        enforceOwnership(callerUserId, callerRole, id);
 
         User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        if (authenticatedUser.get().getUserRole() == UserRole.CUSTOMER && id != authenticatedUser.get().getId()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot view other user's activities");
-        }
 
         if (size == 0) {
             size = 10;
@@ -483,10 +569,17 @@ public class UserService {
                 Aggregation.limit(size)
         );
 
+        long start = System.currentTimeMillis();
         List<AuthEvent> result = mongoTemplate.aggregate(aggregation, "auth_events", AuthEvent.class).getMappedResults();
+        long elapsed = System.currentTimeMillis() - start;
+        if (elapsed > 1000) {
+            log.warn("Slow {} took {}ms", "getUserActivityFeed", elapsed);
+        }
 
         ActivityFeedDTO feed = new ActivityFeedDTO(result, page, size, result.size());
 
         return feed;
     }
+
+
 }

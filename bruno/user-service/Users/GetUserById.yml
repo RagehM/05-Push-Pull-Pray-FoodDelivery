@@ -6,9 +6,14 @@ info:
 http:
   method: GET
   url: http://localhost:8081/api/users/1
+  headers:
+    - name: X-User-Id
+      value: "3"
+    - name: X-User-Role
+      value: CUSTOMER
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTk2OTk0LCJleHAiOjE3NzgwODMzOTR9.xCxblIhL_1gY66VVUMHTEuAqZHV7k4eBwTz2H7nIjMs
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWFzZGFzZGdhc2RlaEBtYWlsLmNvbSIsInVpZCI6NCwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MDI1NTgzLCJleHAiOjE3NzkxMTE5ODN9.QkomCzSSMEubZ8ZiqafzXUC8I8BaHzUKquKqK_uhRgQ
 
 settings:
   encodeUrl: true
