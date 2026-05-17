@@ -14,7 +14,7 @@ http:
     data: |-
       {
         "userId": 1,
-        "restaurantId": 3,
+        "restaurantId": 1,
         "status": "PREPARING",
         "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
