@@ -26,6 +26,13 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Loki Logback Appender -->
+            <dependency>
+                <groupId>com.github.loki4j</groupId>
+                <artifactId>loki-logback-appender</artifactId>
+               <version>2.0.0</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

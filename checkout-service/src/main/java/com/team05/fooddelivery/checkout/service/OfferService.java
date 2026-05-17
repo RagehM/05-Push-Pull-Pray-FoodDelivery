@@ -3,6 +3,8 @@ package com.team05.fooddelivery.checkout.service;
 
 import com.team05.fooddelivery.checkout.model.Offer;
 import com.team05.fooddelivery.checkout.repository.OfferRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,6 +17,9 @@ import java.util.List;
 
 @Service
 public class OfferService {
+
+    private static final Logger log = LoggerFactory.getLogger(OfferService.class);
+
     private final OfferRepository offerRepository;
 
     public OfferService(OfferRepository offerRepository) {
@@ -23,7 +28,9 @@ public class OfferService {
 
     // Offer CRUD
     public Offer createOffer(Offer offer) {
-        return offerRepository.save(offer);
+        Offer saved = offerRepository.save(offer);
+        log.info("Offer {} saved with status={}", saved.getId(), saved.getActive() ? "active" : "inactive");
+        return saved;
     }
 
     public List<Offer> getOffers() {
@@ -53,7 +60,9 @@ public class OfferService {
             offer.setActive(updatedOffer.getActive());
             offer.setMetadata(updatedOffer.getMetadata());
             offer.setPaymentOffers(updatedOffer.getPaymentOffers());
-            return offerRepository.save(offer);
+            Offer saved = offerRepository.save(offer);
+            log.info("Offer {} saved with status={}", saved.getId(), saved.getActive() ? "active" : "inactive");
+            return saved;
         }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Offer not found"));
     }
 
@@ -67,6 +76,7 @@ public class OfferService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Offer not found");
         }
         offerRepository.deleteById(id);
+        log.info("Offer {} saved with status={}", id, "deleted");
     }
 
 }

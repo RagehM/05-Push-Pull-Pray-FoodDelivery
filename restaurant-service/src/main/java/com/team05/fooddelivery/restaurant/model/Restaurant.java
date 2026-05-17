@@ -45,6 +45,15 @@ public class Restaurant {
     @Column(nullable = false)
     private Integer totalRatings = 0;
 
+    @Column(nullable = false)
+    private Integer incomingOrderCount = 0;
+
+    @Column(nullable = false)
+    private Long sagaCompletedOrders = 0L;
+
+    @Column(nullable = false)
+    private Double sagaCompletedRevenue = 0.0;
+
     // [S2-F2, S2-F5] JSONB column storing flexible restaurant attributes (e.g. address, deliveryRadius).
     // S2-F2 merges new fields into this map; S2-F5 filters restaurants by a key-value pair within it.
     @JdbcTypeCode(SqlTypes.JSON)
@@ -61,8 +70,17 @@ public class Restaurant {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.totalRatings = 0 ;
-        this.rating = 0.0 ;
+        this.totalRatings = 0;
+        this.rating = 0.0;
+        if (this.incomingOrderCount == null) {
+            this.incomingOrderCount = 0;
+        }
+        if (this.sagaCompletedOrders == null) {
+            this.sagaCompletedOrders = 0L;
+        }
+        if (this.sagaCompletedRevenue == null) {
+            this.sagaCompletedRevenue = 0.0;
+        }
     }
 
     public Long getId() {
@@ -151,5 +169,29 @@ public class Restaurant {
 
     public void setMenuItems(List<MenuItem> menuItems) {
         this.menuItems = menuItems;
+    }
+
+    public Integer getIncomingOrderCount() {
+        return incomingOrderCount;
+    }
+
+    public void setIncomingOrderCount(Integer incomingOrderCount) {
+        this.incomingOrderCount = incomingOrderCount;
+    }
+
+    public Long getSagaCompletedOrders() {
+        return sagaCompletedOrders;
+    }
+
+    public void setSagaCompletedOrders(Long sagaCompletedOrders) {
+        this.sagaCompletedOrders = sagaCompletedOrders;
+    }
+
+    public Double getSagaCompletedRevenue() {
+        return sagaCompletedRevenue;
+    }
+
+    public void setSagaCompletedRevenue(Double sagaCompletedRevenue) {
+        this.sagaCompletedRevenue = sagaCompletedRevenue;
     }
 }
