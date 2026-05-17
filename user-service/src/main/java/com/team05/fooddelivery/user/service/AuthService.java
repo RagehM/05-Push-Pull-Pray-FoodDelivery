@@ -107,6 +107,8 @@ public class AuthService {
 
         publisher.publishRegisteredUser(user);
 
+        publisher.publishRegisteredUser(user);
+
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
         authEvent.put("action", "REGISTERED");
