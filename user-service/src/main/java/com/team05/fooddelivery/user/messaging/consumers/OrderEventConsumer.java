@@ -24,9 +24,7 @@ public class OrderEventConsumer {
         this.userService = userService;
     }
 
-    /**
-     * order.completed → increment totalOrders by 1 and add totalAmount to totalSpent.
-     */
+
     @RabbitHandler
     public void onOrderCompleted(
             OrderCompletedEvent event,
@@ -34,23 +32,18 @@ public class OrderEventConsumer {
 
         setupMdc(RabbitConfig.ORDER_COMPLETED_ROUTING_KEY, correlationId, event.orderId());
         try {
-            log.info("Consuming order.completed for orderId={}, userId={}", event.orderId(), event.userId());
+            log.info("Consuming {} for {}={}", RabbitConfig.ORDER_COMPLETED_ROUTING_KEY, "Order", event.orderId());
             userService.incrementUserOrderStats(event.userId(), event.totalAmount());
-            log.info("Processed order.completed for orderId={} — updated stats for userId={}",
-                    event.orderId(), event.userId());
+            log.info("Processed {} for {}={}", RabbitConfig.ORDER_COMPLETED_ROUTING_KEY, "Order", event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process order.completed for orderId={}: {}",
-                    event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", RabbitConfig.ORDER_COMPLETED_ROUTING_KEY, ex.getMessage(), ex);
             throw ex; // NACK → retry → DLQ
         } finally {
             clearMdc();
         }
     }
 
-    /**
-     * order.cancelled → decrement totalOrders by 1 and subtract the order amount from totalSpent.
-     * The order amount is fetched from order-service inside UserService.
-     */
+
     @RabbitHandler
     public void onOrderCancelled(
             OrderCancelledEvent event,
@@ -58,12 +51,11 @@ public class OrderEventConsumer {
 
         setupMdc(RabbitConfig.ORDER_CANCELLED_ROUTING_KEY, correlationId, event.orderId());
         try {
-            log.info("Consuming order.cancelled for orderId={}, userId={}", event.orderId(), event.userId());
+            log.info("Consuming {} for {}={}", RabbitConfig.ORDER_CANCELLED_ROUTING_KEY, "Order", event.orderId());
             userService.decrementUserOrderStats(event.userId(), event.orderId());
-            log.info("Processed order.cancelled for orderId={} — reversed stats for userId={}", event.orderId(), event.userId());
+            log.info("Processed {} for {}={}", RabbitConfig.ORDER_CANCELLED_ROUTING_KEY, "Order", event.orderId());
         } catch (Exception ex) {
-            log.error("Failed to process order.cancelled for orderId={}: {}",
-                    event.orderId(), ex.getMessage(), ex);
+            log.error("Failed to process {}: {}", RabbitConfig.ORDER_CANCELLED_ROUTING_KEY, ex.getMessage(), ex);
             throw ex;
         } finally {
             clearMdc();

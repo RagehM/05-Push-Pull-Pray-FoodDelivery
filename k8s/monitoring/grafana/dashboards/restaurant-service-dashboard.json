@@ -23,12 +23,7 @@
           "refId": "A"
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": { "lineWidth": 2 }
-        }
-      }
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } } }
     },
     {
       "id": 2,
@@ -54,12 +49,7 @@
           "refId": "C"
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": { "lineWidth": 2 }
-        }
-      }
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2 } } }
     },
     {
       "id": 3,
@@ -69,22 +59,11 @@
       "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        {
-          "expr": "hikaricp_connections_active{job=\"restaurant-service\"}",
-          "legendFormat": "Active",
-          "refId": "A"
-        },
-        {
-          "expr": "hikaricp_connections_max{job=\"restaurant-service\"}",
-          "legendFormat": "Max",
-          "refId": "B"
-        },
-        {
-          "expr": "hikaricp_connections_pending{job=\"restaurant-service\"}",
-          "legendFormat": "Pending",
-          "refId": "C"
-        }
+        { "expr": "hikaricp_connections_active{job=\"restaurant-service\"}", "legendFormat": "Active", "refId": "A" },
+        { "expr": "hikaricp_connections_max{job=\"restaurant-service\"}", "legendFormat": "Max", "refId": "B" },
+        { "expr": "hikaricp_connections_pending{job=\"restaurant-service\"}", "legendFormat": "Pending", "refId": "C" }
       ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -155,6 +134,7 @@
       "targets": [
         {
           "expr": "sum(rate({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"}[1m]))",
+          "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"} | json [1m]))",
           "legendFormat": "Errors/min",
           "refId": "A"
         }
@@ -165,12 +145,13 @@
           "custom": { "lineWidth": 2 }
         }
       }
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
     },
     {
       "id": 7,
       "type": "logs",
       "title": "[LogQL] RabbitMQ Event Audit — order.events & restaurant.events",
-      "description": "Published and consumed saga events filtered by routing key.",
+      "description": "Published and consumed saga events filtered by routing key MDC field.",
       "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [

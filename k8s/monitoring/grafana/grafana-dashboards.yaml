@@ -1,4 +1,4 @@
-﻿apiVersion: v1
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboards
@@ -7,18 +7,13 @@ data:
   # S1-INFRA owner needs to fill this
   user-dashboard.json: |
     {}
-  # S2-INFRA owner needs to fill this
+  # S2-INFRA: restaurant-service dashboard (merged from S2-READ-DB LogQL panels + S2-EVENTS PromQL panels)
   restaurant-dashboard.json: |
-    {}
-  # S3-INFRA owner needs to fill this
-  order-dashboard.json: |
-    {}
-  delivery-dashboard.json: |
     {
       "id": null,
-      "uid": "delivery-svc",
-      "title": "Delivery Service",
-      "tags": ["talabat", "delivery"],
+      "uid": "restaurant-service",
+      "title": "Restaurant Service Dashboard",
+      "tags": ["talabat", "restaurant"],
       "timezone": "browser",
       "schemaVersion": 38,
       "version": 1,
@@ -27,11 +22,286 @@ data:
       "panels": [
         {
           "id": 1,
+          "type": "timeseries",
+          "title": "[PromQL] HTTP Request Rate — /api/restaurants/**",
+          "description": "Requests per second per endpoint. Shows load on order-summary, dashboard, and rating endpoints.",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "expr": "sum by (uri, method, status) (rate(http_server_requests_seconds_count{job=\"restaurant-service\"}[5m]))",
+              "legendFormat": "{{method}} {{uri}} [{{status}}]",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "[PromQL] HTTP Latency P50 / P95 / P99 — order-summary & dashboard",
+          "description": "P99 latency on Feign-backed reads reveals slow order-service enrichment.",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"restaurant-service\", uri=~\"/api/restaurants/.*/(order-summary|dashboard).*\"}[5m])))",
+              "legendFormat": "P50", "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"restaurant-service\", uri=~\"/api/restaurants/.*/(order-summary|dashboard).*\"}[5m])))",
+              "legendFormat": "P95", "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"restaurant-service\", uri=~\"/api/restaurants/.*/(order-summary|dashboard).*\"}[5m])))",
+              "legendFormat": "P99", "refId": "C"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "[PromQL] HikariCP Connection Pool — Active vs Max",
+          "description": "Pool exhaustion during saga consumer bursts processing order.completed events.",
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "expr": "hikaricp_connections_active{job=\"restaurant-service\"}", "legendFormat": "Active", "refId": "A" },
+            { "expr": "hikaricp_connections_max{job=\"restaurant-service\"}", "legendFormat": "Max", "refId": "B" },
+            { "expr": "hikaricp_connections_pending{job=\"restaurant-service\"}", "legendFormat": "Pending", "refId": "C" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "[PromQL] JVM Heap Memory Usage",
+          "description": "Memory pressure before OOM during Elasticsearch indexing or dashboard aggregation.",
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "expr": "jvm_memory_used_bytes{job=\"restaurant-service\", area=\"heap\"}", "legendFormat": "Heap Used — {{id}}", "refId": "A" },
+            { "expr": "jvm_memory_max_bytes{job=\"restaurant-service\", area=\"heap\"}", "legendFormat": "Heap Max — {{id}}", "refId": "B" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "[PromQL] Redis Cache Hit Rate — S2-F12 Dashboard",
+          "description": "Verify the performance dashboard cache is reducing Feign calls to order-service.",
+          "gridPos": { "x": 0, "y": 16, "w": 8, "h": 6 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "expr": "sum(rate(cache_gets_total{job=\"restaurant-service\", result=\"hit\"}[5m])) / clamp_min(sum(rate(cache_gets_total{job=\"restaurant-service\"}[5m])), 1)",
+              "legendFormat": "Hit Rate", "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "yellow", "value": 0.5 }, { "color": "green", "value": 0.8 }] }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "[LogQL] Error Rate — restaurant-service",
+          "description": "Count of ERROR-level log lines per minute (saga consumer failures route to DLQ).",
+          "gridPos": { "x": 8, "y": 16, "w": 16, "h": 6 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "expr": "sum(count_over_time({app=\"talabat\", service=\"restaurant-service\", level=\"ERROR\"} | json [1m]))",
+              "legendFormat": "Errors/min", "refId": "A"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 7,
+          "type": "logs",
+          "title": "[LogQL] RabbitMQ Event Audit — order.events & restaurant.events",
+          "description": "Published and consumed saga events filtered by routing key MDC field.",
+          "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "expr": "{app=\"talabat\", service=\"restaurant-service\"} | json | routingKey =~ \"(order|restaurant)\\\\..*\"",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "logs",
+          "title": "[LogQL] Feign Call Outcomes — order-service",
+          "description": "Successful Feign responses vs failures when enriching order-summary and rating.",
+          "gridPos": { "x": 0, "y": 30, "w": 24, "h": 8 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [
+            {
+              "expr": "{app=\"talabat\", service=\"restaurant-service\"} | json | message =~ \".*(Calling order-service|returned successfully|Feign call to order-service failed).*\"",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
+
+  # S3-INFRA — order-service dashboard
+  order-dashboard.json: |
+    {
+      "title": "order-service",
+      "uid": "order-service",
+      "schemaVersion": 38,
+      "tags": ["s3", "order-service"],
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "15s",
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "[PromQL] HTTP Request Rate — /api/orders/**",
+          "description": "Requests per second per endpoint. Identifies peak load on order-service endpoints.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (uri, method, status) (rate(http_server_requests_seconds_count{job=\"order-service\"}[5m]))",
+              "legendFormat": "{{method}} {{uri}} [{{status}}]"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "[PromQL] HTTP Latency P50 / P95 / P99",
+          "description": "P99 latency on GET /api/orders/restaurant/{id}/summary is 4s — Feign enrichment is slow.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.50, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"order-service\"}[5m])))",
+              "legendFormat": "P50: {{uri}}"
+            },
+            {
+              "refId": "B",
+              "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"order-service\"}[5m])))",
+              "legendFormat": "P95: {{uri}}"
+            },
+            {
+              "refId": "C",
+              "expr": "histogram_quantile(0.99, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"order-service\"}[5m])))",
+              "legendFormat": "P99: {{uri}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "[PromQL] JVM Heap Memory Usage",
+          "description": "Memory pressure before OOM — order-service heap growth after processing saga events.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "jvm_memory_used_bytes{job=\"order-service\", area=\"heap\"}",
+              "legendFormat": "Heap Used — {{id}}"
+            },
+            {
+              "refId": "B",
+              "expr": "jvm_memory_max_bytes{job=\"order-service\", area=\"heap\"}",
+              "legendFormat": "Heap Max — {{id}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "[LogQL] Error Rate — order-service",
+          "description": "Count of ERROR-level log lines per minute. Spike = saga failure or downstream service degradation.",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate({app=\"talabat\", service=\"order-service\", level=\"ERROR\"}[1m]))",
+              "legendFormat": "Errors/min"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 5,
+          "type": "logs",
+          "title": "[LogQL] RabbitMQ Event Audit — order.events",
+          "description": "Lines emitted by publishers/consumers filtered by order routing keys.",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{app=\"talabat\", service=\"order-service\"} | json | routingKey =~ \"order\\\\..*\""
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "logs",
+          "title": "[LogQL] Saga State Transitions — Order Lifecycle",
+          "description": "Visualize the complete saga flow: COMPLETING → PAYMENT_PENDING → PAID → DELIVERING → DELIVERED.",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{app=\"talabat\", service=\"order-service\"} | json | orderId != \"\" | message =~ \".*transitioning.*\" | line_format \"[{{.level}}] orderId={{.orderId}} — {{.message}}\""
+            }
+          ]
+        }
+      ]
+    }
+  # S4-INFRA owner needs to fill this
+  delivery-dashboard.json: |
+    {
+      "id": null,
+      "uid": "delivery-svc",
+      "title": "Delivery Service",
+      "tags": [
+        "talabat",
+        "delivery"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"},
+      "panels": [
+        {
+          "id": 1,
           "title": "Error Rate",
           "description": "ERROR-level log lines per minute from delivery-service",
           "type": "timeseries",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"},
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8},
           "targets": [
             {
               "refId": "A",
@@ -45,8 +315,14 @@ data:
           "title": "RabbitMQ Event Audit",
           "description": "Events published and consumed by delivery-service, filtered by routing key",
           "type": "logs",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"},
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 8},
           "targets": [
             {
               "refId": "A",
@@ -59,8 +335,14 @@ data:
           "title": "Saga Tracking — delivery lifecycle by orderId",
           "description": "Traces the complete delivery saga flow filtered by orderId",
           "type": "logs",
-          "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"},
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 24,
+            "h": 8},
           "targets": [
             {
               "refId": "A",
@@ -73,8 +355,14 @@ data:
           "title": "HTTP Request Rate",
           "description": "Requests per second per endpoint",
           "type": "timeseries",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"},
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 8,
+            "h": 8},
           "targets": [
             {
               "refId": "A",
@@ -88,8 +376,14 @@ data:
           "title": "HTTP Latency P99",
           "description": "P99 request latency per endpoint",
           "type": "timeseries",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"},
+          "gridPos": {
+            "x": 8,
+            "y": 16,
+            "w": 8,
+            "h": 8},
           "targets": [
             {
               "refId": "A",
@@ -103,8 +397,14 @@ data:
           "title": "HikariCP Active Connections",
           "description": "Active database connections from the connection pool",
           "type": "timeseries",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"},
+          "gridPos": {
+            "x": 16,
+            "y": 16,
+            "w": 8,
+            "h": 8},
           "targets": [
             {
               "refId": "A",

@@ -28,6 +28,7 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         if (correlationId == null || correlationId.isBlank()) {
             correlationId = UUID.randomUUID().toString();
         }
+
         try {
             MDC.put(MDC_KEY, correlationId);
             response.setHeader(HEADER, correlationId);
@@ -37,3 +38,4 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         }
     }
 }
+

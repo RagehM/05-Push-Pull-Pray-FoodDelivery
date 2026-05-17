@@ -16,6 +16,7 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
         List<Restaurant> findByCuisineType(CuisineTypeEnum cuisineType);
 
+
         // [S2-F1] Filters by optional cuisine type and rating range, ordered by rating
         // descending.
         @Query(value = "SELECT * FROM restaurants WHERE " +

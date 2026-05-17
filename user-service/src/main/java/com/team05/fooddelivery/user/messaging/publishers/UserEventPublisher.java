@@ -51,7 +51,7 @@ public class UserEventPublisher {
                         return message;
                     }
             );
-            log.info("Published {} for userId={}", routingKey, userId);
+            log.info("Published {} for {}={}", routingKey, "User", userId);
         } finally {
             MDC.remove("routingKey");
             if (userId != null) MDC.remove("userId");

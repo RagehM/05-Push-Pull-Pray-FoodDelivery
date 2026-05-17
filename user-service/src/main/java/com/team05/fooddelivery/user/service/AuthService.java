@@ -11,6 +11,8 @@ import com.team05.fooddelivery.user.repository.mongo.AuthEventRepository;
 import com.team05.shared.model.mongo.MongoEvent;
 import com.team05.shared.observer.EntityObserver;
 import com.team05.shared.observer.MongoEventLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,8 @@ import java.util.Map;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -99,9 +103,10 @@ public class AuthService {
         user.setStatus(com.team05.fooddelivery.user.enums.UserStatus.ACTIVE);
         user.setPassword(passwordEncoder.encode(request.password()));
         userRepository.save(user);
+        log.info("{} {} saved with status={}", "User", user.getId(), user.getStatus());
 
         publisher.publishRegisteredUser(user);
-
+        
         Map<String, Object> authEvent = new HashMap<>();
         authEvent.put("userId", user.getId());
         authEvent.put("action", "REGISTERED");
