@@ -73,6 +73,9 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+  endpoint:
+    prometheus:
+      enabled: true
 
 #spring.application.name=delivery-service
 #server.port=8080
