@@ -39,20 +39,20 @@ jobs:
             context: .
             dockerfile: api-gateway/Dockerfile
           - service: user-service
-            context: .
-            dockerfile: user-service/Dockerfile
+            context: ./user-service
+            dockerfile: Dockerfile
           - service: restaurant-service
-            context: .
-            dockerfile: restaurant-service/Dockerfile
+            context: ./restaurant-service
+            dockerfile: Dockerfile
           - service: order-service
-            context: .
-            dockerfile: order-service/Dockerfile
+            context: ./order-service
+            dockerfile: Dockerfile
           - service: delivery-service
-            context: .
-            dockerfile: delivery-service/Dockerfile
+            context: ./delivery-service
+            dockerfile: Dockerfile
           - service: checkout-service
-            context: .
-            dockerfile: checkout-service/Dockerfile
+            context: ./checkout-service
+            dockerfile: Dockerfile
 
     steps:
       - name: Checkout repository
@@ -85,20 +85,20 @@ jobs:
             context: .
             dockerfile: api-gateway/Dockerfile
           - service: user-service
-            context: .
-            dockerfile: user-service/Dockerfile
+            context: ./user-service
+            dockerfile: Dockerfile
           - service: restaurant-service
-            context: .
-            dockerfile: restaurant-service/Dockerfile
+            context: ./restaurant-service
+            dockerfile: Dockerfile
           - service: order-service
-            context: .
-            dockerfile: order-service/Dockerfile
+            context: ./order-service
+            dockerfile: Dockerfile
           - service: delivery-service
-            context: .
-            dockerfile: delivery-service/Dockerfile
+            context: ./delivery-service
+            dockerfile: Dockerfile
           - service: checkout-service
-            context: .
-            dockerfile: checkout-service/Dockerfile
+            context: ./checkout-service
+            dockerfile: Dockerfile
 
     steps:
       - name: Checkout repository
