@@ -58,4 +58,17 @@ public class FeignConfig {
             }
         };
     }
+
+    @Bean
+    public RequestInterceptor feignMdcAuthInterceptor() {
+        return template -> {
+             if (template.headers().containsKey(HttpHeaders.AUTHORIZATION) && !template.headers().get(HttpHeaders.AUTHORIZATION).isEmpty() && template.headers().get(HttpHeaders.AUTHORIZATION) != null) {
+                return;
+            }
+            String jwtToken = MDC.get("jwtToken");
+            if (jwtToken != null && !jwtToken.isBlank()) {
+                template.header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtToken);
+            }
+        };
+    }
 }

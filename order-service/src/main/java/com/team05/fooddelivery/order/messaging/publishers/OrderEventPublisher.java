@@ -61,12 +61,16 @@ public class OrderEventPublisher {
                 }
                 MDC.put("routingKey", routingKey);
                 String correlationId = MDC.get("correlationId");
+                String jwtToken = MDC.get("jwtToken");
                 rabbitTemplate.convertAndSend(
                         "order.events",
                         routingKey,
                         payload,
                         message -> {
                             message.getMessageProperties().setHeader("X-Correlation-ID", correlationId);
+                            if (jwtToken != null) {
+                                message.getMessageProperties().setHeader("Authorization", "Bearer " + jwtToken);
+                            }
                             return message;
                         }
                 );
