@@ -25,6 +25,18 @@ jobs:
       - name: Build & run tests
         run: mvn -B clean install -DskipTests
 
+      - name: List user-service/target contents
+        run: |
+          ls -l user-service/target
+
+      - name: List all target directories
+        run: |
+          find . -type d -name target
+
+      - name: List all JARs
+        run: |
+          find . -name "*.jar"
+
   docker-build:
     name: Docker Build (feat only)
     runs-on: ubuntu-latest
