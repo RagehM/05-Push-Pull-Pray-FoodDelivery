@@ -10,24 +10,27 @@ data:
       evaluation_interval: 15s
 
     scrape_configs:
-    # S1-INFRA owner needs to fill this
       - job_name: user-service
         static_configs:
           - targets: ['user-service.talabat.svc.cluster.local:8080']
         metrics_path: /actuator/prometheus
-    # S2-INFRA owner needs to fill this
+
+      - job_name: restaurant-service
+        static_configs:
+          - targets: ['restaurant-service.talabat.svc.cluster.local:8080']
+        metrics_path: /actuator/prometheus
       
-    - job_name: order-service
-      static_configs:
-        - targets: ['order-service.talabat.svc.cluster.local:8080']
-      metrics_path: /actuator/prometheus
-    
-    - job_name: delivery-service
-      static_configs:
-        - targets: ['delivery-service.talabat.svc.cluster.local:8080']
-      metrics_path: /actuator/prometheus
-    
-    - job_name: checkout-service
-      static_configs:
-        - targets: ['checkout-service.talabat.svc.cluster.local:8080']
-      metrics_path: /actuator/prometheus
+      - job_name: order-service
+        static_configs:
+          - targets: ['order-service.talabat.svc.cluster.local:8080']
+        metrics_path: /actuator/prometheus
+      
+      - job_name: delivery-service
+        static_configs:
+          - targets: ['delivery-service.talabat.svc.cluster.local:8080']
+        metrics_path: /actuator/prometheus
+      
+      - job_name: checkout-service
+        static_configs:
+          - targets: ['checkout-service.talabat.svc.cluster.local:8080']
+        metrics_path: /actuator/prometheus

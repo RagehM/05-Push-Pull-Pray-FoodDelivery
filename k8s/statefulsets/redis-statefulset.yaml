@@ -47,12 +47,7 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "250m"
-  volumeClaimTemplates:
-    - metadata:
-        name: redis-data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 2Gi
+      volumes: # Modified from volumeClaimTemplates to volumes to reference the existing PVC
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc

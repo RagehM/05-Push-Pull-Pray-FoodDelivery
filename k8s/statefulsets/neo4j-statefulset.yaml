@@ -24,7 +24,7 @@ spec:
               name: bolt
           env:
             - name: NEO4J_AUTH
-              value: neo4j/neo4jpassword
+              value: neo4j/neo4jpass
           volumeMounts:
             - name: neo4j-data
               mountPath: /data
@@ -40,12 +40,7 @@ spec:
               port: 7474
             initialDelaySeconds: 60
             periodSeconds: 15
-  volumeClaimTemplates:
-    - metadata:
-        name: neo4j-data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 2Gi
+      volumes: # Modified from volumeClaimTemplates to volumes to reference the existing PVC
+        - name: neo4j-data
+          persistentVolumeClaim:
+            claimName: neo4j-data

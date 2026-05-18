@@ -39,14 +39,14 @@ spec:
                   key: POSTGRES_PASSWORD
           readinessProbe:
             httpGet:
-              path: /api/payments/health
+              path: /actuator/health
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5
           livenessProbe:
             httpGet:
-              path: /api/payments/health
+              path: /actuator/health
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30
