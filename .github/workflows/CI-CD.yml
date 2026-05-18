@@ -39,19 +39,19 @@ jobs:
             context: .
             dockerfile: api-gateway/Dockerfile
           - service: user-service
-            context: user-service
+            context: .
             dockerfile: user-service/Dockerfile
           - service: restaurant-service
-            context: restaurant-service
+            context: .
             dockerfile: restaurant-service/Dockerfile
           - service: order-service
-            context: order-service
+            context: .
             dockerfile: order-service/Dockerfile
           - service: delivery-service
-            context: delivery-service
+            context: .
             dockerfile: delivery-service/Dockerfile
           - service: checkout-service
-            context: checkout-service
+            context: .
             dockerfile: checkout-service/Dockerfile
 
     steps:
@@ -85,19 +85,19 @@ jobs:
             context: .
             dockerfile: api-gateway/Dockerfile
           - service: user-service
-            context: user-service
+            context: .
             dockerfile: user-service/Dockerfile
           - service: restaurant-service
-            context: restaurant-service
+            context: .
             dockerfile: restaurant-service/Dockerfile
           - service: order-service
-            context: order-service
+            context: .
             dockerfile: order-service/Dockerfile
           - service: delivery-service
-            context: delivery-service
+            context: .
             dockerfile: delivery-service/Dockerfile
           - service: checkout-service
-            context: checkout-service
+            context: .
             dockerfile: checkout-service/Dockerfile
 
     steps:
