@@ -5,20 +5,24 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8085/api/payments/order/1
+  url: "{{kube_base_url_api_gateway}}/api/payments/process"
   headers:
-    - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJqaW1teTU1NTU1NUBtc2FpbC5jb20iLCJ1aWQiOjEsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3NzQ2MDQ2NywiZXhwIjoxNzc3NTQ2ODY3fQ.09oZh9lGubYXN8orOtIi1bWe_7ju2D3__cDpf9ZADs0
+    - name: X-User-Id
+      value: "1"
+    - name: X-USer-Role
+      value: CUSTOMER
   body:
     type: json
     data: |-
       {
         "method": "CREDIT_CARD",
-        "transactionDetails": {}
+        "transactionDetails": {},
+        "userId": 1,
+        "orderId": 1
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc3OTkxMzgyLCJleHAiOjE3NzgwNzc3ODJ9.uTtYXus_q0k9PfclPj8vxCcbHqN3DeS4m_JSQjjhD5w
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdkYWFzZHNlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MTIxMzM2LCJleHAiOjE3NzkyMDc3MzZ9.lwk1GWR3YRlnSYXuC0BGRNXBEMdVpddzub6qu0PF57E
 
 settings:
   encodeUrl: true

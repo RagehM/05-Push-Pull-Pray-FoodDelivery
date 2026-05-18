@@ -3,6 +3,8 @@ package com.team05.fooddelivery.order.saga;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import com.team05.fooddelivery.order.enums.OrderStatusEnum;
@@ -30,6 +32,16 @@ public class SagaTriggerService {
         }
 
     @Transactional
+    @Caching(
+    evict = {
+        @CacheEvict(value = "order-service::order", key = "#orderId"),
+        @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+        @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
+    })
     public void processDeliveryCreatedAndPaymentInitiatedEvent(Long orderId, String receivedEvent){
         // Read from the list of pending events
         String existingEvent = pendingPaymentAndDeliveryEvents.get(orderId.hashCode());
@@ -37,17 +49,19 @@ public class SagaTriggerService {
         // If no event is there at all, add it and wait for the other event
         if (existingEvent == null) {
             pendingPaymentAndDeliveryEvents.put(orderId.hashCode(), receivedEvent);
+            // log.info("Received {} for orderId={}, waiting for the other event", receivedEvent, orderId);
             return;
         }
 
         // This means the same event was received twice, which should not happen. Ignore.
         if (existingEvent.equals(receivedEvent)) {
+            // log.warn("Received duplicate {} for orderId={}, ignoring", receivedEvent, orderId);
             return;
         }
 
         // If we have both payment and delivery events, we can proceed with the completion of the order
-        if ((existingEvent.equals("payment.completed") && receivedEvent.equals("delivery.created")) ||
-            (existingEvent.equals("delivery.created") && receivedEvent.equals("payment.completed"))) {
+        if ((existingEvent.equals("payment.initiated") && receivedEvent.equals("delivery.created")) ||
+            (existingEvent.equals("delivery.created") && receivedEvent.equals("payment.initiated"))) {
                 // Proceed with order completion logic, e.g. update
                 Order order = orderService.getOrderById(orderId);
                 String previousStatus = order.getStatus().toString();
@@ -65,6 +79,17 @@ public class SagaTriggerService {
     }
 
     @Transactional
+    @Caching(
+    evict = {
+        @CacheEvict(value = "order-service::order", key = "#orderId"),
+        @CacheEvict(value = "order-service::S3-F1", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F3", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F5", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F6", allEntries = true),
+        @CacheEvict(value = "order-service::S3-F9", key = "#orderId"),
+        @CacheEvict(value = "restaurant-service::S2-F12", allEntries = true)
+
+    })
     public void processOtherPaymentEvents(Long orderId, String receivedEvent) {
         Order order = orderService.getOrderById(orderId);
         String previousStatus = order.getStatus().toString();

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import com.team05.fooddelivery.contracts.events.DeliveryCreatedEvent;
 
 @Component
-@RabbitListener(queues = "order.saga-feedback")
+@RabbitListener(queues = "order.saga-feedback", containerFactory = "rabbitListenerContainerFactory")
 public class DeliveryEventListener {
     private final SagaTriggerService sagaTriggerService;
     private static final Logger log = LoggerFactory.getLogger(DeliveryEventListener.class);

@@ -70,6 +70,7 @@ public class OrderEventPublisher {
                             message.getMessageProperties().setHeader("X-Correlation-ID", correlationId);
                             if (jwtToken != null) {
                                 message.getMessageProperties().setHeader("Authorization", "Bearer " + jwtToken);
+                                // System.err.println("Publisher - Adding Authorization header with JWT token = Bearer " + jwtToken);
                             }
                             return message;
                         }

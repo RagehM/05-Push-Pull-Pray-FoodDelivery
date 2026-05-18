@@ -14,7 +14,7 @@ import com.team05.fooddelivery.contracts.events.PaymentFailedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentRefundedEvent;
 
 @Component
-@RabbitListener(queues = "order.saga-feedback")
+@RabbitListener(queues = "order.saga-feedback", containerFactory = "rabbitListenerContainerFactory")
 public class PaymentEventListener {
     private final SagaTriggerService sagaTriggerService;
     public static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);
@@ -44,10 +44,12 @@ public class PaymentEventListener {
     }
 
     @RabbitHandler
-    public void handlePaymentCompletedEvent(PaymentCompletedEvent event) {
+    public void handlePaymentCompletedEvent(
+        PaymentCompletedEvent event,
+        @Header(value = "X-Correlation-ID", required = false) String correlationId) {
         try{
             logConsumedEvent("payment.completed", event.paymentId());
-            setupMdc("payment.completed", null, event.orderId(), null, null, null, event.paymentId());
+            setupMdc("payment.completed", correlationId, event.orderId(), null, null, null, event.paymentId());
             sagaTriggerService.processOtherPaymentEvents(event.orderId(), "payment.completed");
             logProcessedEvent("payment.completed", event.paymentId());
         } catch (Exception e) {
@@ -59,10 +61,12 @@ public class PaymentEventListener {
     }
 
     @RabbitHandler
-    public void handlePaymentFailedEvent(PaymentFailedEvent event) {
+    public void handlePaymentFailedEvent(
+        PaymentFailedEvent event,
+        @Header(value = "X-Correlation-ID", required = false) String correlationId) {
         try{
             logConsumedEvent("payment.failed", event.paymentId());
-            setupMdc("payment.failed", null, event.orderId(), null, null, null, event.paymentId());
+            setupMdc("payment.failed", correlationId, event.orderId(), null, null, null, event.paymentId());
             sagaTriggerService.processOtherPaymentEvents(event.orderId(), "payment.failed");
             logProcessedEvent("payment.failed", event.paymentId());
         } catch (Exception e) {
@@ -74,10 +78,12 @@ public class PaymentEventListener {
     }
 
     @RabbitHandler
-    public void handlePaymentRefundedEvent(PaymentRefundedEvent event) {
+    public void handlePaymentRefundedEvent(
+        PaymentRefundedEvent event,
+        @Header(value = "X-Correlation-ID", required = false) String correlationId) {
         try{
             logConsumedEvent("payment.refunded", event.paymentId());
-            setupMdc("payment.refunded", null, event.orderId(), null, null, null, event.paymentId());
+            setupMdc("payment.refunded", correlationId, event.orderId(), null, null, null, event.paymentId());
             sagaTriggerService.processOtherPaymentEvents(event.orderId(), "payment.refunded");
             logProcessedEvent("payment.refunded", event.paymentId());
         } catch (Exception e) {

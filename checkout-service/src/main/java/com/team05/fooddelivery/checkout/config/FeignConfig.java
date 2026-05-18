@@ -66,6 +66,7 @@ public class FeignConfig {
                 return;
             }
             String jwtToken = MDC.get("jwtToken");
+            System.out.println("Feign interceptor - JWT from MDC: " + jwtToken);
             if (jwtToken != null && !jwtToken.isBlank()) {
                 template.header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtToken);
             }

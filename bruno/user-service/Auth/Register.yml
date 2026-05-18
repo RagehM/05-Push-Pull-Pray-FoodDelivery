@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: http://localhost:30080/api/auth/register
+  url: http://192.168.49.2:30080/api/auth/register
   headers:
     - name: Authorization
       value: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaEBtYWlsLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsImlhdCI6MTc3Njg2NjQ5OCwiZXhwIjoxNzc2ODcwMDk4fQ.bRJK8gPNyHO9cIHXqOULIpriuUwPat5VtgIHSTb195k
