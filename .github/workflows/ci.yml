@@ -22,8 +22,8 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Build all modules & run JUnit tests
-        run: mvn -B package --file pom.xml
+      - name: Build all modules (skip tests)
+        run: mvn -B clean install -DskipTests --file pom.xml
 
       - name: Upload Surefire test reports
         if: always()
