@@ -15,7 +15,7 @@ http:
       {
         "userId": 1,
         "restaurantId": 1,
-        "status": "PREPARING",
+        "status": "PLACED",
         "totalAmount": 180.0,
         "deliveryAddress": "Matrouh",
         "metadata": {},

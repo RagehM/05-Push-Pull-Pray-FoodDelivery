@@ -14,10 +14,10 @@ http:
     type: json
     data: |-
       {
-        "name": "rageh",
-        "email": "r12aasdaasdasdsdgasdeh@mail.com",
+        "name": "ragaseh",
+        "email": "ragdaasdseh@mail.com",
         "password": 123,
-        "phone": "12aas312asdasddsdasd3"
+        "phone": "12dasdas3"
       }
   auth: inherit
 
