@@ -14,7 +14,7 @@ import com.team05.fooddelivery.contracts.events.PaymentFailedEvent;
 import com.team05.fooddelivery.contracts.events.PaymentRefundedEvent;
 
 @Component
-@RabbitListener(queues = "order.saga-feedback", containerFactory = "rabbitListenerContainerFactory")
+@RabbitListener(queues = "order.saga-feedback.payment", containerFactory = "rabbitListenerContainerFactory")
 public class PaymentEventListener {
     private final SagaTriggerService sagaTriggerService;
     public static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);

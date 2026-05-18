@@ -42,12 +42,19 @@ public class OrderEventConfig {
     }
 
     @Bean
-    Queue sagaFeedbackQueue() {
-        return QueueBuilder.
-            durable("order.saga-feedback").
-            withArgument("x-dead-letter-exchange", "order.saga-feedback.dlx").
-            withArgument("x-dead-letter-routing-key", "order.saga-feedback.dlq").
-            build();
+    Queue sagaFeedbackPaymentQueue() {
+        return QueueBuilder.durable("order.saga-feedback.payment")
+            .withArgument("x-dead-letter-exchange", "order.saga-feedback.dlx")
+            .withArgument("x-dead-letter-routing-key", "order.saga-feedback.dlq")
+            .build();
+    }
+
+    @Bean
+    Queue sagaFeedbackDeliveryQueue() {
+        return QueueBuilder.durable("order.saga-feedback.delivery")
+            .withArgument("x-dead-letter-exchange", "order.saga-feedback.dlx")
+            .withArgument("x-dead-letter-routing-key", "order.saga-feedback.dlq")
+            .build();
     }
 
     @Bean
@@ -77,41 +84,41 @@ public class OrderEventConfig {
     }
 
     @Bean
-    Binding deliveryCreatedBinding(Queue sagaFeedbackQueue, TopicExchange deliveryExchange) {
+    Binding deliveryCreatedBinding(Queue sagaFeedbackDeliveryQueue, TopicExchange deliveryExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackDeliveryQueue).
             to(deliveryExchange).
             with("delivery.created");
     }
 
     @Bean
-    Binding paymentInitiatedBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentInitiatedBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.initiated");
     }
 
     @Bean
-    Binding paymentCompleteBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentCompleteBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.completed");
     }
 
     @Bean
-    Binding paymentFailedBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentFailedBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.failed");
     }
     
     @Bean
-    Binding paymentRefundedBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentRefundedBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.refunded");
     }

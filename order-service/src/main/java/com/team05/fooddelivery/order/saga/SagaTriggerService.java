@@ -99,6 +99,7 @@ public class SagaTriggerService {
             log.info("Order {} transitioning {} → {}", orderId, previousStatus, OrderStatusEnum.PAID);
             log.info("{} {} saved with status={}", "Order", orderId, OrderStatusEnum.PAID);
         } else if (receivedEvent.equals("payment.failed")) {
+            orderService.cancelOrder(orderId);
             order.setStatus(OrderStatusEnum.PAYMENT_FAILED);
             orderRepository.save(order);
             log.info("Order {} transitioning {} → {}", orderId, previousStatus, OrderStatusEnum.PAYMENT_FAILED);

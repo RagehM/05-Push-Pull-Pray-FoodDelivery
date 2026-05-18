@@ -5,10 +5,10 @@ info:
 
 http:
   method: PUT
-  url: "{{kube_base_url_api_gateway}}/api/orders/3/deliver"
+  url: "{{kube_base_url_api_gateway}}/api/orders/1/deliver"
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdkYWFzZHNlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MTIxMzM2LCJleHAiOjE3NzkyMDc3MzZ9.lwk1GWR3YRlnSYXuC0BGRNXBEMdVpddzub6qu0PF57E
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdkYWFzZHNlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MTI0NDU3LCJleHAiOjE3NzkyMTA4NTd9.wDAoZdw2uaCfp5kWwFakTuweO17cf3bNbkK2mMCMz1s
 
 settings:
   encodeUrl: true
