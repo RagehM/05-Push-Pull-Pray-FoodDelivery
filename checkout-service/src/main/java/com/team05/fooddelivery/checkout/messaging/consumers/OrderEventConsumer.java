@@ -36,10 +36,15 @@ public class OrderEventConsumer {
     @RabbitHandler
     public void onOrderCompleted(
             OrderCompletedEvent event,
-            @Header(value = "X-Correlation-ID", required = false) String correlationId) {
+            @Header(value = "X-Correlation-ID", required = false) String correlationId,
+            @Header(value = "Authorization", required = false) String authHeader) {
 
         setupMdc(RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, correlationId, event.orderId());
         try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwtToken = authHeader.substring(7);
+                MDC.put("jwtToken", jwtToken);
+            }
             log.info("Consuming {} for {}={}", RabbitMQ.ORDER_COMPLETED_ROUTING_KEY, "orderId", event.orderId());
 
             Payment payment = paymentService.createPendingPayment(
@@ -57,16 +62,22 @@ public class OrderEventConsumer {
             throw ex; // let retry / DLQ handle it
         } finally {
             clearMdc();
+            MDC.remove("jwtToken");
         }
     }
 
     @RabbitHandler
     public void onOrderCancelled(
             OrderCancelledEvent event,
-            @Header(value = "X-Correlation-ID", required = false) String correlationId) {
+            @Header(value = "X-Correlation-ID", required = false) String correlationId,
+            @Header(value = "Authorization", required = false) String authHeader) {
 
         setupMdc(RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, correlationId, event.orderId());
         try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwtToken = authHeader.substring(7);
+                MDC.put("jwtToken", jwtToken);
+            }
             log.info("Consuming {} for {}={}", RabbitMQ.ORDER_CANCELLED_ROUTING_KEY, "orderId", event.orderId());
 
             Optional<Payment> refundedOpt =
@@ -91,6 +102,7 @@ public class OrderEventConsumer {
             throw ex;
         } finally {
             clearMdc();
+            MDC.remove("jwtToken");
         }
     }
 

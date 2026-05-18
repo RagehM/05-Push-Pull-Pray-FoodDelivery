@@ -13,6 +13,8 @@ import com.team05.fooddelivery.delivery.repository.DeliveryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.messaging.handler.annotation.Header;
+import com.team05.fooddelivery.delivery.security.CorrelationIdFilter;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -56,10 +58,21 @@ public class OrderEventConsumer {
 
     // Minimal handler for order.placed — infrastructure required by the spec
     @RabbitHandler
-    public void onOrderPlaced(OrderPlacedEvent event) {
-        MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_PLACED);
-        MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+    public void onOrderPlaced(OrderPlacedEvent event, 
+        @Header(value = CorrelationIdFilter.HEADER, required = false) String correlationId,
+        @Header(value = "Authorization", required = false) String authHeader
+    ) {
+        
         try {
+            MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_PLACED);
+            MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+            if (correlationId != null && !correlationId.isBlank()) {
+                MDC.put(CorrelationIdFilter.MDC_KEY, correlationId);
+            }
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwtToken = authHeader.substring(7);
+                MDC.put("jwtToken", jwtToken);
+            }
             log.info(MSG_CONSUMING, ROUTING_ORDER_PLACED, MDC_ORDER_ID, event.orderId());
             // minimal body — maybe increment a metric or log
             log.info(MSG_PROCESSED, ROUTING_ORDER_PLACED, MDC_ORDER_ID, event.orderId());
@@ -69,15 +82,28 @@ public class OrderEventConsumer {
         } finally {
             MDC.remove(MDC_ROUTING_KEY);
             MDC.remove(MDC_ORDER_ID);
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
+            MDC.remove("jwtToken");
         }
     }
 
     // Handler for order.completed
     @RabbitHandler
-    public void onOrderCompleted(OrderCompletedEvent event) {
-        MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_COMPLETED);
-        MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+    public void onOrderCompleted(OrderCompletedEvent event, 
+        @Header(value = CorrelationIdFilter.HEADER, required = false) String correlationId,
+        @Header(value = "Authorization", required = false) String authHeader
+    ) {
+        
         try {
+            MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_COMPLETED);
+            MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+            if (correlationId != null && !correlationId.isBlank()) {
+                MDC.put(CorrelationIdFilter.MDC_KEY, correlationId);
+            }
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwtToken = authHeader.substring(7);
+                MDC.put("jwtToken", jwtToken);
+            }
             log.info(MSG_CONSUMING, ROUTING_ORDER_COMPLETED, MDC_ORDER_ID, event.orderId());
 
             // find latest delivery for this order
@@ -137,15 +163,28 @@ public class OrderEventConsumer {
             MDC.remove(MDC_ROUTING_KEY);
             MDC.remove(MDC_ORDER_ID);
             MDC.remove(MDC_DELIVERY_ID);
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
+            MDC.remove("jwtToken");
         }
     }
 
     // Handler for order.cancelled
     @RabbitHandler
-    public void onOrderCancelled(OrderCancelledEvent event) {
-        MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_CANCELLED);
-        MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+    public void onOrderCancelled(OrderCancelledEvent event, 
+        @Header(value = CorrelationIdFilter.HEADER, required = false) String correlationId,
+        @Header(value = "Authorization", required = false) String authHeader
+    ) {
+
         try {
+            MDC.put(MDC_ROUTING_KEY, ROUTING_ORDER_CANCELLED);
+            MDC.put(MDC_ORDER_ID, String.valueOf(event.orderId()));
+            if (correlationId != null && !correlationId.isBlank()) {
+                MDC.put(CorrelationIdFilter.MDC_KEY, correlationId);
+            }
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwtToken = authHeader.substring(7);
+                MDC.put("jwtToken", jwtToken);
+            }
             log.info(MSG_CONSUMING, ROUTING_ORDER_CANCELLED, MDC_ORDER_ID, event.orderId());
 
             Optional<Delivery> opt = deliveryRepository.findLatestByOrderId(event.orderId());
@@ -179,6 +218,8 @@ public class OrderEventConsumer {
             MDC.remove(MDC_ROUTING_KEY);
             MDC.remove(MDC_ORDER_ID);
             MDC.remove(MDC_DELIVERY_ID);
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
+            MDC.remove("jwtToken");
         }
     }
 

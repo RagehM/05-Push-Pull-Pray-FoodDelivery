@@ -6,6 +6,7 @@ import com.team05.fooddelivery.contracts.events.DeliveryStatusChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import com.team05.fooddelivery.delivery.security.CorrelationIdFilter;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -36,7 +37,13 @@ public class DeliveryEventPublisher {
         String routingKey = ROUTING_DELIVERY_CREATED;
         MDC.put(MDC_ROUTING_KEY, routingKey);
         try {
-            rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
+            rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event, message -> {
+                String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+                if (correlationId != null && !correlationId.isBlank()) {
+                    message.getMessageProperties().setHeader(CorrelationIdFilter.HEADER, correlationId);
+                }
+                return message;
+            });
             log.info(MSG_PUBLISHED, routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
             log.error(MSG_FAILED, routingKey, ex.getMessage());
@@ -49,7 +56,13 @@ public class DeliveryEventPublisher {
         String routingKey = ROUTING_DELIVERY_STATUS_CHANGED;
         MDC.put(MDC_ROUTING_KEY, routingKey);
         try {
-            rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
+            rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event, message -> {
+                String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+                if (correlationId != null && !correlationId.isBlank()) {
+                    message.getMessageProperties().setHeader(CorrelationIdFilter.HEADER, correlationId);
+                }
+                return message;
+            });
             log.info(MSG_PUBLISHED, routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
             log.error(MSG_FAILED, routingKey, ex.getMessage());
@@ -62,7 +75,13 @@ public class DeliveryEventPublisher {
         String routingKey = ROUTING_DELIVERY_CANCELLED;
         MDC.put(MDC_ROUTING_KEY, routingKey);
         try {
-            rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event);
+            rabbitTemplate.convertAndSend(EXCHANGE, routingKey, event, message -> {
+                String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+                if (correlationId != null && !correlationId.isBlank()) {
+                    message.getMessageProperties().setHeader(CorrelationIdFilter.HEADER, correlationId);
+                }
+                return message;
+            });
             log.info(MSG_PUBLISHED, routingKey, "Delivery", event.deliveryId());
         } catch (Exception ex) {
             log.error(MSG_FAILED, routingKey, ex.getMessage());

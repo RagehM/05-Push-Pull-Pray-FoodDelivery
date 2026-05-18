@@ -9,6 +9,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,6 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         try {
             String token = header.substring(7);
+            MDC.put("jwtToken", token);
             Claims claims = Jwts.parser()
                     .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtConfig.getSecret())))
                     .build()
@@ -60,7 +63,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             // Invalid token — Spring Security will return 401
         }
-
         chain.doFilter(request, response);
+        MDC.remove("jwtToken");
     }
 }
