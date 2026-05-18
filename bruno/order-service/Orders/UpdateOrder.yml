@@ -5,20 +5,20 @@ info:
 
 http:
   method: PUT
-  url: http://localhost:8083/api/orders/1
+  url: "{{kube_base_url_api_gateway}}/api/orders/1"
   body:
     type: json
     data: |-
       {
         "userId": 1,
         "restaurantId": 1,
-        "status": "DELIVERED",
+        "status": "PREPARING",
         "totalAmount": 55.0,
         "metadata": {}
       }
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4MDE0MjI4LCJleHAiOjE3NzgxMDA2Mjh9.B7Vc3K6N7zADkYxhoN6QyZtKL26mVwGM9E7oMnT722I
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdkYWFzZHNlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MTE0MTUyLCJleHAiOjE3NzkyMDA1NTJ9.a6MHpcjUKwreJspnCuo5lwk7q09MI-tbZUxmW1OF5ac
 
 settings:
   encodeUrl: true

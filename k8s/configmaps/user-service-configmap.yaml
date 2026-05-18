@@ -5,7 +5,7 @@ metadata:
   namespace: talabat
 data:
   SPRING_APPLICATION_NAME: user-service
-  SPRING_DATASOURCE_URL: jdbc:postgresql://user-postgres:5432/talabatdb-user
+  SPRING_DATASOURCE_URL: jdbc:postgresql://user-postgres:5432/talabatdb-users
   SPRING_DATASOURCE_USERNAME: postgres
   SPRING_RABBITMQ_HOST: rabbitmq
   SPRING_RABBITMQ_PORT: "5672"

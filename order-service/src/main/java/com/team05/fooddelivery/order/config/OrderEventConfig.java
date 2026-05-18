@@ -6,7 +6,11 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -38,12 +42,19 @@ public class OrderEventConfig {
     }
 
     @Bean
-    Queue sagaFeedbackQueue() {
-        return QueueBuilder.
-            durable("order.saga-feedback").
-            withArgument("x-dead-letter-exchange", "order.saga-feedback.dlx").
-            withArgument("x-dead-letter-routing-key", "order.saga-feedback.dlq").
-            build();
+    Queue sagaFeedbackPaymentQueue() {
+        return QueueBuilder.durable("order.saga-feedback.payment")
+            .withArgument("x-dead-letter-exchange", "order.saga-feedback.dlx")
+            .withArgument("x-dead-letter-routing-key", "order.saga-feedback.dlq")
+            .build();
+    }
+
+    @Bean
+    Queue sagaFeedbackDeliveryQueue() {
+        return QueueBuilder.durable("order.saga-feedback.delivery")
+            .withArgument("x-dead-letter-exchange", "order.saga-feedback.dlx")
+            .withArgument("x-dead-letter-routing-key", "order.saga-feedback.dlq")
+            .build();
     }
 
     @Bean
@@ -73,48 +84,64 @@ public class OrderEventConfig {
     }
 
     @Bean
-    Binding deliveryCreatedBinding(Queue sagaFeedbackQueue, TopicExchange deliveryExchange) {
+    Binding deliveryCreatedBinding(Queue sagaFeedbackDeliveryQueue, TopicExchange deliveryExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackDeliveryQueue).
             to(deliveryExchange).
             with("delivery.created");
     }
 
     @Bean
-    Binding paymentInitiatedBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentInitiatedBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.initiated");
     }
 
     @Bean
-    Binding paymentCompleteBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentCompleteBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.completed");
     }
 
     @Bean
-    Binding paymentFailedBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentFailedBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.failed");
     }
     
     @Bean
-    Binding paymentRefundedBinding(Queue sagaFeedbackQueue, TopicExchange paymentExchange) {
+    Binding paymentRefundedBinding(Queue sagaFeedbackPaymentQueue, TopicExchange paymentExchange) {
         return BindingBuilder.
-            bind(sagaFeedbackQueue).
+            bind(sagaFeedbackPaymentQueue).
             to(paymentExchange).
             with("payment.refunded");
     }
 
 
     @Bean
-    Jackson2JsonMessageConverter messageConverter() {
-        return new Jackson2JsonMessageConverter();
+    MessageConverter rabbitMessageConverter() {
+        return new JacksonJsonMessageConverter();
+    }
+
+    @Bean
+    RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter rabbitMessageConverter) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(rabbitMessageConverter);
+        return rabbitTemplate;
+    }
+
+    @Bean
+    SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory,
+                                                                        MessageConverter rabbitMessageConverter) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(rabbitMessageConverter);
+        return factory;
     }
 }

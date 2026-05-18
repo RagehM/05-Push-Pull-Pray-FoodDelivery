@@ -1,0 +1,4 @@
+name: ACL 10th
+variables:
+  - name: kube_base_url_api_gateway
+    value: http://192.168.49.2:30080

@@ -463,7 +463,7 @@ public class OrderService {
         //Get order through JPA default method findById, if order not found, throw HTTP 404 Not Found
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         //Check Status, if status != PLACED or CONFIRMED, throw HTTP 400 Bad Request
-        if (!(order.getStatus() == OrderStatusEnum.PLACED || order.getStatus() == OrderStatusEnum.CONFIRMED)) {
+        if (!(order.getStatus() == OrderStatusEnum.PLACED || order.getStatus() == OrderStatusEnum.CONFIRMED || order.getStatus() == OrderStatusEnum.PAYMENT_PENDING)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order cannot be cancelled as it is already: " + order.getStatus());
         }
         //Update status to CANCELLED
@@ -481,7 +481,6 @@ public class OrderService {
 
         notifyObservers(OrderEventActions.ORDER_CANCELLED, params);
         try {
-            // orderRepository.cancelDeliveryByOrderId(orderId); Cross-service DB, refactored in MS3 to be done through RabbitMQ event
             orderPublisher.publishOrderCancelledEvent(order, "user_requested");
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.LOCKED, "Failed to cancel delivery: " + e.getMessage());

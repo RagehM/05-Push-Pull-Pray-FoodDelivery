@@ -5,12 +5,12 @@ info:
 
 http:
   method: POST
-  url: http://localhost:8081/api/auth/login
+  url: "{{kube_base_url_api_gateway}}/api/auth/login"
   body:
     type: json
     data: |-
       {
-        "email": "rageh112@mail.com",
+        "email": "ragdaasdseh@mail.com",
         "password": 123,
       }
   auth: inherit

@@ -5,14 +5,10 @@ info:
 
 http:
   method: GET
-  url: "{{DELIVERY_SERVICE_URL}}/api/deliveries"
-  params:
-    - name: ""
-      value: ""
-      type: query
+  url: "{{kube_base_url_api_gateway}}/api/deliveries"
   auth:
     type: bearer
-    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdlaDExMkBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc4OTc0Mzc4LCJleHAiOjE3NzkwNjA3Nzh9.mSJA-ez9HaMETnufdwz0apl_dHMa_HEALdPgmpFeroY
+    token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyYWdkYWFzZHNlaEBtYWlsLmNvbSIsInVpZCI6MSwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzc5MTE0MTUyLCJleHAiOjE3NzkyMDA1NTJ9.a6MHpcjUKwreJspnCuo5lwk7q09MI-tbZUxmW1OF5ac
 
 runtime:
   variables:

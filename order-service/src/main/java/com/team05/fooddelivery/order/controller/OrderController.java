@@ -10,11 +10,12 @@ import com.team05.fooddelivery.order.service.OrderService;
 import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.jaxb.SpringDataJaxb.OrderDto;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -255,13 +256,22 @@ public class OrderController {
     // [CRUD]
     //// Get order by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
+    public ResponseEntity<OrderDTO> getOrderById(@PathVariable Long id) {
         log.info("Received {} {}", "GET", "/api/orders/" + id);
-        ResponseEntity<Order> returnValue = ResponseEntity.ok(
-                orderService.getOrderById(id)
+        Order returnValue = orderService.getOrderById(id); 
+        ResponseEntity<OrderDTO> parsedValue = ResponseEntity.ok(
+                new OrderDTO(
+                        returnValue.getId(),
+                        returnValue.getUserId(),
+                        returnValue.getRestaurantId(),
+                        returnValue.getStatus().name(),
+                        returnValue.getOrderDate(),
+                        returnValue.getDeliveredAt(),
+                        BigDecimal.valueOf(returnValue.getTotalAmount())
+                )
         );
-        log.info("Returning {} for {} {}", returnValue.getBody(), "GET", "/api/orders/" + id);
-        return returnValue;
+        log.info("Returning {} for {} {}", parsedValue.getBody(), "GET", "/api/orders/" + id);
+        return parsedValue;
     }
     //// Get all orders
     @GetMapping
