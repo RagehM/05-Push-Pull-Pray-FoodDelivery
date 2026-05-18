@@ -70,6 +70,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: List build context before Docker build
+        run: |
+          ls -l
+          ls -l user-service
+          ls -l user-service/target
+          ls -l restaurant-service
+          ls -l restaurant-service/target
+          ls -l order-service
+          ls -l order-service/target
+          ls -l delivery-service
+          ls -l delivery-service/target
+          ls -l checkout-service
+          ls -l checkout-service/target
+          ls -l api-gateway
+          ls -l api-gateway/target
+
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v6
         with:
