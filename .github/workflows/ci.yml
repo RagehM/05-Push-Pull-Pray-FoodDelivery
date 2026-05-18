@@ -23,7 +23,7 @@ jobs:
           cache: maven
 
       - name: Build & run tests
-        run: mvn -B clean install -DskipTests=false
+        run: mvn -B clean install -DskipTests
 
   docker-build:
     name: Docker Build (feat only)
