@@ -30,15 +30,15 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
-.vscode/
 
 ### Mac OS ###
 .DS_Store
 
-.env
 
 *.class
 
 volumes
 
 .grader-cache/
+config.bat
+node_modules
