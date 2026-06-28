@@ -30,15 +30,19 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
-.vscode/
 
 ### Mac OS ###
 .DS_Store
 
-.env
 
 *.class
 
 volumes
 
 .grader-cache/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
+config.bat
+node_modules
